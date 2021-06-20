@@ -1,2 +1,1 @@
-# wilson
-A lightweight javascript library for creating math applets
+Wilson.js is a lightweight JavaScript library for creating math applets. It handles common canvas-related tasks, like capturing mouse and touch input, making WebGL as easy as writing a shader, and even providing a robust and customizable fullscreen alternative, letting you focus on the code that matters.
