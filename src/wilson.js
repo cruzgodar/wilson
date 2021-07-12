@@ -70,5 +70,19 @@ let Wilson =
 		{
 			return [Math.floor((.5 - (y - Wilson.world_center_y) / Wilson.world_height) * Wilson.canvas_height), Math.floor(((x - Wilson.world_center_x) / Wilson.world_width + .5) * Wilson.canvas_width)];
 		}
+	},
+	
+	
+	
+	//A utility function for converting from HSV to RGB. Accepts hsv in [0, 1] and returns rgb in [0, 255], unrounded
+	hsv_to_rgb: function(h, s, v)
+	{
+		function f(n)
+		{
+			let k = (n + 6*h) % 6;
+			return v - v * s * Math.max(0, Math.min(k, Math.min(4 - k, 1)));
+		}
+		
+		return [255 * f(5), 255 * f(3), 255 * f(1)];
 	}
 };
