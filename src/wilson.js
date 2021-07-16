@@ -2,6 +2,10 @@ let Wilson =
 {
 	canvas: null,
 	
+	ctx: null,
+	
+	img_data: null,
+	
 	canvas_width: null,
 	canvas_height: null,
 	
@@ -26,8 +30,12 @@ let Wilson =
 	{
 		this.canvas = canvas;
 		
-		this.canvas_width = this.canvas.getAttribute("width");
-		this.canvas_height = this.canvas.getAttribute("height");
+		this.ctx = this.canvas.getContext("2d");
+		
+		this.canvas_width = parseInt(this.canvas.getAttribute("width"));
+		this.canvas_height = parseInt(this.canvas.getAttribute("height"));
+		
+		this.img_data = this.ctx.getImageData(0, 0, this.canvas_width, this.canvas_height);
 		
 		
 		
@@ -74,7 +82,7 @@ let Wilson =
 	
 	
 	
-	//A utility function for converting from HSV to RGB. Accepts hsv in [0, 1] and returns rgb in [0, 255], unrounded
+	//A utility function for converting from HSV to RGB. Accepts hsv in [0, 1] and returns rgb in [0, 255], unrounded.
 	hsv_to_rgb: function(h, s, v)
 	{
 		function f(n)
@@ -84,5 +92,34 @@ let Wilson =
 		}
 		
 		return [255 * f(5), 255 * f(3), 255 * f(1)];
+	},
+	
+	
+	
+	draw_frame: null,
+	
+	//Draws an entire frame to a cpu canvas by directly modifying the canvas data. Tends to be significantly faster than looping fillRect, **when the whole canvas needs to be updated**. If that's not the case, sticking to fillRect is generally a better idea. Here, image is a width*height array, where each element is a length-3 array of the form [r, g, b].
+	draw_frame_cpu: function(image)
+	{
+		const width = this.canvas_width;
+		const height = this.canvas_height;
+		
+		let img_data = this.ctx.getImageData(0, 0, width, height);
+		let data = img_data.data;
+		
+		for (let i = 0; i < height; i++)
+		{
+			for (let j = 0; j < width; j++)
+			{
+				//The index in the array of rgba values
+				let index = (4 * i * width) + (4 * j);
+				
+				data[index] = image[i][j][0];
+				data[index + 1] = image[i][j][1];
+				data[index + 2] = image[i][j][2];
+			}
+		}
+		
+		this.ctx.putImageData(img_data, 0, 0);
 	}
 };
