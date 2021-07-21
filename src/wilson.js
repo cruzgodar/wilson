@@ -1,5 +1,7 @@
 let Wilson =
 {
+	render_type: null, //0: cpu, 1: hybrid, 2: gpu
+	
 	canvas: null,
 	
 	ctx: null,
@@ -67,7 +69,23 @@ let Wilson =
 		
 		
 		
-		if (typeof options.renderer === "undefined" || options.renderer === "cpu")
+		if (typeof options.renderer === "undefined" || options.renderer === "hybrid")
+		{
+			this.render_type = 1;
+		}
+		
+		else if (options.renderer === "cpu")
+		{
+			this.render_type = 0;
+		}
+		
+		else
+		{
+			this.render_type = 2;
+		}
+		
+		
+		if (this.render_type === 0)
 		{
 			this.ctx = this.canvas.getContext("2d");
 			
@@ -76,11 +94,19 @@ let Wilson =
 			this.draw_frame = this.draw_frame_cpu;
 		}
 		
-		else
+		else if (this.render_type === 1)
 		{
-			this.init_webgl();
+			this.init_webgl_hybrid();
 			
 			this.draw_frame = this.draw_frame_hybrid;
+		}
+		
+		else
+		{
+			try {this.init_webgl_gpu(options.shader);}
+			catch(ex) {console.error("[Wilson] Error loading shader")}
+			
+			this.draw_frame = this.draw_frame_gpu;
 		}
 	},
 	
@@ -139,8 +165,15 @@ let Wilson =
 	
 	
 	
+	draw_frame_gpu: function()
+	{
+		this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+	},
+	
+	
+	
 	//Gets WebGL started for the canvas.
-	init_webgl: function()
+	init_webgl_hybrid: function()
 	{
 		this.gl = this.canvas.getContext("webgl");
 		
@@ -188,7 +221,7 @@ let Wilson =
 		
 		if (!this.gl.getProgramParameter(this.shader_program, this.gl.LINK_STATUS))
 		{
-			console.log(`[Wilson] Couldn't link shader program: ${this.gl.getShaderInfoLog(shader)}`);
+			console.error(`[Wilson] Couldn't link shader program: ${this.gl.getShaderInfoLog(shader)}`);
 			gl.deleteProgram(this.shader_program);
 		}
 		
@@ -232,6 +265,82 @@ let Wilson =
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
 		
 		this.gl.disable(this.gl.DEPTH_TEST);
+		
+		
+		
+		function load_shader(gl, type, source)
+		{
+			let shader = gl.createShader(type);
+			
+			gl.shaderSource(shader, source);
+			
+			gl.compileShader(shader);
+			
+			if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+			{
+				console.error(`[Wilson] Couldn't load shader: ${gl.getProgramInfoLog(shaderProgram)}`);
+				gl.deleteShader(shader);
+			}
+			
+			return shader;
+		}
+	},
+	
+	
+	
+	//Gets WebGL started for the canvas.
+	init_webgl_gpu: function(frag_shader_source)
+	{
+		this.gl = this.canvas.getContext("webgl");
+		
+		const vertex_shader_source = `
+			attribute vec3 position;
+			varying vec2 uv;
+
+			void main(void)
+			{
+				gl_Position = vec4(position, 1.0);
+
+				//Interpolate quad coordinates in the fragment shader.
+				uv = position.xy;
+			}
+		`;
+		
+		const quad = [-1, -1, 0,   -1, 1, 0,   1, -1, 0,   1, 1, 0];
+		
+		
+		
+		let vertex_shader = load_shader(this.gl, this.gl.VERTEX_SHADER, vertex_shader_source);
+		
+		let frag_shader = load_shader(this.gl, this.gl.FRAGMENT_SHADER, frag_shader_source);
+		
+		this.shader_program = this.gl.createProgram();
+		
+		this.gl.attachShader(this.shader_program, vertex_shader);
+		this.gl.attachShader(this.shader_program, frag_shader);
+		this.gl.linkProgram(this.shader_program);
+		
+		if (!this.gl.getProgramParameter(this.shader_program, this.gl.LINK_STATUS))
+		{
+			console.log(`[Wilson] Couldn't link shader program: ${this.gl.getShaderInfoLog(shader)}`);
+			gl.deleteProgram(this.shader_program);
+		}
+		
+		this.gl.useProgram(this.shader_program);
+		
+		let position_buffer = this.gl.createBuffer();
+		
+		this.gl.bindBuffer(this.gl.ARRAY_BUFFER, position_buffer);
+		
+		this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(quad), this.gl.STATIC_DRAW);
+		
+		this.shader_program.position_attribute = this.gl.getAttribLocation(this.shader_program, "position");
+		
+		this.gl.enableVertexAttribArray(this.shader_program.position_attribute);
+		
+		this.gl.vertexAttribPointer(this.shader_program.position_attribute, 3, this.gl.FLOAT, false, 0, 0);
+		
+		this.gl.viewport(0, 0, this.canvas_width, this.canvas_height);
 		
 		
 		
