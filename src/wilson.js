@@ -11,6 +11,7 @@ let Wilson =
 	
 	shader_program: null,
 	texture: null,
+	uniforms: {},
 	
 	canvas_width: null,
 	canvas_height: null,
@@ -359,6 +360,34 @@ let Wilson =
 			}
 			
 			return shader;
+		}
+	},
+	
+	
+	
+	//Initializes all of the uniforms for a gpu canvas. Takes in an array of variable names as strings (that match the uniforms in the fragment shader), and stores the locations in Wilson.uniforms.
+	init_uniforms: function(variable_names)
+	{
+		for (let i = 0; i < variable_names.length; i++)
+		{
+			this.uniforms[variable_names[i]] = this.gl.getUniformLocation(this.shader_program, variable_names[i]);
+		}
+	},
+	
+	
+	
+	//Resizes the canvas.
+	resize: function(width, height)
+	{
+		this.canvas_width = width;
+		this.canvas_height = height;
+		
+		this.canvas.setAttribute("width", width);
+		this.canvas.setAttribute("height", height);
+		
+		if (this.render_type !== 0)
+		{
+			this.gl.viewport(0, 0, width, height);
 		}
 	}
 };
