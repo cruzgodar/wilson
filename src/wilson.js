@@ -7,6 +7,8 @@ class Wilson
 	ctx = null;
 	gl = null;
 	
+	last_image = null;
+	
 	img_data = null;
 	
 	shader_program = null;
@@ -162,6 +164,8 @@ class Wilson
 	//Draws an entire frame to the canvas by converting the frame to a WebGL texture and displaying that. In some cases, this can slightly increase drawing performance, and some browsers can also handle larger WebGL canvases than cpu ones (e.g. iOS Safari). For these reasons, it's recommended to default to this rendering method unless there is a specific reason to avoid WebGL.
 	draw_frame_hybrid(image)
 	{
+		this.last_image = image;
+		
 		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.canvas_width, this.canvas_height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, image);
 		
 		this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
@@ -392,5 +396,33 @@ class Wilson
 		{
 			this.gl.viewport(0, 0, width, height);
 		}
+	}
+	
+	
+	
+	//Downloads the current state of the canvas as a png. If using a WebGL canvas, another frame will be drawn before downloading.
+	download_frame(filename)
+	{
+		if (this.render_type === 1)
+		{
+			this.draw_frame(this.last_image);
+		}
+		
+		else if (this.render_type === 2)
+		{
+			this.draw_frame();
+		}
+		
+		
+		
+		let link = document.createElement("a");
+		
+		link.download = filename;
+		
+		link.href = this.canvas.toDataURL();
+		
+		link.click();
+		
+		link.remove();
 	}
 };
