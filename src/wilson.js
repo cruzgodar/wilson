@@ -1,30 +1,61 @@
-let Wilson =
+class Wilson
 {
-	render_type: null, //0: cpu, 1: hybrid, 2: gpu
+	render_type = null; //0: cpu, 1: hybrid, 2: gpu
 	
-	canvas: null,
+	canvas = null;
 	
-	ctx: null,
-	gl: null,
+	ctx = null;
+	gl = null;
 	
-	img_data: null,
+	img_data = null;
 	
-	shader_program: null,
-	texture: null,
-	uniforms: {},
+	shader_program = null;
+	texture = null;
+	uniforms = {};
 	
-	canvas_width: null,
-	canvas_height: null,
+	canvas_width = null;
+	canvas_height = null;
 	
-	world_width: -1,
-	world_height: -1,
+	world_width = -1;
+	world_height = -1;
 	
-	world_center_x: -1,
-	world_center_y: -1,
+	world_center_x = -1;
+	world_center_y = -1;
+	
+	draw_frame = null;
 	
 	
 	
-	//Sets up a canvas to work with Wilson.
+	//Contains utility functions for switching between canvas and world coordinates.
+	interpolate =
+	{
+		canvas_to_world(row, col)
+		{
+			return [(col / this.parent.canvas_width - .5) * this.parent.world_width + this.parent.world_center_x, (.5 - row / this.parent.canvas_height) * this.parent.world_height + this.parent.world_center_y];
+		},
+		
+		world_to_canvas(x, y)
+		{
+			return [Math.floor((.5 - (y - this.parent.world_center_y) / this.parent.world_height) * this.parent.canvas_height), Math.floor(((x - this.parent.world_center_x) / this.parent.world_width + .5) * this.parent.canvas_width)];
+		}
+	};
+	
+	
+	
+	//A utility function for converting from HSV to RGB. Accepts hsv in [0, 1] and returns rgb in [0, 255], unrounded.
+	hsv_to_rgb(h, s, v)
+	{
+		function f(n)
+		{
+			let k = (n + 6*h) % 6;
+			return v - v * s * Math.max(0, Math.min(k, Math.min(4 - k, 1)));
+		}
+		
+		return [255 * f(5), 255 * f(3), 255 * f(1)];
+	}
+	
+	
+	
 	/*
 		options:
 		{
@@ -35,12 +66,16 @@ let Wilson =
 		}
 	*/
 	
-	init: function(canvas, options)
+	constructor(canvas, options)
 	{
 		this.canvas = canvas;
 		
 		this.canvas_width = parseInt(this.canvas.getAttribute("width"));
 		this.canvas_height = parseInt(this.canvas.getAttribute("height"));
+		
+		
+		
+		this.interpolate.parent = this;
 		
 		
 		
@@ -109,72 +144,40 @@ let Wilson =
 			
 			this.draw_frame = this.draw_frame_gpu;
 		}
-	},
+	}
 	
 	
-	
-	//Contains utility functions for switching between canvas and world coordinates.
-	Interpolate:
-	{
-		canvas_to_world: function(row, col)
-		{
-			return [(col / Wilson.canvas_width - .5) * Wilson.world_width + Wilson.world_center_x, (.5 - row / Wilson.canvas_height) * Wilson.world_height + Wilson.world_center_y];
-		},
-		
-		world_to_canvas: function(x, y)
-		{
-			return [Math.floor((.5 - (y - Wilson.world_center_y) / Wilson.world_height) * Wilson.canvas_height), Math.floor(((x - Wilson.world_center_x) / Wilson.world_width + .5) * Wilson.canvas_width)];
-		}
-	},
-	
-	
-	
-	//A utility function for converting from HSV to RGB. Accepts hsv in [0, 1] and returns rgb in [0, 255], unrounded.
-	hsv_to_rgb: function(h, s, v)
-	{
-		function f(n)
-		{
-			let k = (n + 6*h) % 6;
-			return v - v * s * Math.max(0, Math.min(k, Math.min(4 - k, 1)));
-		}
-		
-		return [255 * f(5), 255 * f(3), 255 * f(1)];
-	},
-	
-	
-	
-	draw_frame: null,
 	
 	//Draws an entire frame to a cpu canvas by directly modifying the canvas data. Tends to be significantly faster than looping fillRect, **when the whole canvas needs to be updated**. If that's not the case, sticking to fillRect is generally a better idea. Here, image is a width * height * 4 Uint8ClampedArray, with each sequence of 4 elements corresponding to rgba values.
-	draw_frame_cpu: function(image)
+	draw_frame_cpu(image)
 	{
 		const width = this.canvas_width;
 		const height = this.canvas_height;
 		
 		this.ctx.putImageData(new ImageData(image, width, height), 0, 0);
-	},
+	}
 	
 	
 	
 	//Draws an entire frame to the canvas by converting the frame to a WebGL texture and displaying that. In some cases, this can slightly increase drawing performance, and some browsers can also handle larger WebGL canvases than cpu ones (e.g. iOS Safari). For these reasons, it's recommended to default to this rendering method unless there is a specific reason to avoid WebGL.
-	draw_frame_hybrid: function(image)
+	draw_frame_hybrid(image)
 	{
 		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.canvas_width, this.canvas_height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, image);
 		
 		this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
-	},
+	}
 	
 	
 	
-	draw_frame_gpu: function()
+	draw_frame_gpu()
 	{
 		this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
-	},
+	}
 	
 	
 	
 	//Gets WebGL started for the canvas.
-	init_webgl_hybrid: function()
+	init_webgl_hybrid()
 	{
 		this.gl = this.canvas.getContext("webgl");
 		
@@ -285,12 +288,12 @@ let Wilson =
 			
 			return shader;
 		}
-	},
+	}
 	
 	
 	
 	//Gets WebGL started for the canvas.
-	init_webgl_gpu: function(frag_shader_source)
+	init_webgl_gpu(frag_shader_source)
 	{
 		this.gl = this.canvas.getContext("webgl");
 		
@@ -361,23 +364,23 @@ let Wilson =
 			
 			return shader;
 		}
-	},
+	}
 	
 	
 	
 	//Initializes all of the uniforms for a gpu canvas. Takes in an array of variable names as strings (that match the uniforms in the fragment shader), and stores the locations in Wilson.uniforms.
-	init_uniforms: function(variable_names)
+	init_uniforms(variable_names)
 	{
 		for (let i = 0; i < variable_names.length; i++)
 		{
 			this.uniforms[variable_names[i]] = this.gl.getUniformLocation(this.shader_program, variable_names[i]);
 		}
-	},
+	}
 	
 	
 	
 	//Resizes the canvas.
-	resize: function(width, height)
+	resize(width, height)
 	{
 		this.canvas_width = width;
 		this.canvas_height = height;
