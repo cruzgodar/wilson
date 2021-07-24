@@ -27,6 +27,19 @@ class Wilson
 			renderer: "cpu", "hybrid", "gpu"
 			
 			shader
+			
+			
+			
+			fullscreen_enabled
+			
+			canvases_to_resize
+			
+			use_fullscreen_button
+			
+			enter_fullscreen_button_image_path
+			exit_fullscreen_button_image_path
+			
+			resize_callback
 		}
 	*/
 	
@@ -41,6 +54,7 @@ class Wilson
 		
 		this.utils.interpolate.parent = this;
 		this.render.parent = this;
+		this.fullscreen.parent = this;
 		
 		
 		
@@ -108,6 +122,20 @@ class Wilson
 			catch(ex) {console.error("[Wilson] Error loading shader")}
 			
 			this.render.draw_frame = this.render.draw_frame_gpu;
+		}
+		
+		
+		
+		if (typeof options.fullscreen_enabled !== "undefined" && options.fullscreen_enabled)
+		{
+			this.fullscreen.use_fullscreen_button = options.use_fullscreen_button;
+			
+			this.fullscreen.enter_fullscreen_button_image_path = options.enter_fullscreen_button_image_path;
+			this.fullscreen.exit_fullscreen_button_image_path = options.exit_fullscreen_button_image_path;
+			
+			this.fullscreen.canvases_to_resize = options.canvases_to_resize;
+			
+			this.fullscreen.init();
 		}
 	}
 	
@@ -380,6 +408,460 @@ class Wilson
 			{
 				this.parent.uniforms[variable_names[i]] = this.parent.gl.getUniformLocation(this.shader_program, variable_names[i]);
 			}
+		}
+	};
+	
+	
+	
+	fullscreen =
+	{
+		currently_fullscreen: false,
+
+		currently_animating: false,
+
+		//Contains the output canvas, along with anything attached to it (e.g. draggables containers)
+		canvases_to_resize: [],
+
+		//True to fill the entire screen (which will strech the aspect ratio unless there's specific code to account for that), and false to letterbox.
+		use_true_fullscreen: false,
+
+		resize_callback: null,
+
+		last_tap_time: 0,
+
+		fullscreen_old_scroll: 0,
+		fullscreen_locked_scroll: 0,
+		
+		old_footer_button_offset: 0,
+		
+		enter_fullscreen_button: null,
+		exit_fullscreen_button: null,
+		
+		
+		
+		use_fullscreen_button: true,
+		
+		enter_fullscreen_button_image_path: null,
+		exit_fullscreen_button_image_path: null,
+		
+		
+		
+		init()
+		{
+			if (this.use_fullscreen_button)
+			{
+				if (document.querySelectorAll("#wilson-fullscreen-button-style").length === 0)
+				{
+					let element = document.createElement("style");
+					
+					element.textContent = `
+						.enter-fullscreen-button, .exit-fullscreen-button
+						{
+							width: 15px;
+							
+							background-color: rgb(255, 255, 255);
+							
+							border: 2px solid rgb(127, 127, 127);
+							border-radius: 25%;
+							padding: 5px;
+							
+							z-index: 100;
+							
+							transition: filter .15s ease-in-out;
+							filter: brightness(100%);
+							
+							cursor: pointer;
+							outline: none;
+						}
+
+						.enter-fullscreen-button.hover, .exit-fullscreen-button.hover
+						{
+							filter: brightness(75%);
+						}
+
+						.enter-fullscreen-button:not(:hover):focus, .exit-fullscreen-button:not(:hover):focus
+						{
+							filter: brightness(75%);
+							outline: none;
+						}
+
+						.enter-fullscreen-button
+						{
+							position: absolute;
+							right: 10px;
+							top: 10px;
+							
+							z-index: 100;
+						}
+
+						.exit-fullscreen-button
+						{
+							position: fixed;
+							right: 10px;
+							top: 10px;
+							
+							z-index: 100;
+						}
+					`;
+					
+					element.id = "wilson-fullscreen-button-style";
+					
+					document.head.appendChild(element);
+				}
+				
+				
+				
+				this.enter_fullscreen_button = document.createElement("input");
+				
+				this.enter_fullscreen_button.type = "image";
+				this.enter_fullscreen_button.classList.add("enter-fullscreen-button");
+				this.enter_fullscreen_button.src = this.enter_fullscreen_button_image_path;
+				this.enter_fullscreen_button.alt = "Enter Fullscreen";
+				this.enter_fullscreen_button.setAttribute("tabindex", "-1");
+				
+				this.parent.canvas.parentNode.appendChild(this.enter_fullscreen_button);
+				
+				Page.Load.HoverEvents.add(this.enter_fullscreen_button);
+				
+				this.enter_fullscreen_button.addEventListener("click", () =>
+				{
+					this.switch_fullscreen();
+				});
+			}
+			
+			
+			
+			window.addEventListener("resize", this.on_resize);
+			Page.temporary_handlers["resize"].push(this.on_resize);
+			
+			window.addEventListener("scroll", this.on_scroll);
+			Page.temporary_handlers["scroll"].push(this.on_scroll);
+			
+			let bound_function = this.handle_keypress_event.bind(this);
+			document.documentElement.addEventListener("keydown", bound_function);
+			Page.temporary_handlers["keydown"].push(this.on_scroll);
+		},
+
+
+
+		switch_fullscreen()
+		{
+			if (!this.currently_fullscreen)
+			{
+				if (this.currently_animating)
+				{
+					return;
+				}
+				
+				
+				
+				this.currently_fullscreen = true;
+				
+				this.currently_animating = true;
+				
+				
+				
+				document.body.style.opacity = 0;
+				
+				setTimeout(() =>
+				{
+					this.parent.canvas.classList.add("fullscreen");
+					
+					
+					
+					try {this.enter_fullscreen_button.remove();}
+					catch(ex) {}
+					
+					
+					
+					this.exit_fullscreen_button = document.createElement("input");
+					
+					this.exit_fullscreen_button.type = "image";
+					this.exit_fullscreen_button.classList.add("exit-fullscreen-button");
+					this.exit_fullscreen_button.src = this.exit_fullscreen_button_image_path;
+					this.exit_fullscreen_button.alt = "Exit Fullscreen";
+					this.exit_fullscreen_button.setAttribute("tabindex", "-1");
+					
+					document.body.appendChild(this.exit_fullscreen_button);
+					
+					Page.Load.HoverEvents.add(this.exit_fullscreen_button);
+					
+					this.exit_fullscreen_button.addEventListener("click", () =>
+					{
+						this.switch_fullscreen();
+					});
+					
+					
+					
+					this.old_footer_button_offset = Page.Footer.Floating.current_offset;
+					
+					Page.Footer.Floating.current_offset = -43.75;
+					
+					document.querySelector("#show-footer-menu-button").style.bottom = "-43.75px";
+					
+					
+					
+					document.documentElement.style.overflowY = "hidden";
+					document.body.style.overflowY = "hidden";
+					
+					document.addEventListener("gesturestart", this.prevent_gestures);
+					document.addEventListener("gesturechange", this.prevent_gestures);
+					document.addEventListener("gestureend", this.prevent_gestures);
+					
+					
+					
+					this.fullscreen_old_scroll = window.scrollY;
+					
+					
+					
+					if (this.use_true_fullscreen)
+					{
+						for (let i = 0; i < this.canvases_to_resize.length; i++)
+						{
+							this.canvases_to_resize[i].classList.add("true-fullscreen-canvas");
+							
+							//We do this to accomodate weirdly-set-up applets like the ones with draggable inputs, since they rely on their canvas container to keep the content below flowing properly.
+							this.parent.canvas.parentNode.parentNode.classList.add("black-background");
+							
+							try {this.resize_callback();}
+							catch(ex) {}
+							
+							Page.Load.AOS.on_resize();
+						}
+						
+						window.scroll(0, window.scrollY + this.canvases_to_resize[0].getBoundingClientRect().top + 2);
+						
+						this.fullscreen_locked_scroll = window.scrollY;
+					}
+					
+					
+					
+					else
+					{
+						for (let i = 0; i < this.canvases_to_resize.length; i++)
+						{
+							this.canvases_to_resize[i].classList.add("letterboxed-fullscreen-canvas");
+							
+							try {this.resize_callback();}
+							catch(ex) {}
+							
+							Page.Load.AOS.on_resize();
+						}
+						
+						
+						
+						//One of these is for vertical aspect ratios and the other is for horizontal ones, but we add both in case the user resizes the window while in applet is fullscreen.
+						
+						this.parent.canvas.parentNode.parentNode.insertAdjacentHTML("beforebegin", `<div class="letterboxed-canvas-background no-floating-footer"></div>`);
+						this.parent.canvas.parentNode.parentNode.insertAdjacentHTML("afterend", `<div class="letterboxed-canvas-background no-floating-footer"></div>`);
+						
+						this.parent.canvas.parentNode.parentNode.classList.add("black-background");
+						this.parent.canvas.parentNode.parentNode.classList.add("no-floating-footer");
+						
+						
+						
+						this.on_resize();
+					}
+					
+					
+					
+					document.body.style.opacity = 1;
+					
+					setTimeout(() =>
+					{
+						this.currently_animating = false;
+						
+						this.on_resize();
+					}, 300);
+				}, 300);
+			}
+			
+			
+			
+			else
+			{
+				if (this.currently_animating)
+				{
+					return;
+				}
+				
+				
+				
+				this.currently_fullscreen = false;
+				
+				this.currently_animating = true;
+				
+				
+				
+				document.body.style.opacity = 0;
+				
+				setTimeout(() =>
+				{
+					this.parent.canvas.parentNode.classList.remove("fullscreen");
+					
+					
+					
+					document.documentElement.style.overflowY = "visible";
+					document.body.style.overflowY = "visible";
+					
+					document.removeEventListener("gesturestart", this.prevent_gestures);
+					document.removeEventListener("gesturechange", this.prevent_gestures);
+					document.removeEventListener("gestureend", this.prevent_gestures);
+					
+					
+					
+					window.scroll(0, this.fullscreen_old_scroll);
+					
+					
+					
+					try {this.exit_fullscreen_button.remove();}
+					catch(ex) {}
+					
+					
+					
+					this.enter_fullscreen_button = document.createElement("input");
+					
+					this.enter_fullscreen_button.type = "image";
+					this.enter_fullscreen_button.classList.add("enter-fullscreen-button");
+					this.enter_fullscreen_button.src = this.enter_fullscreen_button_image_path;
+					this.enter_fullscreen_button.alt = "Enter Fullscreen";
+					this.enter_fullscreen_button.setAttribute("tabindex", "-1");
+					
+					this.parent.canvas.parentNode.appendChild(this.enter_fullscreen_button);
+					
+					Page.Load.HoverEvents.add(this.enter_fullscreen_button);
+					
+					this.enter_fullscreen_button.addEventListener("click", () =>
+					{
+						this.switch_fullscreen();
+					});
+					
+					
+					
+					Page.Footer.Floating.current_offset = this.old_footer_button_offset;
+					
+					document.querySelector("#show-footer-menu-button").style.bottom = this.old_footer_button_offset + "px";
+					
+					
+					
+					for (let i = 0; i < this.canvases_to_resize.length; i++)
+					{
+						this.canvases_to_resize[i].classList.remove("true-fullscreen-canvas");
+						this.canvases_to_resize[i].classList.remove("letterboxed-fullscreen-canvas");
+						
+						this.parent.canvas.parentNode.parentNode.classList.remove("black-background");
+						
+						try
+						{
+							let elements = document.querySelectorAll(".letterboxed-canvas-background");
+							
+							for (let i = 0; i < elements.length; i++)
+							{
+								elements[i].remove();
+							}
+						}
+						
+						catch(ex) {}
+						
+						
+						
+						try {this.resize_callback();}
+						catch(ex) {}
+						
+						
+						
+						Page.Load.AOS.on_resize();
+					}
+					
+					document.body.style.opacity = 1;
+					
+					setTimeout(() =>
+					{
+						this.currently_animating = false;
+					}, 300);
+				}, 300);
+			}
+		},
+
+
+
+		on_resize()
+		{
+			if (!this.currently_fullscreen)
+			{
+				return;
+			}
+			
+			
+			
+			if (Page.Layout.aspect_ratio < 1 && !this.true_fullscreen)
+			{
+				window.scroll(0, window.scrollY + this.canvases_to_resize[0].getBoundingClientRect().top - (Page.Layout.window_height - this.canvases_to_resize[0].offsetHeight) / 2 + 2);
+			}
+			
+			else
+			{
+				window.scroll(0, window.scrollY + this.canvases_to_resize[0].getBoundingClientRect().top + 2);
+			}
+			
+			this.fullscreen_locked_scroll = window.scrollY;
+			
+			
+			
+			try {this.resize_callback();}
+			catch(ex) {}
+			
+			
+			
+			setTimeout(() =>
+			{
+				if (Page.Layout.aspect_ratio < 1 && !this.true_fullscreen)
+				{
+					window.scroll(0, window.scrollY + this.canvases_to_resize[0].getBoundingClientRect().top - (Page.Layout.window_height - this.canvases_to_resize[0].offsetHeight) / 2 + 2);
+				}
+				
+				else
+				{
+					window.scroll(0, window.scrollY + this.canvases_to_resize[0].getBoundingClientRect().top + 2);
+				}
+				
+				this.fullscreen_locked_scroll = window.scrollY;
+				
+				
+				
+				try {this.resize_callback();}
+				catch(ex) {}
+			}, 500);
+		},
+
+
+
+		on_scroll()
+		{
+			if (!this.currently_fullscreen)
+			{
+				return;
+			}
+			
+			window.scroll(0, this.fullscreen_locked_scroll);
+		},
+		
+		
+		
+		handle_keypress_event(e)
+		{
+			if (e.keyCode === 27 && this.currently_fullscreen)
+			{
+				this.switch_fullscreen();
+			}
+		},
+		
+		
+		
+		prevent_gestures(e)
+		{
+			e.preventDefault();
+			//document.body.style.zoom = 0.99;
 		}
 	};
 	
