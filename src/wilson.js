@@ -21,6 +21,8 @@ class Wilson
 	/*
 		options:
 		{
+			canvas_width, canvas_height
+			
 			world_width, world_height
 			world_center_x, world_center_y
 			
@@ -30,9 +32,17 @@ class Wilson
 			
 			
 			
-			fullscreen_enabled
+			auto_arrange_canvases
 			
-			auto_rearrange_canvases
+			
+			
+			use_draggables
+			
+			
+			
+			use_fullscreen
+			
+			use_true_fullscreen
 			
 			canvases_to_resize
 			
@@ -56,6 +66,7 @@ class Wilson
 		
 		this.utils.interpolate.parent = this;
 		this.render.parent = this;
+		this.draggables.parent = this;
 		this.fullscreen.parent = this;
 		
 		
@@ -128,8 +139,26 @@ class Wilson
 		
 		
 		
-		if (typeof options.fullscreen_enabled !== "undefined" && options.fullscreen_enabled)
+		if (typeof options.auto_arrange_canvases === "undefined" || options.auto_arrange_canvases)
 		{
+			this.arrange_canvases(options);
+		}
+		
+		
+		
+		if (typeof options.use_draggables !== "undefined" && options.use_draggables)
+		{
+			this.draggables.init();
+		}
+		
+		
+		
+		if (typeof options.use_fullscreen !== "undefined" && options.use_fullscreen)
+		{
+			this.fullscreen.use_true_fullscreen = typeof options.use_true_fullscreen === "undefined" ? false : options.use_true_fullscreen;
+			
+			
+			
 			this.fullscreen.auto_rearrange_canvases = typeof options.auto_rearrange_canvases === "undefined" ? true : options.auto_rearrange_canvases;
 			
 			
@@ -168,6 +197,66 @@ class Wilson
 			
 			
 			this.fullscreen.init();
+		}
+	}
+	
+	
+	
+	arrange_canvases(options)
+	{
+		let applet_canvas_container = document.createElement("div");
+		
+		applet_canvas_container.classList.add("applet-canvas-container");
+		
+		applet_canvas_container.classList.add("center-content");
+		
+		this.canvas.parentNode.insertBefore(applet_canvas_container, this.canvas);
+		
+		
+		
+		let output_canvas_container = document.createElement("div");
+		
+		output_canvas_container.classList.add("output-canvas-container");
+		
+		applet_canvas_container.appendChild(output_canvas_container);
+		
+		
+		
+		for (let i = 0; i < options.canvases_to_resize.length; i++)
+		{
+			applet_canvas_container.appendChild(options.canvases_to_resize[i]);
+		}
+		
+		
+		
+		output_canvas_container.appendChild(this.canvas);
+		
+		
+		
+		if (options.use_draggables)
+		{
+			this.draggables.container = document.createElement("div");
+			
+			this.draggables.container.classList.add("draggables-container");
+			
+			applet_canvas_container.appendChild(this.draggables.container);
+			
+			this.fullscreen.canvases_to_resize.push(this.draggables.container);
+			
+			
+			
+			let computed_style = window.getComputedStyle(output_canvas_container);
+			
+			let width = parseInt(computed_style.getPropertyValue("width"));
+			let height = parseInt(computed_style.getPropertyValue("height"));
+			
+			
+			
+			this.draggables.container.style.width = computed_style.getPropertyValue("height");
+			this.draggables.container.style.height = computed_style.getPropertyValue("height");
+			
+			//Nightmare fuel.
+			this.draggables.container.style.marginLeft = (height - width) + "px";
 		}
 	}
 	
@@ -445,6 +534,315 @@ class Wilson
 	
 	
 	
+	draggables =
+	{
+		parent: null,
+		
+		container: null,
+		
+		draggables: [],
+		
+		auto_add_container: true,
+		
+		num_draggables: 0,
+		
+		draggable_radius: 17.5,
+		
+		active_draggable: -1,
+		
+		last_active_draggable: -1,
+		
+		mouse_x: 0,
+		mouse_y: 0,
+		
+		
+		
+		init()
+		{
+			if (document.querySelectorAll("#wilson-draggables-style").length === 0)
+			{
+				let element = document.createElement("style");
+				
+				element.textContent = `
+					.output-canvas-container
+					{
+						position: absolute;
+						width: fit-content;
+					}
+
+					.output-canvas-container.fullscreen
+					{
+						width: 100%;
+					}
+					
+					.draggables-container
+					{
+						position: absolute;
+						
+						user-select: none;
+						-webkit-user-select: none;
+					}
+
+					.draggable
+					{
+						position: absolute;
+						
+						width: 25px;
+						height: 25px;
+						
+						left: 0;
+						top: 0;
+						
+						background-color: rgb(255, 255, 255);
+						border: 2px solid rgb(0, 0, 0);
+						border-radius: 50%;
+						
+						touch-action: none;
+						user-select: none;
+						-webkit-user-select: none;
+						
+						cursor: pointer;
+						
+						transition: background-color .15s ease-in-out;
+					}
+
+					.draggable:active
+					{
+						background-color: rgb(127, 127, 127);
+					}
+				`;
+				
+				element.id = "wilson-draggables-style";
+				
+				document.head.appendChild(element);
+			}
+			
+			
+			
+			let handle_touchstart_event_bound = this.handle_touchstart_event.bind(this);
+			let handle_touchend_event_bound = this.handle_touchend_event.bind(this);
+			let handle_touchmove_event_bound = this.handle_touchmove_event.bind(this);
+			
+			let handle_mousedown_event_bound = this.handle_mousedown_event.bind(this);
+			let handle_mouseup_event_bound = this.handle_mouseup_event.bind(this);
+			let handle_mousemove_event_bound = this.handle_mousemove_event.bind(this);
+			
+			this.container.addEventListener("touchstart", handle_touchstart_event_bound, false);
+			this.container.addEventListener("touchmove", handle_touchmove_event_bound, false);
+			this.container.addEventListener("touchend", handle_touchend_event_bound, false);
+			
+			this.container.addEventListener("mousedown", handle_mousedown_event_bound, false);
+			this.container.addEventListener("mousemove", handle_mousemove_event_bound, false);
+			this.container.addEventListener("mouseup", handle_mouseup_event_bound, false);
+		},
+		
+		
+		
+		//Add a new draggable.
+		add(row, col)
+		{
+			let element = document.createElement("div");
+			element.classList.add("draggable");
+			element.classList.add(`draggable-${this.num_draggables}`);
+			element.style.transform = `translate3d(${col - this.draggable_radius}px, ${row - this.draggable_radius}px, 0)`;
+			
+			this.num_draggables++;
+			
+			this.draggables.push(element);
+			
+			this.container.appendChild(element);
+		},
+		
+		
+		
+		handle_mousedown_event(e)
+		{
+			this.active_draggable = -1;
+			
+			//Figure out which marker, if any, this is referencing.
+			for (let i = 0; i < this.num_draggables; i++)
+			{
+				if (e.target.className.includes(`draggable-${i}`))
+				{
+					e.preventDefault();
+					
+					this.active_draggable = i;
+					
+					//Callback
+					
+					break;
+				}
+			}
+			
+			this.currently_dragging = true;
+			
+			this.mouse_x = e.clientX;
+			this.mouse_y = e.clientY;
+		},
+		
+		
+		
+		handle_mouseup_event(e)
+		{
+			if (this.active_draggable !== -1)
+			{
+				document.body.style.WebkitUserSelect = "";
+				
+				this.last_active_draggable = this.active_draggable;
+				
+				//Callback
+			}
+			
+			this.active_draggable = -1;
+			
+			this.currently_dragging = false;
+		},
+		
+		
+		
+		handle_mousemove_event(e)
+		{
+			let new_mouse_x = e.clientX;
+			let new_mouse_y = e.clientY;
+			
+			let mouse_x_delta = new_mouse_x - this.mouse_x;
+			let mouse_y_delta = new_mouse_y - this.mouse_y;
+			
+			this.mouse_x = new_mouse_x;
+			this.mouse_y = new_mouse_y;
+			
+			if (this.currently_dragging && this.active_draggable !== -1)
+			{
+				e.preventDefault();
+				
+				let rect = this.container.getBoundingClientRect();
+				
+				let row = e.clientY - rect.top;
+				let col = e.clientX - rect.left;
+				
+				
+				
+				if (row < this.draggable_radius)
+				{
+					row = this.draggable_radius;
+				}
+				
+				if (row > this.container.offsetHeight - this.draggable_radius)
+				{
+					row = this.container.offsetHeight - this.draggable_radius;
+				}
+				
+				if (col < this.draggable_radius)
+				{
+					col = this.draggable_radius;
+				}
+				
+				if (col > this.container.offsetWidth - this.draggable_radius)
+				{
+					col = this.container.offsetWidth - this.draggable_radius;
+				}
+				
+				
+				
+				this.draggables[this.active_draggable].style.transform = `translate3d(${col - this.draggable_radius}px, ${row - this.draggable_radius}px, 0)`;
+				
+				
+				
+				//Callback
+			}
+		},
+		
+		
+		
+		handle_touchstart_event(e)
+		{
+			this.active_draggable = -1;
+			
+			//Figure out which marker, if any, this is referencing.
+			for (let i = 0; i < this.num_draggables; i++)
+			{
+				if (e.target.className.includes(`draggable-${i}`))
+				{
+					e.preventDefault();
+					
+					this.active_draggable = i;
+					
+					//Callback
+					
+					break;
+				}
+			}
+			
+			this.currently_dragging = true;
+			
+			this.mouse_x = e.touches[0].clientX;
+			this.mouse_y = e.touches[0].clientY;
+		},
+		
+		
+		
+		handle_touchend_event(e)
+		{
+			if (this.active_draggable !== -1)
+			{
+				document.body.style.WebkitUserSelect = "";
+				
+				this.last_active_draggable = this.active_draggable;
+				
+				//Callback
+			}
+			
+			this.active_draggable = -1;
+			
+			this.currently_dragging = false;
+		},
+		
+		
+		
+		handle_touchmove_event(e)
+		{
+			if (this.currently_dragging && this.active_draggable !== -1)
+			{
+				e.preventDefault();
+				
+				let rect = this.container.getBoundingClientRect();
+				
+				let row = e.touches[0].clientY - rect.top;
+				let col = e.touches[0].clientX - rect.left;
+				
+				
+				
+				if (row < this.draggable_radius)
+				{
+					row = this.draggable_radius;
+				}
+				
+				if (row > this.container.offsetHeight - this.draggable_radius)
+				{
+					row = this.container.offsetHeight - this.draggable_radius;
+				}
+				
+				if (col < this.draggable_radius)
+				{
+					col = this.draggable_radius;
+				}
+				
+				if (col > this.container.offsetWidth - this.draggable_radius)
+				{
+					col = this.container.offsetWidth - this.draggable_radius;
+				}
+				
+				this.draggables[this.active_draggable].style.transform = `translate3d(${col - this.draggable_radius}px, ${row - this.draggable_radius}px, 0)`;
+				
+				
+				
+				//Callback
+			}
+		}
+	};
+	
+	
+	
 	fullscreen =
 	{
 		currently_fullscreen: false,
@@ -457,7 +855,7 @@ class Wilson
 		auto_rearrange_canvases: true,
 
 		//True to fill the entire screen (which will strech the aspect ratio unless there's specific code to account for that), and false to letterbox.
-		use_true_fullscreen: false,
+		true_fullscreen: false,
 
 		resize_callback: null,
 
@@ -596,42 +994,9 @@ class Wilson
 					}
 				`;
 				
-				element.id = "wilson-fullscreen-button-style";
+				element.id = "wilson-fullscreen-style";
 				
 				document.head.appendChild(element);
-			}
-			
-			
-			
-			//Rearrange the canvases to make everything work.
-			if (this.auto_rearrange_canvases)
-			{
-				let applet_canvas_container = document.createElement("div");
-				
-				applet_canvas_container.classList.add("applet-canvas-container");
-				
-				applet_canvas_container.classList.add("center-content");
-				
-				this.parent.canvas.parentNode.insertBefore(applet_canvas_container, this.parent.canvas);
-				
-				
-				
-				let output_canvas_container = document.createElement("div");
-				
-				output_canvas_container.classList.add("output-canvas-container");
-				
-				applet_canvas_container.appendChild(output_canvas_container);
-				
-				
-				
-				for (let i = 0; i < this.canvases_to_resize.length; i++)
-				{
-					applet_canvas_container.appendChild(this.canvases_to_resize[i]);
-				}
-				
-				
-				
-				output_canvas_container.appendChild(this.parent.canvas);
 			}
 			
 			
@@ -718,6 +1083,14 @@ class Wilson
 					
 					
 					
+					this.old_footer_button_offset = Page.Footer.Floating.current_offset;
+					
+					Page.Footer.Floating.current_offset = -43.75;
+					
+					document.querySelector("#show-footer-menu-button").style.bottom = "-43.75px";
+					
+					
+					
 					document.documentElement.style.overflowY = "hidden";
 					document.body.style.overflowY = "hidden";
 					
@@ -730,7 +1103,7 @@ class Wilson
 					
 					
 					
-					if (this.use_true_fullscreen)
+					if (this.true_fullscreen)
 					{
 						for (let i = 0; i < this.canvases_to_resize.length; i++)
 						{
