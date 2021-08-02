@@ -1024,14 +1024,11 @@ class Wilson
 			
 			
 			window.addEventListener("resize", this.on_resize);
-			Page.temporary_handlers["resize"].push(this.on_resize);
 			
 			window.addEventListener("scroll", this.on_scroll);
-			Page.temporary_handlers["scroll"].push(this.on_scroll);
 			
 			let bound_function = this.handle_keypress_event.bind(this);
 			document.documentElement.addEventListener("keydown", bound_function);
-			Page.temporary_handlers["keydown"].push(this.on_scroll);
 		},
 
 
