@@ -10,11 +10,15 @@ class Wilson
 	canvas_width = null;
 	canvas_height = null;
 	
-	world_width = -1;
-	world_height = -1;
+	world_width = 2;
+	world_height = 2;
+	world_size = 2;
 	
-	world_center_x = -1;
-	world_center_y = -1;
+	world_center_x = 0;
+	world_center_y = 0;
+	
+	output_canvas_container = null;
+	use_draggables = false;
 	
 	
 	
@@ -85,6 +89,10 @@ class Wilson
 			this.world_height = options.world_height;
 		}
 		
+		this.world_size = Math.max(this.world_width, this.world_height);
+		
+		
+		
 		if (typeof options.world_center_x !== "undefined")
 		{
 			this.world_center_x = options.world_center_x;
@@ -148,6 +156,8 @@ class Wilson
 		
 		if (typeof options.use_draggables !== "undefined" && options.use_draggables)
 		{
+			this.use_draggables = true;
+			
 			this.draggables.init();
 		}
 		
@@ -214,11 +224,11 @@ class Wilson
 		
 		
 		
-		let output_canvas_container = document.createElement("div");
+		this.output_canvas_container = document.createElement("div");
 		
-		output_canvas_container.classList.add("output-canvas-container");
+		this.output_canvas_container.classList.add("output-canvas-container");
 		
-		applet_canvas_container.appendChild(output_canvas_container);
+		applet_canvas_container.appendChild(this.output_canvas_container);
 		
 		
 		
@@ -229,11 +239,11 @@ class Wilson
 		
 		
 		
-		output_canvas_container.appendChild(this.canvas);
+		this.output_canvas_container.appendChild(this.canvas);
 		
 		
 		
-		if (options.use_draggables)
+		if (typeof options.use_draggables !== "undefined" && options.use_draggables)
 		{
 			this.draggables.container = document.createElement("div");
 			
@@ -245,18 +255,25 @@ class Wilson
 			
 			
 			
-			let computed_style = window.getComputedStyle(output_canvas_container);
+			let computed_style = window.getComputedStyle(this.output_canvas_container);
 			
 			let width = parseInt(computed_style.getPropertyValue("width"));
 			let height = parseInt(computed_style.getPropertyValue("height"));
 			
+			if (width > height)
+			{
+				this.draggables.container.style.width = computed_style.getPropertyValue("height");
+				this.draggables.container.style.height = computed_style.getPropertyValue("height");
+				
+				//Nightmare fuel.
+				this.draggables.container.style.marginLeft = (height - width) + "px";
+			}
 			
-			
-			this.draggables.container.style.width = computed_style.getPropertyValue("height");
-			this.draggables.container.style.height = computed_style.getPropertyValue("height");
-			
-			//Nightmare fuel.
-			this.draggables.container.style.marginLeft = (height - width) + "px";
+			else
+			{
+				this.draggables.container.style.width = computed_style.getPropertyValue("width");
+				this.draggables.container.style.height = computed_style.getPropertyValue("width");
+			}
 		}
 	}
 	
@@ -540,7 +557,12 @@ class Wilson
 		
 		container: null,
 		
+		container_width: null,
+		container_height: null,
+		
 		draggables: [],
+		
+		world_coordinates: [],
 		
 		auto_add_container: true,
 		
@@ -619,6 +641,11 @@ class Wilson
 			
 			
 			
+			this.container_width = this.container.offsetWidth;
+			this.container_height = this.container.offsetHeight;
+			
+			
+			
 			let handle_touchstart_event_bound = this.handle_touchstart_event.bind(this);
 			let handle_touchend_event_bound = this.handle_touchend_event.bind(this);
 			let handle_touchmove_event_bound = this.handle_touchmove_event.bind(this);
@@ -627,20 +654,44 @@ class Wilson
 			let handle_mouseup_event_bound = this.handle_mouseup_event.bind(this);
 			let handle_mousemove_event_bound = this.handle_mousemove_event.bind(this);
 			
-			this.container.addEventListener("touchstart", handle_touchstart_event_bound, false);
-			this.container.addEventListener("touchmove", handle_touchmove_event_bound, false);
-			this.container.addEventListener("touchend", handle_touchend_event_bound, false);
+			let on_resize_bound = this.on_resize.bind(this);
 			
-			this.container.addEventListener("mousedown", handle_mousedown_event_bound, false);
-			this.container.addEventListener("mousemove", handle_mousemove_event_bound, false);
-			this.container.addEventListener("mouseup", handle_mouseup_event_bound, false);
+			
+			
+			document.documentElement.addEventListener("touchstart", handle_touchstart_event_bound, false);
+			document.documentElement.addEventListener("touchmove", handle_touchmove_event_bound, false);
+			document.documentElement.addEventListener("touchend", handle_touchend_event_bound, false);
+			
+			document.documentElement.addEventListener("mousedown", handle_mousedown_event_bound, false);
+			document.documentElement.addEventListener("mousemove", handle_mousemove_event_bound, false);
+			document.documentElement.addEventListener("mouseup", handle_mouseup_event_bound, false);
+			
+			window.addEventListener("resize", on_resize_bound);
 		},
 		
 		
 		
 		//Add a new draggable.
-		add(row, col)
+		add(x, y)
 		{
+			//First convert to page coordinates.
+			let row = 0;
+			let col = 0;
+			
+			if (this.parent.world_width >= this.parent.world_height)
+			{
+				row = Math.floor(this.container_height * (1 - ((y - this.parent.center_y) / this.parent.world_size + .5)));
+				col = Math.floor(this.container_width * ((x - this.parent.center_x) / (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5));
+			}
+			
+			else
+			{
+				row = Math.floor(this.container_height * (1 - ((y - this.parent.center_y) * (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5)));
+				col = Math.floor(this.parent.world_width * ((x - this.parent.center_x) / this.parent.world_size + .5));
+			}
+			
+			
+			
 			let element = document.createElement("div");
 			element.classList.add("draggable");
 			element.classList.add(`draggable-${this.num_draggables}`);
@@ -649,6 +700,8 @@ class Wilson
 			this.num_draggables++;
 			
 			this.draggables.push(element);
+			
+			this.world_coordinates.push([x, y]);
 			
 			this.container.appendChild(element);
 		},
@@ -727,9 +780,9 @@ class Wilson
 					row = this.draggable_radius;
 				}
 				
-				if (row > this.container.offsetHeight - this.draggable_radius)
+				if (row > this.container_height - this.draggable_radius)
 				{
-					row = this.container.offsetHeight - this.draggable_radius;
+					row = this.container_height - this.draggable_radius;
 				}
 				
 				if (col < this.draggable_radius)
@@ -737,14 +790,32 @@ class Wilson
 					col = this.draggable_radius;
 				}
 				
-				if (col > this.container.offsetWidth - this.draggable_radius)
+				if (col > this.container_width - this.draggable_radius)
 				{
-					col = this.container.offsetWidth - this.draggable_radius;
+					col = this.container_width - this.draggable_radius;
 				}
 				
-				
-				
 				this.draggables[this.active_draggable].style.transform = `translate3d(${col - this.draggable_radius}px, ${row - this.draggable_radius}px, 0)`;
+				
+				
+				
+				let x = 0;
+				let y = 0;
+				
+				if (this.parent.world_width >= this.parent.world_height)
+				{
+					x = ((col - this.container_width/2) / this.container_width) * this.parent.world_size * (this.parent.world_width / this.parent.world_height) + this.parent.center_x;
+					y = (-(row - this.container_height/2) / this.container_height) * this.parent.world_size + this.parent.center_y;
+				}
+				
+				else
+				{
+					x = ((col - this.container_width/2) / this.container_width) * this.parent.world_size + this.parent.center_x;
+					y = (-(row - this.container_height/2) / this.container_height) * this.parent.world_size / (this.parent.world_width / this.parent.world_height) + this.parent.center_y;
+				}
+				
+				this.world_coordinates[this.active_draggable][0] = x;
+				this.world_coordinates[this.active_draggable][1] = y;
 				
 				
 				
@@ -817,9 +888,9 @@ class Wilson
 					row = this.draggable_radius;
 				}
 				
-				if (row > this.container.offsetHeight - this.draggable_radius)
+				if (row > this.container_height - this.draggable_radius)
 				{
-					row = this.container.offsetHeight - this.draggable_radius;
+					row = this.container_height - this.draggable_radius;
 				}
 				
 				if (col < this.draggable_radius)
@@ -827,16 +898,88 @@ class Wilson
 					col = this.draggable_radius;
 				}
 				
-				if (col > this.container.offsetWidth - this.draggable_radius)
+				if (col > this.container_width - this.draggable_radius)
 				{
-					col = this.container.offsetWidth - this.draggable_radius;
+					col = this.container_width - this.draggable_radius;
 				}
 				
 				this.draggables[this.active_draggable].style.transform = `translate3d(${col - this.draggable_radius}px, ${row - this.draggable_radius}px, 0)`;
 				
 				
 				
+				let x = 0;
+				let y = 0;
+				
+				if (this.parent.world_width >= this.parent.world_height)
+				{
+					x = ((col - this.container_width/2) / this.container_width) * this.parent.world_size * (this.parent.world_width / this.parent.world_height) + this.parent.center_x;
+					y = (-(row - this.container_height/2) / this.container_height) * this.parent.world_size + this.parent.center_y;
+				}
+				
+				else
+				{
+					x = ((col - this.container_width/2) / this.container_width) * this.parent.world_size + this.parent.center_x;
+					y = (-(row - this.container_height/2) / this.container_height) * this.parent.world_size / (this.parent.world_width / this.parent.world_height) + this.parent.center_y;
+				}
+				
+				this.world_coordinates[this.active_draggable][0] = x;
+				this.world_coordinates[this.active_draggable][1] = y;
+				
+				
+				
 				//Callback
+			}
+		},
+		
+		
+		
+		on_resize()
+		{
+			let computed_style = window.getComputedStyle(this.parent.output_canvas_container);
+			
+			let width = parseInt(computed_style.getPropertyValue("width"));
+			let height = parseInt(computed_style.getPropertyValue("height"));
+			
+			if (width > height)
+			{
+				this.container.style.width = computed_style.getPropertyValue("height");
+				this.container.style.height = computed_style.getPropertyValue("height");
+				
+				//Nightmare fuel.
+				this.container.style.marginLeft = (height - width) + "px";
+			}
+			
+			else
+			{
+				this.container.style.width = computed_style.getPropertyValue("width");
+				this.container.style.height = computed_style.getPropertyValue("width");
+			}
+			
+			
+			
+			this.container_width = this.container.offsetWidth;
+			this.container_height = this.container.offsetHeight;
+			
+			
+			
+			for (let i = 0; i < this.num_draggables; i++)
+			{
+				let row = 0;
+				let col = 0;
+				
+				if (this.parent.world_width >= this.parent.world_height)
+				{
+					row = Math.floor(this.container_height * (1 - ((this.world_coordinates[i][1] - this.parent.center_y) / this.parent.world_size + .5)));
+					col = Math.floor(this.container_width * ((this.world_coordinates[i][0] - this.parent.center_x) / (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5));
+				}
+				
+				else
+				{
+					row = Math.floor(this.container_height * (1 - ((this.world_coordinates[i][1] - this.parent.center_y) * (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5)));
+					col = Math.floor(this.parent.world_width * ((this.world_coordinates[i][0] - this.parent.center_x) / this.parent.world_size + .5));
+				}
+				
+				this.draggables[i].style.transform = `translate3d(${col - this.draggable_radius}px, ${row - this.draggable_radius}px, 0)`;
 			}
 		}
 	};
@@ -1147,6 +1290,13 @@ class Wilson
 					
 					
 					
+					if (this.parent.use_draggables)
+					{
+						this.parent.draggables.on_resize();
+					}
+					
+					
+					
 					document.body.style.opacity = 1;
 					
 					setTimeout(() =>
@@ -1242,6 +1392,15 @@ class Wilson
 						try {this.resize_callback();}
 						catch(ex) {}
 					}
+					
+					
+					
+					if (this.parent.use_draggables)
+					{
+						this.parent.draggables.on_resize();
+					}
+					
+					
 					
 					document.body.style.opacity = 1;
 					
