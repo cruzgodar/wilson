@@ -255,25 +255,20 @@ class Wilson
 			
 			
 			
-			let computed_style = window.getComputedStyle(this.output_canvas_container);
+			let computed_style = window.getComputedStyle(this.canvas);
 			
-			let width = parseInt(computed_style.getPropertyValue("width"));
-			let height = parseInt(computed_style.getPropertyValue("height"));
+			let width = this.parent.clientWidth - parseFloat(computed_style.paddingLeft) - parseFloat(computed_style.paddingRight);
+			let height = this.parent.clientHeight - parseFloat(computed_style.paddingTop) - parseFloat(computed_style.paddingBottom);
 			
-			if (width > height)
-			{
-				this.draggables.container.style.width = computed_style.getPropertyValue("height");
-				this.draggables.container.style.height = computed_style.getPropertyValue("height");
-				
-				//Nightmare fuel.
-				this.draggables.container.style.marginLeft = (height - width) + "px";
-			}
+			this.draggables.container.style.width = (width + 2 * this.draggables.draggable_radius) + "px";
+			this.draggables.container.style.height = (height + 2 * this.draggables.draggable_radius) + "px";
 			
-			else
-			{
-				this.draggables.container.style.width = computed_style.getPropertyValue("width");
-				this.draggables.container.style.height = computed_style.getPropertyValue("width");
-			}
+			this.draggables.container_width = width + 2 * this.draggables.draggable_radius;
+			this.draggables.container_height = height + 2 * this.draggables.draggable_radius;
+			
+			
+			
+			this.container.style.marginTop = (parseFloat(computed_style.borderTopWidth) + parseFloat(computed_style.paddingTop) - this.draggable_radius) + "px";
 		}
 	}
 	
@@ -568,7 +563,7 @@ class Wilson
 		
 		num_draggables: 0,
 		
-		draggable_radius: 17.5,
+		draggable_radius: 14.5,
 		
 		active_draggable: -1,
 		
@@ -935,30 +930,20 @@ class Wilson
 		
 		on_resize()
 		{
-			let computed_style = window.getComputedStyle(this.parent.output_canvas_container);
+			let computed_style = window.getComputedStyle(this.parent.canvas);
 			
-			let width = parseInt(computed_style.getPropertyValue("width"));
-			let height = parseInt(computed_style.getPropertyValue("height"));
+			let width = this.parent.canvas.clientWidth - parseFloat(computed_style.paddingLeft) - parseFloat(computed_style.paddingRight);
+			let height = this.parent.canvas.clientHeight - parseFloat(computed_style.paddingTop) - parseFloat(computed_style.paddingBottom);
 			
-			if (width > height)
-			{
-				this.container.style.width = computed_style.getPropertyValue("height");
-				this.container.style.height = computed_style.getPropertyValue("height");
-				
-				//Nightmare fuel.
-				this.container.style.marginLeft = (height - width) + "px";
-			}
+			this.container.style.width = (width + 2 * this.draggable_radius) + "px";
+			this.container.style.height = (height + 2 * this.draggable_radius) + "px";
 			
-			else
-			{
-				this.container.style.width = computed_style.getPropertyValue("width");
-				this.container.style.height = computed_style.getPropertyValue("width");
-			}
+			this.container_width = width + 2 * this.draggable_radius;
+			this.container_height = height + 2 * this.draggable_radius;
 			
 			
 			
-			this.container_width = this.container.offsetWidth;
-			this.container_height = this.container.offsetHeight;
+			this.container.style.marginTop = (parseFloat(computed_style.borderTopWidth) + parseFloat(computed_style.paddingTop) - this.draggable_radius) + "px";
 			
 			
 			
