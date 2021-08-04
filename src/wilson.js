@@ -158,6 +158,14 @@ class Wilson
 		{
 			this.use_draggables = true;
 			
+			this.draggables.mousedown_callback = typeof options.draggables_mousedown_callback === "undefined" ? null : options.draggables_mousedown_callback;
+			this.draggables.mouseup_callback = typeof options.draggables_mouseup_callback === "undefined" ? null : options.draggables_mouseup_callback;
+			this.draggables.mousemove_callback = typeof options.draggables_mousemove_callback === "undefined" ? null : options.draggables_mousemove_callback;
+			
+			this.draggables.touchstart_callback = typeof options.draggables_touchstart_callback === "undefined" ? null : options.draggables_touchstart_callback;
+			this.draggables.touchend_callback = typeof options.draggables_touchend_callback === "undefined" ? null : options.draggables_touchend_callback;
+			this.draggables.touchmove_callback = typeof options.draggables_touchmove_callback === "undefined" ? null : options.draggables_touchmove_callback;
+			
 			this.draggables.init();
 		}
 		
@@ -257,8 +265,8 @@ class Wilson
 			
 			let computed_style = window.getComputedStyle(this.canvas);
 			
-			let width = this.parent.clientWidth - parseFloat(computed_style.paddingLeft) - parseFloat(computed_style.paddingRight);
-			let height = this.parent.clientHeight - parseFloat(computed_style.paddingTop) - parseFloat(computed_style.paddingBottom);
+			let width = this.canvas.clientWidth - parseFloat(computed_style.paddingLeft) - parseFloat(computed_style.paddingRight);
+			let height = this.canvas.clientHeight - parseFloat(computed_style.paddingTop) - parseFloat(computed_style.paddingBottom);
 			
 			this.draggables.container.style.width = (width + 2 * this.draggables.draggable_radius) + "px";
 			this.draggables.container.style.height = (height + 2 * this.draggables.draggable_radius) + "px";
@@ -266,9 +274,12 @@ class Wilson
 			this.draggables.container_width = width + 2 * this.draggables.draggable_radius;
 			this.draggables.container_height = height + 2 * this.draggables.draggable_radius;
 			
+			this.draggables.restricted_width = width;
+			this.draggables.restricted_height = height;
 			
 			
-			this.container.style.marginTop = (parseFloat(computed_style.borderTopWidth) + parseFloat(computed_style.paddingTop) - this.draggable_radius) + "px";
+			
+			this.draggables.container.style.marginTop = (parseFloat(computed_style.borderTopWidth) + parseFloat(computed_style.paddingTop) - this.draggables.draggable_radius) + "px";
 		}
 	}
 	
@@ -555,6 +566,10 @@ class Wilson
 		container_width: null,
 		container_height: null,
 		
+		//The container is larger than the canvas so that the centers of the draggables can reach the ends exactly. Therefore, when we calculate world coordinates, we need to use smaller widths and heights than the actual container dimensions.
+		restricted_width: null,
+		restricted_height: null,
+		
 		draggables: [],
 		
 		world_coordinates: [],
@@ -571,6 +586,14 @@ class Wilson
 		
 		mouse_x: 0,
 		mouse_y: 0,
+		
+		mousedown_callback: null,
+		mouseup_callback: null,
+		mousemove_callback: null,
+		
+		touchstart_callback: null,
+		touchend_callback: null,
+		touchmove_callback: null,
 		
 		
 		
@@ -662,6 +685,7 @@ class Wilson
 			document.documentElement.addEventListener("mouseup", handle_mouseup_event_bound, false);
 			
 			window.addEventListener("resize", on_resize_bound);
+			Page.temporary_handlers["resize"].push(on_resize_bound);
 		},
 		
 		
@@ -675,14 +699,14 @@ class Wilson
 			
 			if (this.parent.world_width >= this.parent.world_height)
 			{
-				row = Math.floor(this.container_height * (1 - ((y - this.parent.center_y) / this.parent.world_size + .5)));
-				col = Math.floor(this.container_width * ((x - this.parent.center_x) / (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5));
+				row = Math.floor(this.restricted_height * (1 - ((y - this.parent.world_center_y) / this.parent.world_size + .5))) + this.draggable_radius;
+				col = Math.floor(this.restricted_width * ((x - this.parent.world_center_x) / (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5)) + this.draggable_radius;
 			}
 			
 			else
 			{
-				row = Math.floor(this.container_height * (1 - ((y - this.parent.center_y) * (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5)));
-				col = Math.floor(this.parent.world_width * ((x - this.parent.center_x) / this.parent.world_size + .5));
+				row = Math.floor(this.restricted_height * (1 - ((y - this.parent.world_center_y) * (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5))) + this.draggable_radius;
+				col = Math.floor(this.restricted_width * ((x - this.parent.world_center_x) / this.parent.world_size + .5)) + this.draggable_radius;
 			}
 			
 			
@@ -716,7 +740,8 @@ class Wilson
 					
 					this.active_draggable = i;
 					
-					//Callback
+					try {this.mousedown_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]))}
+					catch(ex) {}
 					
 					break;
 				}
@@ -738,7 +763,10 @@ class Wilson
 				
 				this.last_active_draggable = this.active_draggable;
 				
-				//Callback
+				try {this.mouseup_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]))}
+				catch(ex) {}
+				
+				console.log(this.world_coordinates[this.active_draggable]);
 			}
 			
 			this.active_draggable = -1;
@@ -799,14 +827,14 @@ class Wilson
 				
 				if (this.parent.world_width >= this.parent.world_height)
 				{
-					x = ((col - this.container_width/2) / this.container_width) * this.parent.world_size * (this.parent.world_width / this.parent.world_height) + this.parent.center_x;
-					y = (-(row - this.container_height/2) / this.container_height) * this.parent.world_size + this.parent.center_y;
+					x = ((col - this.draggable_radius - this.restricted_width/2) / this.restricted_width) * this.parent.world_size * (this.parent.world_width / this.parent.world_height) + this.parent.world_center_x;
+					y = (-(row - this.draggable_radius - this.restricted_height/2) / this.restricted_height) * this.parent.world_size + this.parent.world_center_y;
 				}
 				
 				else
 				{
-					x = ((col - this.container_width/2) / this.container_width) * this.parent.world_size + this.parent.center_x;
-					y = (-(row - this.container_height/2) / this.container_height) * this.parent.world_size / (this.parent.world_width / this.parent.world_height) + this.parent.center_y;
+					x = ((col - this.draggable_radius - this.restricted_width/2) / this.restricted_width) * this.parent.world_size + this.parent.world_center_x;
+					y = (-(row - this.draggable_radius - this.restricted_height/2) / this.restricted_height) * this.parent.world_size / (this.parent.world_width / this.parent.world_height) + this.parent.world_center_y;
 				}
 				
 				this.world_coordinates[this.active_draggable][0] = x;
@@ -814,7 +842,8 @@ class Wilson
 				
 				
 				
-				//Callback
+				try {this.mousemove_callback(this.active_draggable, x, y)}
+				catch(ex) {}
 			}
 		},
 		
@@ -833,7 +862,8 @@ class Wilson
 					
 					this.active_draggable = i;
 					
-					//Callback
+					try {this.touchstart_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]))}
+					catch(ex) {}
 					
 					break;
 				}
@@ -855,7 +885,10 @@ class Wilson
 				
 				this.last_active_draggable = this.active_draggable;
 				
-				//Callback
+				try {this.touchend_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]))}
+				catch(ex) {}
+				
+				console.log(this.world_coordinates[this.active_draggable]);
 			}
 			
 			this.active_draggable = -1;
@@ -907,14 +940,14 @@ class Wilson
 				
 				if (this.parent.world_width >= this.parent.world_height)
 				{
-					x = ((col - this.container_width/2) / this.container_width) * this.parent.world_size * (this.parent.world_width / this.parent.world_height) + this.parent.center_x;
-					y = (-(row - this.container_height/2) / this.container_height) * this.parent.world_size + this.parent.center_y;
+					x = ((col - this.draggable_radius - this.restricted_width/2) / this.restricted_width) * this.parent.world_size * (this.parent.world_width / this.parent.world_height) + this.parent.world_center_x;
+					y = (-(row - this.draggable_radius - this.restricted_height/2) / this.restricted_height) * this.parent.world_size + this.parent.world_center_y;
 				}
 				
 				else
 				{
-					x = ((col - this.container_width/2) / this.container_width) * this.parent.world_size + this.parent.center_x;
-					y = (-(row - this.container_height/2) / this.container_height) * this.parent.world_size / (this.parent.world_width / this.parent.world_height) + this.parent.center_y;
+					x = ((col - this.draggable_radius - this.restricted_width/2) / this.restricted_width) * this.parent.world_size + this.parent.world_center_x;
+					y = (-(row - this.draggable_radius - this.restricted_height/2) / this.restricted_height) * this.parent.world_size / (this.parent.world_width / this.parent.world_height) + this.parent.world_center_y;
 				}
 				
 				this.world_coordinates[this.active_draggable][0] = x;
@@ -922,7 +955,8 @@ class Wilson
 				
 				
 				
-				//Callback
+				try {this.mousemove_callback(this.active_draggable, x, y)}
+				catch(ex) {}
 			}
 		},
 		
@@ -941,6 +975,9 @@ class Wilson
 			this.container_width = width + 2 * this.draggable_radius;
 			this.container_height = height + 2 * this.draggable_radius;
 			
+			this.restricted_width = width;
+			this.restricted_height = height;
+			
 			
 			
 			this.container.style.marginTop = (parseFloat(computed_style.borderTopWidth) + parseFloat(computed_style.paddingTop) - this.draggable_radius) + "px";
@@ -954,14 +991,14 @@ class Wilson
 				
 				if (this.parent.world_width >= this.parent.world_height)
 				{
-					row = Math.floor(this.container_height * (1 - ((this.world_coordinates[i][1] - this.parent.center_y) / this.parent.world_size + .5)));
-					col = Math.floor(this.container_width * ((this.world_coordinates[i][0] - this.parent.center_x) / (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5));
+					row = Math.floor(this.restricted_height * (1 - ((this.world_coordinates[i][1] - this.parent.world_center_y) / this.parent.world_size + .5))) + this.draggable_radius;
+					col = Math.floor(this.restricted_width * ((this.world_coordinates[i][0] - this.parent.world_center_x) / (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5)) + this.draggable_radius;
 				}
 				
 				else
 				{
-					row = Math.floor(this.container_height * (1 - ((this.world_coordinates[i][1] - this.parent.center_y) * (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5)));
-					col = Math.floor(this.parent.world_width * ((this.world_coordinates[i][0] - this.parent.center_x) / this.parent.world_size + .5));
+					row = Math.floor(this.restricted_height * (1 - ((this.world_coordinates[i][1] - this.parent.world_center_y) * (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5))) + this.draggable_radius;
+					col = Math.floor(this.restricted_width * ((this.world_coordinates[i][0] - this.parent.world_center_x) / this.parent.world_size + .5)) + this.draggable_radius;
 				}
 				
 				this.draggables[i].style.transform = `translate3d(${col - this.draggable_radius}px, ${row - this.draggable_radius}px, 0)`;
@@ -1481,7 +1518,7 @@ class Wilson
 	
 	
 	//Resizes the canvas.
-	resize(width, height)
+	change_canvas_size(width, height)
 	{
 		this.canvas_width = width;
 		this.canvas_height = height;
