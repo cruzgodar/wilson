@@ -20,13 +20,17 @@ class Wilson
 	output_canvas_container = null;
 	use_draggables = false;
 	
+	top_padding = 0;
+	left_padding = 0;
+	
+	top_border = 0;
+	left_border = 0;
+	
 	
 	
 	/*
 		options:
 		{
-			canvas_width, canvas_height
-			
 			world_width, world_height
 			world_center_x, world_center_y
 			
@@ -34,13 +38,32 @@ class Wilson
 			
 			shader
 			
-			
-			
 			auto_arrange_canvases
 			
 			
 			
+			mousedown_callback
+			mouseup_callback
+			mousemove_callback
+			
+			touchstart_callback
+			touchend_callback
+			touchmove_callback
+			
+			pinch_callback
+			wheel_callback
+			
+			
+			
 			use_draggables
+			
+			draggables_mousedown_callback
+			draggables_mouseup_callback
+			draggables_mousemove_callback
+			
+			draggables_touchstart_callback
+			draggables_touchend_callback
+			draggables_touchmove_callback
 			
 			
 			
@@ -68,10 +91,21 @@ class Wilson
 		
 		
 		
+		let computed_style = window.getComputedStyle(this.canvas);
+		
+		this.top_padding = parseFloat(computed_style.paddingTop);
+		this.left_padding = parseFloat(computed_style.paddingLeft);
+		
+		this.top_border = parseFloat(computed_style.borderTopWidth);
+		this.left_border = parseFloat(computed_style.borderLeftWidth);
+		
+		
+		
 		this.utils.interpolate.parent = this;
 		this.render.parent = this;
 		this.draggables.parent = this;
 		this.fullscreen.parent = this;
+		this.input.parent = this;
 		
 		
 		
@@ -151,6 +185,21 @@ class Wilson
 		{
 			this.arrange_canvases(options);
 		}
+		
+		
+		
+		this.input.mousedown_callback = typeof options.mousedown_callback === "undefined" ? null : options.mousedown_callback;
+		this.input.mouseup_callback = typeof options.mouseup_callback === "undefined" ? null : options.mouseup_callback;
+		this.input.mousemove_callback = typeof options.mousemove_callback === "undefined" ? null : options.mousemove_callback;
+		
+		this.input.touchstart_callback = typeof options.touchstart_callback === "undefined" ? null : options.touchstart_callback;
+		this.input.touchend_callback = typeof options.touchend_callback === "undefined" ? null : options.touchend_callback;
+		this.input.touchmove_callback = typeof options.touchmove_callback === "undefined" ? null : options.touchmove_callback;
+		
+		this.input.pinch_callback = typeof options.pinch_callback === "undefined" ? null : options.pinch_callback;
+		this.input.wheel_callback = typeof options.wheel_callback === "undefined" ? null : options.wheel_callback;
+		
+		this.input.init();
 		
 		
 		
@@ -280,6 +329,17 @@ class Wilson
 			
 			
 			this.draggables.container.style.marginTop = (parseFloat(computed_style.borderTopWidth) + parseFloat(computed_style.paddingTop) - this.draggables.draggable_radius) + "px";
+		}
+		
+		
+		
+		for (let i = 0; i < this.fullscreen.canvases_to_resize.length; i++)
+		{
+			this.fullscreen.canvases_to_resize[i].addEventListener("gesturestart", e => e.preventDefault());
+			this.fullscreen.canvases_to_resize[i].addEventListener("gesturechange", e => e.preventDefault());
+			this.fullscreen.canvases_to_resize[i].addEventListener("gestureend", e => e.preventDefault());
+			
+			this.fullscreen.canvases_to_resize[i].addEventListener("click", e => e.preventDefault());
 		}
 	}
 	
@@ -765,8 +825,6 @@ class Wilson
 				
 				try {this.mouseup_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]))}
 				catch(ex) {}
-				
-				console.log(this.world_coordinates[this.active_draggable]);
 			}
 			
 			this.active_draggable = -1;
@@ -887,8 +945,6 @@ class Wilson
 				
 				try {this.touchend_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]))}
 				catch(ex) {}
-				
-				console.log(this.world_coordinates[this.active_draggable]);
 			}
 			
 			this.active_draggable = -1;
@@ -1517,6 +1573,356 @@ class Wilson
 	
 	
 	
+	//Contains methods for handling input.
+	input = 
+	{
+		mouse_x: null,
+		mouse_y: null,
+		
+		touch_distance: 0,
+		
+		
+		
+		mousedown_callback: null,
+		mouseup_callback: null,
+		mousemove_callback: null,
+		
+		touchstart_callback: null,
+		touchup_callback: null,
+		touchmove_callback: null,
+		
+		pinch_callback: null,
+		wheel_callback: null,
+		
+		
+		
+		on_mousedown_bound: null,
+		on_mouseup_bound: null,
+		on_mousemove_bound: null,
+		
+		on_touchstart_bound: null,
+		on_touchup_bound: null,
+		on_touchmove_bound: null,
+		
+		on_wheel_bound: null,
+		
+		
+		
+		init()
+		{
+			for (let i = 0; i < this.parent.fullscreen.canvases_to_resize.length; i++)
+			{
+				this.on_mousedown_bound = this.on_mousedown.bind(this);
+				this.parent.fullscreen.canvases_to_resize[i].addEventListener("mousedown", this.on_mousedown_bound);
+				
+				this.on_mouseup_bound = this.on_mouseup.bind(this);
+				this.parent.fullscreen.canvases_to_resize[i].addEventListener("mouseup", this.on_mouseup_bound);
+				
+				this.on_mousemove_bound = this.on_mousemove.bind(this);
+				this.parent.fullscreen.canvases_to_resize[i].addEventListener("mousemove", this.on_mousemove_bound);
+				
+				
+				
+				this.on_touchstart_bound = this.on_touchstart.bind(this);
+				this.parent.fullscreen.canvases_to_resize[i].addEventListener("touchstart", this.on_touchstart_bound);
+				
+				this.on_touchend_bound = this.on_touchend.bind(this);
+				this.parent.fullscreen.canvases_to_resize[i].addEventListener("touchend", this.on_touchend_bound);
+				
+				this.on_touchmove_bound = this.on_touchmove.bind(this);
+				this.parent.fullscreen.canvases_to_resize[i].addEventListener("touchmove", this.on_touchmove_bound);
+				
+				
+				
+				this.on_wheel_bound = this.on_wheel.bind(this);
+				this.parent.fullscreen.canvases_to_resize[i].addEventListener("wheel", this.on_wheel_bound);
+			}
+		},
+		
+		
+		
+		on_mousedown(e)
+		{
+			if (e.target.classList.contains("draggable"))
+			{
+				return;
+			}
+			
+			
+			
+			e.preventDefault();
+			
+			this.mouse_x = e.clientX;
+			this.mouse_y = e.clientY;
+			
+			
+			
+			if (this.mousedown_callback === null)
+			{
+				return;
+			}
+			
+			
+			
+			let rect = this.parent.canvas.getBoundingClientRect();
+			
+			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
+			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
+			
+			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
+			{
+				this.mousedown_callback(row, col, e);
+			}
+		},
+		
+		
+		
+		on_mouseup(e)
+		{
+			if (e.target.classList.contains("draggable"))
+			{
+				return;
+			}
+			
+			
+			
+			e.preventDefault();
+			
+			this.mouse_x = e.clientX;
+			this.mouse_y = e.clientY;
+			
+			
+			
+			if (this.mouseup_callback === null)
+			{
+				return;
+			}
+			
+			
+			
+			let rect = this.parent.canvas.getBoundingClientRect();
+			
+			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
+			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
+			
+			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
+			{
+				this.mouseup_callback(row, col, e);
+			}
+		},
+		
+		
+		
+		on_mousemove(e)
+		{
+			if (e.target.classList.contains("draggable"))
+			{
+				return;
+			}
+			
+			
+			
+			e.preventDefault();
+			
+			let new_mouse_x = e.clientX;
+			let new_mouse_y = e.clientY;
+			
+			let col_delta = new_mouse_x - this.mouse_x;
+			let row_delta = new_mouse_y - this.mouse_y;
+			
+			this.mouse_x = new_mouse_x;
+			this.mouse_y = new_mouse_y;
+			
+			
+			
+			if (this.mousemove_callback === null)
+			{
+				return;
+			}
+			
+			
+			
+			let rect = this.parent.canvas.getBoundingClientRect();
+			
+			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
+			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
+			
+			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
+			{
+				this.mousemove_callback(row, col, row_delta, col_delta, e);
+			}
+		},
+		
+		
+		
+		on_touchstart(e)
+		{
+			if (e.target.classList.contains("draggable"))
+			{
+				return;
+			}
+			
+			
+			
+			e.preventDefault();
+			
+			this.mouse_x = e.touches[0].clientX;
+			this.mouse_y = e.touches[0].clientY;
+			
+			
+			
+			if (this.touchstart_callback === null)
+			{
+				return;
+			}
+			
+			
+			
+			let rect = this.parent.canvas.getBoundingClientRect();
+			
+			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
+			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
+			
+			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
+			{
+				this.touchstart_callback(row, col, e);
+			}
+		},
+		
+		
+		
+		on_touchend(e)
+		{
+			if (e.target.classList.contains("draggable"))
+			{
+				return;
+			}
+			
+			
+			
+			e.preventDefault();
+			
+			this.mouse_x = e.touches[0].clientX;
+			this.mouse_y = e.touches[0].clientY;
+			
+			
+			
+			if (this.touchend_callback === null)
+			{
+				return;
+			}
+			
+			
+			
+			let rect = this.parent.canvas.getBoundingClientRect();
+			
+			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
+			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
+			
+			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
+			{
+				this.touchend_callback(row, col, e);
+			}
+		},
+		
+		
+		
+		on_touchmove(e)
+		{
+			if (e.target.classList.contains("draggable"))
+			{
+				return;
+			}
+			
+			
+			
+			e.preventDefault();
+			
+			
+			
+			let rect = this.parent.canvas.getBoundingClientRect();
+			
+			
+			
+			if (e.touches.length >= 2 && this.pinch_callback !== null)
+			{
+				let x_delta = e.touches[0].clientX - e.touches[1].clientX;
+				let y_delta = e.touches[0].clientY - e.touches[1].clientY;
+				
+				let new_touch_distance = Math.sqrt(x_distance * x_distance + y_distance * y_distance);
+				
+				let touch_distance_delta = new_touch_distance - this.touch_distance;
+				
+				this.touch_distance = new_touch_distance;
+				
+				
+				
+				let touch_center_row = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top - this.parent.top_border - this.parent.top_padding;
+				let touch_center_col = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left - this.parent.left_border - this.parent.left_padding;
+				
+				
+				
+				this.pinch_callback(touch_center_row, touch_center_col, touch_distance_delta, e);
+			}
+			
+			
+			
+			let new_mouse_x = e.touches[0].clientX;
+			let new_mouse_y = e.touches[0].clientY;
+			
+			let col_delta = new_mouse_x - this.mouse_x;
+			let row_delta = new_mouse_y - this.mouse_y;
+			
+			this.mouse_x = new_mouse_x;
+			this.mouse_y = new_mouse_y;
+			
+			
+			
+			if (this.touchmove_callback === null)
+			{
+				return;
+			}
+			
+			
+			
+			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
+			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
+			
+			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
+			{
+				this.touchmove_callback(row, col, row_delta, col_delta, e);
+			}
+		},
+		
+		
+		
+		on_wheel(e)
+		{
+			if (this.wheel_callback === null)
+			{
+				return;
+			}
+			
+			
+			
+			e.preventDefault();
+			
+			
+			
+			let rect = this.parent.canvas.getBoundingClientRect();
+			
+			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
+			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
+			
+			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
+			{
+				this.wheel_callback(row, col, e.deltaY, e);
+			}
+		}
+	}
+	
+	
+	
 	//Resizes the canvas.
 	change_canvas_size(width, height)
 	{
@@ -1530,6 +1936,16 @@ class Wilson
 		{
 			this.gl.viewport(0, 0, width, height);
 		}
+		
+		
+		
+		let computed_style = window.getComputedStyle(this.canvas);
+		
+		this.top_padding = parseFloat(computed_style.paddingTop);
+		this.left_padding = parseFloat(computed_style.paddingLeft);
+		
+		this.top_border = parseFloat(computed_style.borderTopWidth);
+		this.left_border = parseFloat(computed_style.borderLeftWidth);
 	}
 	
 	
