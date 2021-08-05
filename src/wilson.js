@@ -69,7 +69,7 @@ class Wilson
 			
 			use_fullscreen
 			
-			use_true_fullscreen
+			true_fullscreen
 			
 			canvases_to_resize
 			
@@ -222,7 +222,7 @@ class Wilson
 		
 		if (typeof options.use_fullscreen !== "undefined" && options.use_fullscreen)
 		{
-			this.fullscreen.use_true_fullscreen = typeof options.use_true_fullscreen === "undefined" ? false : options.use_true_fullscreen;
+			this.fullscreen.true_fullscreen = typeof options.true_fullscreen === "undefined" ? false : options.true_fullscreen;
 			
 			
 			
@@ -273,9 +273,9 @@ class Wilson
 	{
 		let applet_canvas_container = document.createElement("div");
 		
-		applet_canvas_container.classList.add("applet-canvas-container");
+		applet_canvas_container.classList.add("wilson-applet-canvas-container");
 		
-		applet_canvas_container.classList.add("center-content");
+		applet_canvas_container.classList.add("wilson-center-content");
 		
 		this.canvas.parentNode.insertBefore(applet_canvas_container, this.canvas);
 		
@@ -283,7 +283,7 @@ class Wilson
 		
 		this.output_canvas_container = document.createElement("div");
 		
-		this.output_canvas_container.classList.add("output-canvas-container");
+		this.output_canvas_container.classList.add("wilson-output-canvas-container");
 		
 		applet_canvas_container.appendChild(this.output_canvas_container);
 		
@@ -304,7 +304,7 @@ class Wilson
 		{
 			this.draggables.container = document.createElement("div");
 			
-			this.draggables.container.classList.add("draggables-container");
+			this.draggables.container.classList.add("wilson-draggables-container");
 			
 			applet_canvas_container.appendChild(this.draggables.container);
 			
@@ -664,18 +664,18 @@ class Wilson
 				let element = document.createElement("style");
 				
 				element.textContent = `
-					.output-canvas-container
+					.wilson-output-canvas-container
 					{
 						position: absolute;
 						width: fit-content;
 					}
 
-					.output-canvas-container.fullscreen
+					.wilson-output-canvas-container.wilson-fullscreen
 					{
 						width: 100%;
 					}
 					
-					.draggables-container
+					.wilson-draggables-container
 					{
 						position: absolute;
 						
@@ -683,7 +683,7 @@ class Wilson
 						-webkit-user-select: none;
 					}
 
-					.draggable
+					.wilson-draggable
 					{
 						position: absolute;
 						
@@ -706,7 +706,7 @@ class Wilson
 						transition: background-color .15s ease-in-out;
 					}
 
-					.draggable:active
+					.wilson-draggable:active
 					{
 						background-color: rgb(127, 127, 127);
 					}
@@ -772,8 +772,8 @@ class Wilson
 			
 			
 			let element = document.createElement("div");
-			element.classList.add("draggable");
-			element.classList.add(`draggable-${this.num_draggables}`);
+			element.classList.add("wilson-draggable");
+			element.classList.add(`wilson-draggable-${this.num_draggables}`);
 			element.style.transform = `translate3d(${col - this.draggable_radius}px, ${row - this.draggable_radius}px, 0)`;
 			
 			this.num_draggables++;
@@ -794,7 +794,7 @@ class Wilson
 			//Figure out which marker, if any, this is referencing.
 			for (let i = 0; i < this.num_draggables; i++)
 			{
-				if (e.target.className.includes(`draggable-${i}`))
+				if (e.target.className.includes(`wilson-draggable-${i}`))
 				{
 					e.preventDefault();
 					
@@ -914,7 +914,7 @@ class Wilson
 			//Figure out which marker, if any, this is referencing.
 			for (let i = 0; i < this.num_draggables; i++)
 			{
-				if (e.target.className.includes(`draggable-${i}`))
+				if (e.target.className.includes(`wilson-draggable-${i}`))
 				{
 					e.preventDefault();
 					
@@ -1104,7 +1104,7 @@ class Wilson
 					let element = document.createElement("style");
 					
 					element.textContent = `
-						.enter-fullscreen-button, .exit-fullscreen-button
+						.wilson-enter-fullscreen-button, .wilson-exit-fullscreen-button
 						{
 							width: 15px;
 							
@@ -1123,18 +1123,18 @@ class Wilson
 							outline: none;
 						}
 
-						.enter-fullscreen-button.hover, .exit-fullscreen-button.hover
+						.wilson-enter-fullscreen-button.hover, .wilson-exit-fullscreen-button.hover
 						{
 							filter: brightness(75%);
 						}
 
-						.enter-fullscreen-button:not(:hover):focus, .exit-fullscreen-button:not(:hover):focus
+						.wilson-enter-fullscreen-button:not(:hover):focus, .wilson-exit-fullscreen-button:not(:hover):focus
 						{
 							filter: brightness(75%);
 							outline: none;
 						}
 
-						.enter-fullscreen-button
+						.wilson-enter-fullscreen-button
 						{
 							position: absolute;
 							right: 10px;
@@ -1143,7 +1143,7 @@ class Wilson
 							z-index: 100;
 						}
 
-						.exit-fullscreen-button
+						.wilson-exit-fullscreen-button
 						{
 							position: fixed;
 							right: 10px;
@@ -1166,7 +1166,7 @@ class Wilson
 				let element = document.createElement("style");
 				
 				element.textContent = `
-					.true-fullscreen-canvas
+					.wilson-true-fullscreen-canvas
 					{
 						width: 100vw !important;
 						height: calc(100vh + 4px) !important;
@@ -1176,7 +1176,7 @@ class Wilson
 						padding: 0 !important;
 					}
 
-					.letterboxed-fullscreen-canvas
+					.wilson-letterboxed-fullscreen-canvas
 					{
 						width: 100vmin !important;
 						height: calc(100vmin + 4px) !important;
@@ -1186,7 +1186,7 @@ class Wilson
 						padding: 0 !important;
 					}
 
-					.letterboxed-canvas-background
+					.wilson-letterboxed-canvas-background
 					{
 						width: 100vw;
 						height: calc((100vh - 100vmin) / 2 + 4px);
@@ -1194,7 +1194,7 @@ class Wilson
 						background-color: rgb(0, 0, 0);
 					}
 
-					.black-background
+					.wilson-black-background
 					{
 						width: 100vw !important;
 						height: calc(100vh + 4px) !important;
@@ -1202,12 +1202,12 @@ class Wilson
 						background-color: rgb(0, 0, 0) !important;
 					}
 					
-					.output-canvas-container
+					.wilson-output-canvas-container
 					{
 						position: relative;
 					}
 					
-					.center-content
+					.wilson-center-content
 					{
 						display: flex;
 						justify-content: center;
@@ -1227,7 +1227,7 @@ class Wilson
 				this.enter_fullscreen_button = document.createElement("input");
 				
 				this.enter_fullscreen_button.type = "image";
-				this.enter_fullscreen_button.classList.add("enter-fullscreen-button");
+				this.enter_fullscreen_button.classList.add("wilson-enter-fullscreen-button");
 				this.enter_fullscreen_button.src = this.enter_fullscreen_button_image_path;
 				this.enter_fullscreen_button.alt = "Enter Fullscreen";
 				this.enter_fullscreen_button.setAttribute("tabindex", "-1");
@@ -1275,7 +1275,7 @@ class Wilson
 				
 				setTimeout(() =>
 				{
-					this.parent.canvas.classList.add("fullscreen");
+					this.parent.canvas.classList.add("wilson-fullscreen");
 					
 					
 					
@@ -1287,7 +1287,7 @@ class Wilson
 					this.exit_fullscreen_button = document.createElement("input");
 					
 					this.exit_fullscreen_button.type = "image";
-					this.exit_fullscreen_button.classList.add("exit-fullscreen-button");
+					this.exit_fullscreen_button.classList.add("wilson-exit-fullscreen-button");
 					this.exit_fullscreen_button.src = this.exit_fullscreen_button_image_path;
 					this.exit_fullscreen_button.alt = "Exit Fullscreen";
 					this.exit_fullscreen_button.setAttribute("tabindex", "-1");
@@ -1298,14 +1298,6 @@ class Wilson
 					{
 						this.switch_fullscreen();
 					});
-					
-					
-					
-					this.old_footer_button_offset = Page.Footer.Floating.current_offset;
-					
-					Page.Footer.Floating.current_offset = -43.75;
-					
-					document.querySelector("#show-footer-menu-button").style.bottom = "-43.75px";
 					
 					
 					
@@ -1325,10 +1317,10 @@ class Wilson
 					{
 						for (let i = 0; i < this.canvases_to_resize.length; i++)
 						{
-							this.canvases_to_resize[i].classList.add("true-fullscreen-canvas");
+							this.canvases_to_resize[i].classList.add("wilson-true-fullscreen-canvas");
 							
 							//We do this to accomodate weirdly-set-up applets like the ones with draggable inputs, since they rely on their canvas container to keep the content below flowing properly.
-							this.parent.canvas.parentNode.parentNode.classList.add("black-background");
+							this.parent.canvas.parentNode.parentNode.classList.add("wilson-black-background");
 							
 							try {this.resize_callback();}
 							catch(ex) {}
@@ -1345,7 +1337,7 @@ class Wilson
 					{
 						for (let i = 0; i < this.canvases_to_resize.length; i++)
 						{
-							this.canvases_to_resize[i].classList.add("letterboxed-fullscreen-canvas");
+							this.canvases_to_resize[i].classList.add("wilson-letterboxed-fullscreen-canvas");
 							
 							try {this.resize_callback();}
 							catch(ex) {}
@@ -1355,10 +1347,10 @@ class Wilson
 						
 						//One of these is for vertical aspect ratios and the other is for horizontal ones, but we add both in case the user resizes the window while in applet is fullscreen.
 						
-						this.parent.canvas.parentNode.parentNode.insertAdjacentHTML("beforebegin", `<div class="letterboxed-canvas-background no-floating-footer"></div>`);
-						this.parent.canvas.parentNode.parentNode.insertAdjacentHTML("afterend", `<div class="letterboxed-canvas-background no-floating-footer"></div>`);
+						this.parent.canvas.parentNode.parentNode.insertAdjacentHTML("beforebegin", `<div class="wilson-letterboxed-canvas-background no-floating-footer"></div>`);
+						this.parent.canvas.parentNode.parentNode.insertAdjacentHTML("afterend", `<div class="wilson-letterboxed-canvas-background no-floating-footer"></div>`);
 						
-						this.parent.canvas.parentNode.parentNode.classList.add("black-background");
+						this.parent.canvas.parentNode.parentNode.classList.add("wilson-black-background");
 						this.parent.canvas.parentNode.parentNode.classList.add("no-floating-footer");
 						
 						
@@ -1407,7 +1399,7 @@ class Wilson
 				
 				setTimeout(() =>
 				{
-					this.parent.canvas.parentNode.classList.remove("fullscreen");
+					this.parent.canvas.parentNode.classList.remove("wilson-fullscreen");
 					
 					
 					
@@ -1432,7 +1424,7 @@ class Wilson
 					this.enter_fullscreen_button = document.createElement("input");
 					
 					this.enter_fullscreen_button.type = "image";
-					this.enter_fullscreen_button.classList.add("enter-fullscreen-button");
+					this.enter_fullscreen_button.classList.add("wilson-enter-fullscreen-button");
 					this.enter_fullscreen_button.src = this.enter_fullscreen_button_image_path;
 					this.enter_fullscreen_button.alt = "Enter Fullscreen";
 					this.enter_fullscreen_button.setAttribute("tabindex", "-1");
@@ -1448,14 +1440,14 @@ class Wilson
 					
 					for (let i = 0; i < this.canvases_to_resize.length; i++)
 					{
-						this.canvases_to_resize[i].classList.remove("true-fullscreen-canvas");
-						this.canvases_to_resize[i].classList.remove("letterboxed-fullscreen-canvas");
+						this.canvases_to_resize[i].classList.remove("wilson-true-fullscreen-canvas");
+						this.canvases_to_resize[i].classList.remove("wilson-letterboxed-fullscreen-canvas");
 						
-						this.parent.canvas.parentNode.parentNode.classList.remove("black-background");
+						this.parent.canvas.parentNode.parentNode.classList.remove("wilson-black-background");
 						
 						try
 						{
-							let elements = document.querySelectorAll(".letterboxed-canvas-background");
+							let elements = document.querySelectorAll(".wilson-letterboxed-canvas-background");
 							
 							for (let i = 0; i < elements.length; i++)
 							{
@@ -1643,7 +1635,7 @@ class Wilson
 		
 		on_mousedown(e)
 		{
-			if (e.target.classList.contains("draggable"))
+			if (e.target.classList.contains("wilson-draggable"))
 			{
 				return;
 			}
@@ -1679,7 +1671,7 @@ class Wilson
 		
 		on_mouseup(e)
 		{
-			if (e.target.classList.contains("draggable"))
+			if (e.target.classList.contains("wilson-draggable"))
 			{
 				return;
 			}
@@ -1715,7 +1707,7 @@ class Wilson
 		
 		on_mousemove(e)
 		{
-			if (e.target.classList.contains("draggable"))
+			if (e.target.classList.contains("wilson-draggable"))
 			{
 				return;
 			}
@@ -1757,7 +1749,7 @@ class Wilson
 		
 		on_touchstart(e)
 		{
-			if (e.target.classList.contains("draggable"))
+			if (e.target.classList.contains("wilson-draggable"))
 			{
 				return;
 			}
@@ -1793,7 +1785,7 @@ class Wilson
 		
 		on_touchend(e)
 		{
-			if (e.target.classList.contains("draggable"))
+			if (e.target.classList.contains("wilson-draggable"))
 			{
 				return;
 			}
@@ -1829,7 +1821,7 @@ class Wilson
 		
 		on_touchmove(e)
 		{
-			if (e.target.classList.contains("draggable"))
+			if (e.target.classList.contains("wilson-draggable"))
 			{
 				return;
 			}
