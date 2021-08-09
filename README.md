@@ -28,11 +28,9 @@ To render a frame to the canvas, use a 1-dimensional `Uint8ClampedArray` filled 
 ```js
     let image_data = new Uint8ClampedArray(canvas_width * canvas_height * 4);
     
-    ...
     //Fill image_data with the pixel data. 
-    ...
     
     wilson_canvas.render.draw_frame(image_data);
 ```
 
-For a step-by-step guide to handling interactivity, fullscreen, draggables, and everything else Wilson can do, have a look at the [tutorial on the website]().
+For a step-by-step guide to handling interactivity, fullscreen, draggables, and everything else Wilson can do, have a look at the [website](https://cruzgodar.com/projects/wilson/wilson.html).
