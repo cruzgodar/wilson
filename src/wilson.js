@@ -12,7 +12,6 @@ class Wilson
 	
 	world_width = 2;
 	world_height = 2;
-	world_size = 2;
 	
 	world_center_x = 0;
 	world_center_y = 0;
@@ -31,10 +30,10 @@ class Wilson
 	/*
 		options:
 		{
+			renderer: "cpu", "hybrid", "gpu"
+			
 			world_width, world_height
 			world_center_x, world_center_y
-			
-			renderer: "cpu", "hybrid", "gpu"
 			
 			shader
 			
@@ -45,6 +44,7 @@ class Wilson
 			mousedown_callback
 			mouseup_callback
 			mousemove_callback
+			mousedrag_callback
 			
 			touchstart_callback
 			touchend_callback
@@ -75,10 +75,10 @@ class Wilson
 			
 			use_fullscreen_button
 			
-			enter_fullscreen_button_image_path
-			exit_fullscreen_button_image_path
+			enter_fullscreen_button_icon_path
+			exit_fullscreen_button_icon_path
 			
-			resize_callback
+			switch_fullscreen_callback
 		}
 	*/
 	
@@ -86,8 +86,11 @@ class Wilson
 	{
 		this.canvas = canvas;
 		
-		this.canvas_width = parseInt(this.canvas.getAttribute("width"));
-		this.canvas_height = parseInt(this.canvas.getAttribute("height"));
+		this.canvas_width = typeof options.canvas_width === "undefined" ? parseInt(this.canvas.getAttribute("width")) : options.canvas_width;
+		this.canvas_height = typeof options.canvas_height === "undefined" ? parseInt(this.canvas.getAttribute("height")) : options.canvas_height;
+		
+		this.canvas.setAttribute("width", this.canvas_width);
+		this.canvas.setAttribute("height", this.canvas_height);
 		
 		
 		
@@ -109,7 +112,22 @@ class Wilson
 		
 		
 		
-		console.log(`[Wilson] Registered a ${this.canvas_width}x${this.canvas_height} canvas`);
+		if (this.canvas.id !== "")
+		{
+			console.log(`[Wilson] Registered a ${this.canvas_width}x${this.canvas_height} canvas with ID ${this.canvas.id}`);
+		}
+		
+		else
+		{
+			console.log(`[Wilson] Registered a ${this.canvas_width}x${this.canvas_height} canvas`);
+		}
+		
+		
+		
+		if (typeof options.canvases_to_resize === "undefined")
+		{
+			options.canvases_to_resize = [this.canvas];
+		}
 		
 		
 		
@@ -122,8 +140,6 @@ class Wilson
 		{
 			this.world_height = options.world_height;
 		}
-		
-		this.world_size = Math.max(this.world_width, this.world_height);
 		
 		
 		
@@ -191,6 +207,7 @@ class Wilson
 		this.input.mousedown_callback = typeof options.mousedown_callback === "undefined" ? null : options.mousedown_callback;
 		this.input.mouseup_callback = typeof options.mouseup_callback === "undefined" ? null : options.mouseup_callback;
 		this.input.mousemove_callback = typeof options.mousemove_callback === "undefined" ? null : options.mousemove_callback;
+		this.input.mousedrag_callback = typeof options.mousedrag_callback === "undefined" ? null : options.mousedrag_callback;
 		
 		this.input.touchstart_callback = typeof options.touchstart_callback === "undefined" ? null : options.touchstart_callback;
 		this.input.touchend_callback = typeof options.touchend_callback === "undefined" ? null : options.touchend_callback;
@@ -226,28 +243,28 @@ class Wilson
 			
 			
 			
-			this.fullscreen.auto_rearrange_canvases = typeof options.auto_rearrange_canvases === "undefined" ? true : options.auto_rearrange_canvases;
+			this.fullscreen.use_fullscreen_button = typeof options.use_fullscreen_button === "undefined" ? false : options.use_fullscreen_button;
 			
 			
 			
-			this.fullscreen.use_fullscreen_button = typeof options.use_fullscreen_button === "undefined" ? true : options.use_fullscreen_button;
-			
-			
-			
-			if (this.fullscreen.use_fullscreen_button && typeof options.enter_fullscreen_button_image_path === "undefined")
+			if (this.fullscreen.use_fullscreen_button && typeof options.enter_fullscreen_button_icon_path === "undefined")
 			{
 				console.error("Missing path to Enter Fullscreen button image");
 			}
 			
-			if (this.fullscreen.use_fullscreen_button && typeof options.exit_fullscreen_button_image_path === "undefined")
+			if (this.fullscreen.use_fullscreen_button && typeof options.exit_fullscreen_button_icon_path === "undefined")
 			{
 				console.error("Missing path to Exit Fullscreen button image");
 			}
 			
 			
 			
-			this.fullscreen.enter_fullscreen_button_image_path = options.enter_fullscreen_button_image_path;
-			this.fullscreen.exit_fullscreen_button_image_path = options.exit_fullscreen_button_image_path;
+			this.fullscreen.enter_fullscreen_button_icon_path = options.enter_fullscreen_button_icon_path;
+			this.fullscreen.exit_fullscreen_button_icon_path = options.exit_fullscreen_button_icon_path;
+			
+			
+			
+			this.fullscreen.switch_fullscreen_callback = typeof options.switch_fullscreen_callback === "undefined" ? false : options.switch_fullscreen_callback;
 			
 			
 						
@@ -271,6 +288,39 @@ class Wilson
 	
 	arrange_canvases(options)
 	{
+		if (document.querySelectorAll("#wilson-style").length === 0)
+		{
+			let element = document.createElement("style");
+			
+			element.textContent = `
+				.wilson-output-canvas-container
+				{
+					position: relative;
+					-webkit-user-select: none;
+					user-select: none;
+				}
+				
+				.wilson-applet-canvas-container
+				{
+					-webkit-user-select: none;
+					user-select: none;
+				}
+				
+				.wilson-center-content
+				{
+					display: flex;
+					justify-content: center;
+					margin: 0 auto;
+				}
+			`;
+			
+			element.id = "wilson-style";
+			
+			document.head.appendChild(element);
+		}
+		
+		
+		
 		let applet_canvas_container = document.createElement("div");
 		
 		applet_canvas_container.classList.add("wilson-applet-canvas-container");
@@ -612,6 +662,17 @@ class Wilson
 			{
 				this.parent.uniforms[variable_names[i]] = this.parent.gl.getUniformLocation(this.shader_program, variable_names[i]);
 			}
+		},
+		
+		
+		
+		get_pixel_data()
+		{
+			let pixels = new Uint8Array(this.parent.canvas_width * this.parent.canvas_height * 4);
+			
+			this.parent.gl.readPixels(0, 0, this.parent.canvas_width, this.parent.canvas_height, this.parent.gl.RGBA, this.parent.gl.UNSIGNED_BYTE, pixels);
+			
+			return pixels;
 		}
 	};
 	
@@ -666,7 +727,7 @@ class Wilson
 				element.textContent = `
 					.wilson-output-canvas-container
 					{
-						position: absolute;
+						position: relative;
 						width: fit-content;
 					}
 
@@ -679,8 +740,8 @@ class Wilson
 					{
 						position: absolute;
 						
-						user-select: none;
 						-webkit-user-select: none;
+						user-select: none;
 					}
 
 					.wilson-draggable
@@ -698,8 +759,9 @@ class Wilson
 						border-radius: 50%;
 						
 						touch-action: none;
-						user-select: none;
+						-webkit-touch-callout: none;
 						-webkit-user-select: none;
+						user-select: none;
 						
 						cursor: pointer;
 						
@@ -754,19 +816,29 @@ class Wilson
 		add(x, y)
 		{
 			//First convert to page coordinates.
-			let row = 0;
-			let col = 0;
+			let row = Math.floor(this.restricted_height * (1 - ((y - this.parent.world_center_y) / this.parent.world_height + .5))) + this.draggable_radius;
+			let col = Math.floor(this.restricted_width * ((x - this.parent.world_center_x) / this.parent.world_width + .5)) + this.draggable_radius;
 			
-			if (this.parent.world_width >= this.parent.world_height)
+			
+			
+			if (row < this.draggable_radius)
 			{
-				row = Math.floor(this.restricted_height * (1 - ((y - this.parent.world_center_y) / this.parent.world_size + .5))) + this.draggable_radius;
-				col = Math.floor(this.restricted_width * ((x - this.parent.world_center_x) / (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5)) + this.draggable_radius;
+				row = this.draggable_radius;
 			}
 			
-			else
+			if (row > this.container_height - this.draggable_radius)
 			{
-				row = Math.floor(this.restricted_height * (1 - ((y - this.parent.world_center_y) * (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5))) + this.draggable_radius;
-				col = Math.floor(this.restricted_width * ((x - this.parent.world_center_x) / this.parent.world_size + .5)) + this.draggable_radius;
+				row = this.container_height - this.draggable_radius;
+			}
+			
+			if (col < this.draggable_radius)
+			{
+				col = this.draggable_radius;
+			}
+			
+			if (col > this.container_width - this.draggable_radius)
+			{
+				col = this.container_width - this.draggable_radius;
 			}
 			
 			
@@ -783,6 +855,10 @@ class Wilson
 			this.world_coordinates.push([x, y]);
 			
 			this.container.appendChild(element);
+			
+			
+			
+			return element;
 		},
 		
 		
@@ -794,23 +870,23 @@ class Wilson
 			//Figure out which marker, if any, this is referencing.
 			for (let i = 0; i < this.num_draggables; i++)
 			{
-				if (e.target.className.includes(`wilson-draggable-${i}`))
+				if (e.target.className.includes(`wilson-draggable-${i}`) && e.target.parentNode === this.container)
 				{
 					e.preventDefault();
 					
 					this.active_draggable = i;
 					
-					try {this.mousedown_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]))}
+					this.currently_dragging = true;
+					
+					this.mouse_x = e.clientX;
+					this.mouse_y = e.clientY;
+					
+					try {this.mousedown_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]), e)}
 					catch(ex) {}
 					
 					break;
 				}
 			}
-			
-			this.currently_dragging = true;
-			
-			this.mouse_x = e.clientX;
-			this.mouse_y = e.clientY;
 		},
 		
 		
@@ -823,7 +899,7 @@ class Wilson
 				
 				this.last_active_draggable = this.active_draggable;
 				
-				try {this.mouseup_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]))}
+				try {this.mouseup_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]), e)}
 				catch(ex) {}
 			}
 			
@@ -836,18 +912,22 @@ class Wilson
 		
 		handle_mousemove_event(e)
 		{
-			let new_mouse_x = e.clientX;
-			let new_mouse_y = e.clientY;
-			
-			let mouse_x_delta = new_mouse_x - this.mouse_x;
-			let mouse_y_delta = new_mouse_y - this.mouse_y;
-			
-			this.mouse_x = new_mouse_x;
-			this.mouse_y = new_mouse_y;
-			
 			if (this.currently_dragging && this.active_draggable !== -1)
 			{
 				e.preventDefault();
+				
+				
+				
+				let new_mouse_x = e.clientX;
+				let new_mouse_y = e.clientY;
+				
+				let mouse_x_delta = new_mouse_x - this.mouse_x;
+				let mouse_y_delta = new_mouse_y - this.mouse_y;
+				
+				this.mouse_x = new_mouse_x;
+				this.mouse_y = new_mouse_y;
+				
+				
 				
 				let rect = this.container.getBoundingClientRect();
 				
@@ -880,27 +960,15 @@ class Wilson
 				
 				
 				
-				let x = 0;
-				let y = 0;
-				
-				if (this.parent.world_width >= this.parent.world_height)
-				{
-					x = ((col - this.draggable_radius - this.restricted_width/2) / this.restricted_width) * this.parent.world_size * (this.parent.world_width / this.parent.world_height) + this.parent.world_center_x;
-					y = (-(row - this.draggable_radius - this.restricted_height/2) / this.restricted_height) * this.parent.world_size + this.parent.world_center_y;
-				}
-				
-				else
-				{
-					x = ((col - this.draggable_radius - this.restricted_width/2) / this.restricted_width) * this.parent.world_size + this.parent.world_center_x;
-					y = (-(row - this.draggable_radius - this.restricted_height/2) / this.restricted_height) * this.parent.world_size / (this.parent.world_width / this.parent.world_height) + this.parent.world_center_y;
-				}
+				let x = ((col - this.draggable_radius - this.restricted_width/2) / this.restricted_width) * this.parent.world_width + this.parent.world_center_x;
+				let y = (-(row - this.draggable_radius - this.restricted_height/2) / this.restricted_height) * this.parent.world_height + this.parent.world_center_y;
 				
 				this.world_coordinates[this.active_draggable][0] = x;
 				this.world_coordinates[this.active_draggable][1] = y;
 				
 				
 				
-				try {this.mousemove_callback(this.active_draggable, x, y)}
+				try {this.mousemove_callback(this.active_draggable, x, y, e)}
 				catch(ex) {}
 			}
 		},
@@ -914,23 +982,23 @@ class Wilson
 			//Figure out which marker, if any, this is referencing.
 			for (let i = 0; i < this.num_draggables; i++)
 			{
-				if (e.target.className.includes(`wilson-draggable-${i}`))
+				if (e.target.className.includes(`wilson-draggable-${i}`) && e.target.parentNode === this.container)
 				{
 					e.preventDefault();
 					
 					this.active_draggable = i;
 					
-					try {this.touchstart_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]))}
+					this.currently_dragging = true;
+					
+					this.mouse_x = e.touches[0].clientX;
+					this.mouse_y = e.touches[0].clientY;
+					
+					try {this.touchstart_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]), e)}
 					catch(ex) {}
 					
 					break;
 				}
 			}
-			
-			this.currently_dragging = true;
-			
-			this.mouse_x = e.touches[0].clientX;
-			this.mouse_y = e.touches[0].clientY;
 		},
 		
 		
@@ -943,7 +1011,7 @@ class Wilson
 				
 				this.last_active_draggable = this.active_draggable;
 				
-				try {this.touchend_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]))}
+				try {this.touchend_callback(this.active_draggable, ...(this.world_coordinates[this.active_draggable]), e)}
 				catch(ex) {}
 			}
 			
@@ -960,10 +1028,13 @@ class Wilson
 			{
 				e.preventDefault();
 				
+				this.mouse_x = e.touches[0].clientX;
+				this.mouse_y = e.touches[0].clientY;
+				
 				let rect = this.container.getBoundingClientRect();
 				
-				let row = e.touches[0].clientY - rect.top;
-				let col = e.touches[0].clientX - rect.left;
+				let row = this.mouse_y - rect.top;
+				let col = this.mouse_x - rect.left;
 				
 				
 				
@@ -991,28 +1062,53 @@ class Wilson
 				
 				
 				
-				let x = 0;
-				let y = 0;
-				
-				if (this.parent.world_width >= this.parent.world_height)
-				{
-					x = ((col - this.draggable_radius - this.restricted_width/2) / this.restricted_width) * this.parent.world_size * (this.parent.world_width / this.parent.world_height) + this.parent.world_center_x;
-					y = (-(row - this.draggable_radius - this.restricted_height/2) / this.restricted_height) * this.parent.world_size + this.parent.world_center_y;
-				}
-				
-				else
-				{
-					x = ((col - this.draggable_radius - this.restricted_width/2) / this.restricted_width) * this.parent.world_size + this.parent.world_center_x;
-					y = (-(row - this.draggable_radius - this.restricted_height/2) / this.restricted_height) * this.parent.world_size / (this.parent.world_width / this.parent.world_height) + this.parent.world_center_y;
-				}
+				let x = ((col - this.draggable_radius - this.restricted_width/2) / this.restricted_width) * this.parent.world_width + this.parent.world_center_x;
+				let y = (-(row - this.draggable_radius - this.restricted_height/2) / this.restricted_height) * this.parent.world_height + this.parent.world_center_y;
 				
 				this.world_coordinates[this.active_draggable][0] = x;
 				this.world_coordinates[this.active_draggable][1] = y;
 				
 				
 				
-				try {this.mousemove_callback(this.active_draggable, x, y)}
+				try {this.touchmove_callback(this.active_draggable, x, y, e)}
 				catch(ex) {}
+			}
+		},
+		
+		
+		
+		recalculate_locations()
+		{
+			for (let i = 0; i < this.num_draggables; i++)
+			{
+				let row = Math.floor(this.restricted_height * (1 - ((this.world_coordinates[i][1] - this.parent.world_center_y) / this.parent.world_height + .5))) + this.draggable_radius;
+				let col = Math.floor(this.restricted_width * ((this.world_coordinates[i][0] - this.parent.world_center_x) / this.parent.world_width + .5)) + this.draggable_radius;
+				
+				
+				
+				if (row < this.draggable_radius)
+				{
+					row = this.draggable_radius;
+				}
+				
+				if (row > this.container_height - this.draggable_radius)
+				{
+					row = this.container_height - this.draggable_radius;
+				}
+				
+				if (col < this.draggable_radius)
+				{
+					col = this.draggable_radius;
+				}
+				
+				if (col > this.container_width - this.draggable_radius)
+				{
+					col = this.container_width - this.draggable_radius;
+				}
+				
+				
+				
+				this.draggables[i].style.transform = `translate3d(${col - this.draggable_radius}px, ${row - this.draggable_radius}px, 0)`;
 			}
 		},
 		
@@ -1040,25 +1136,7 @@ class Wilson
 			
 			
 			
-			for (let i = 0; i < this.num_draggables; i++)
-			{
-				let row = 0;
-				let col = 0;
-				
-				if (this.parent.world_width >= this.parent.world_height)
-				{
-					row = Math.floor(this.restricted_height * (1 - ((this.world_coordinates[i][1] - this.parent.world_center_y) / this.parent.world_size + .5))) + this.draggable_radius;
-					col = Math.floor(this.restricted_width * ((this.world_coordinates[i][0] - this.parent.world_center_x) / (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5)) + this.draggable_radius;
-				}
-				
-				else
-				{
-					row = Math.floor(this.restricted_height * (1 - ((this.world_coordinates[i][1] - this.parent.world_center_y) * (this.parent.world_width / this.parent.world_height) / this.parent.world_size + .5))) + this.draggable_radius;
-					col = Math.floor(this.restricted_width * ((this.world_coordinates[i][0] - this.parent.world_center_x) / this.parent.world_size + .5)) + this.draggable_radius;
-				}
-				
-				this.draggables[i].style.transform = `translate3d(${col - this.draggable_radius}px, ${row - this.draggable_radius}px, 0)`;
-			}
+			this.recalculate_locations();
 		}
 	};
 	
@@ -1072,16 +1150,16 @@ class Wilson
 
 		//Contains the output canvas, along with anything attached to it (e.g. draggables containers)
 		canvases_to_resize: [],
-		
-		auto_rearrange_canvases: true,
 
 		//True to fill the entire screen (which will strech the aspect ratio unless there's specific code to account for that), and false to letterbox.
 		true_fullscreen: false,
 
-		resize_callback: null,
+		switch_fullscreen_callback: null,
 
 		fullscreen_old_scroll: 0,
 		fullscreen_locked_scroll: 0,
+		
+		old_footer_button_offset: 0,
 		
 		enter_fullscreen_button: null,
 		exit_fullscreen_button: null,
@@ -1090,8 +1168,8 @@ class Wilson
 		
 		use_fullscreen_button: true,
 		
-		enter_fullscreen_button_image_path: null,
-		exit_fullscreen_button_image_path: null,
+		enter_fullscreen_button_icon_path: null,
+		exit_fullscreen_button_icon_path: null,
 		
 		
 		
@@ -1166,6 +1244,12 @@ class Wilson
 				let element = document.createElement("style");
 				
 				element.textContent = `
+					.wilson-applet-canvas-container.wilson-fullscreen
+					{
+						margin-top: 0 !important;
+						margin-bottom: 0 !important;
+					}
+					
 					.wilson-true-fullscreen-canvas
 					{
 						width: 100vw !important;
@@ -1228,7 +1312,7 @@ class Wilson
 				
 				this.enter_fullscreen_button.type = "image";
 				this.enter_fullscreen_button.classList.add("wilson-enter-fullscreen-button");
-				this.enter_fullscreen_button.src = this.enter_fullscreen_button_image_path;
+				this.enter_fullscreen_button.src = this.enter_fullscreen_button_icon_path;
 				this.enter_fullscreen_button.alt = "Enter Fullscreen";
 				this.enter_fullscreen_button.setAttribute("tabindex", "-1");
 				
@@ -1244,12 +1328,17 @@ class Wilson
 			
 			
 			
-			window.addEventListener("resize", this.on_resize);
+			let on_resize_bound = this.on_resize.bind(this);
+			window.addEventListener("resize", on_resize_bound);
+			Page.temporary_handlers["resize"].push(on_resize_bound);
 			
-			window.addEventListener("scroll", this.on_scroll);
+			let on_scroll_bound = this.on_scroll.bind(this);
+			window.addEventListener("scroll", on_scroll_bound);
+			Page.temporary_handlers["scroll"].push(on_scroll_bound);
 			
-			let bound_function = this.handle_keypress_event.bind(this);
-			document.documentElement.addEventListener("keydown", bound_function);
+			let on_keypress_bound = this.on_keypress.bind(this);
+			document.documentElement.addEventListener("keydown", on_keypress_bound);
+			Page.temporary_handlers["keydown"].push(on_keypress_bound);
 		},
 
 
@@ -1276,6 +1365,7 @@ class Wilson
 				setTimeout(() =>
 				{
 					this.parent.canvas.classList.add("wilson-fullscreen");
+					this.parent.canvas.parentNode.parentNode.classList.add("wilson-fullscreen");
 					
 					
 					
@@ -1283,21 +1373,23 @@ class Wilson
 					catch(ex) {}
 					
 					
-					
-					this.exit_fullscreen_button = document.createElement("input");
-					
-					this.exit_fullscreen_button.type = "image";
-					this.exit_fullscreen_button.classList.add("wilson-exit-fullscreen-button");
-					this.exit_fullscreen_button.src = this.exit_fullscreen_button_image_path;
-					this.exit_fullscreen_button.alt = "Exit Fullscreen";
-					this.exit_fullscreen_button.setAttribute("tabindex", "-1");
-					
-					document.body.appendChild(this.exit_fullscreen_button);
-					
-					this.exit_fullscreen_button.addEventListener("click", () =>
+					if (this.use_fullscreen_button)
 					{
-						this.switch_fullscreen();
-					});
+						this.exit_fullscreen_button = document.createElement("input");
+						
+						this.exit_fullscreen_button.type = "image";
+						this.exit_fullscreen_button.classList.add("wilson-exit-fullscreen-button");
+						this.exit_fullscreen_button.src = this.exit_fullscreen_button_icon_path;
+						this.exit_fullscreen_button.alt = "Exit Fullscreen";
+						this.exit_fullscreen_button.setAttribute("tabindex", "-1");
+						
+						document.body.appendChild(this.exit_fullscreen_button);
+						
+						this.exit_fullscreen_button.addEventListener("click", () =>
+						{
+							this.switch_fullscreen();
+						});
+					}
 					
 					
 					
@@ -1322,8 +1414,10 @@ class Wilson
 							//We do this to accomodate weirdly-set-up applets like the ones with draggable inputs, since they rely on their canvas container to keep the content below flowing properly.
 							this.parent.canvas.parentNode.parentNode.classList.add("wilson-black-background");
 							
-							try {this.resize_callback();}
+							try {this.switch_fullscreen_callback();}
 							catch(ex) {}
+							
+							this.parent.draggables.on_resize();
 						}
 						
 						window.scroll(0, window.scrollY + this.canvases_to_resize[0].getBoundingClientRect().top + 2);
@@ -1339,8 +1433,10 @@ class Wilson
 						{
 							this.canvases_to_resize[i].classList.add("wilson-letterboxed-fullscreen-canvas");
 							
-							try {this.resize_callback();}
+							try {this.switch_fullscreen_callback();}
 							catch(ex) {}
+							
+							this.parent.draggables.on_resize();
 						}
 						
 						
@@ -1400,6 +1496,7 @@ class Wilson
 				setTimeout(() =>
 				{
 					this.parent.canvas.parentNode.classList.remove("wilson-fullscreen");
+					this.parent.canvas.parentNode.parentNode.classList.remove("wilson-fullscreen");
 					
 					
 					
@@ -1421,20 +1518,23 @@ class Wilson
 					
 					
 					
-					this.enter_fullscreen_button = document.createElement("input");
-					
-					this.enter_fullscreen_button.type = "image";
-					this.enter_fullscreen_button.classList.add("wilson-enter-fullscreen-button");
-					this.enter_fullscreen_button.src = this.enter_fullscreen_button_image_path;
-					this.enter_fullscreen_button.alt = "Enter Fullscreen";
-					this.enter_fullscreen_button.setAttribute("tabindex", "-1");
-					
-					this.parent.canvas.parentNode.appendChild(this.enter_fullscreen_button);
-					
-					this.enter_fullscreen_button.addEventListener("click", () =>
+					if (this.use_fullscreen_button)
 					{
-						this.switch_fullscreen();
-					});
+						this.enter_fullscreen_button = document.createElement("input");
+						
+						this.enter_fullscreen_button.type = "image";
+						this.enter_fullscreen_button.classList.add("wilson-enter-fullscreen-button");
+						this.enter_fullscreen_button.src = this.enter_fullscreen_button_icon_path;
+						this.enter_fullscreen_button.alt = "Enter Fullscreen";
+						this.enter_fullscreen_button.setAttribute("tabindex", "-1");
+						
+						this.parent.canvas.parentNode.appendChild(this.enter_fullscreen_button);
+						
+						this.enter_fullscreen_button.addEventListener("click", () =>
+						{
+							this.switch_fullscreen();
+						});
+					}
 					
 					
 					
@@ -1459,8 +1559,10 @@ class Wilson
 						
 						
 						
-						try {this.resize_callback();}
+						try {this.switch_fullscreen_callback();}
 						catch(ex) {}
+						
+						this.parent.draggables.on_resize();
 					}
 					
 					
@@ -1507,11 +1609,6 @@ class Wilson
 			
 			
 			
-			try {this.resize_callback();}
-			catch(ex) {}
-			
-			
-			
 			setTimeout(() =>
 			{
 				if (window.innerWidth / window.innerHeight < 1 && !this.true_fullscreen)
@@ -1525,11 +1622,6 @@ class Wilson
 				}
 				
 				this.fullscreen_locked_scroll = window.scrollY;
-				
-				
-				
-				try {this.resize_callback();}
-				catch(ex) {}
 			}, 500);
 		},
 
@@ -1547,7 +1639,7 @@ class Wilson
 		
 		
 		
-		handle_keypress_event(e)
+		on_keypress(e)
 		{
 			if (e.keyCode === 27 && this.currently_fullscreen)
 			{
@@ -1571,13 +1663,23 @@ class Wilson
 		mouse_x: null,
 		mouse_y: null,
 		
-		touch_distance: 0,
+		//These are stored before converting to world coordinates. This prevents problems that occur when using callbacks that reference the world coordinates to change those world coordinates.
+		last_row_1: -1,
+		last_col_1: -1,
+		
+		last_row_2: -1,
+		last_col_2: -1,
+		
+		currently_dragging: false,
+		
+		was_pinching: false,
 		
 		
 		
 		mousedown_callback: null,
 		mouseup_callback: null,
 		mousemove_callback: null,
+		mousedrag_callback: null,
 		
 		touchstart_callback: null,
 		touchup_callback: null,
@@ -1642,10 +1744,22 @@ class Wilson
 			
 			
 			
-			e.preventDefault();
-			
 			this.mouse_x = e.clientX;
 			this.mouse_y = e.clientY;
+			
+			this.currently_dragging = true;
+			
+			
+			
+			let rect = this.parent.canvas.getBoundingClientRect();
+			
+			let row = (this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding) * this.parent.canvas_height / this.parent.draggables.restricted_height;
+			let col = (this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding) * this.parent.canvas_width / this.parent.draggables.restricted_width;
+			
+			let world_coordinates = this.parent.utils.interpolate.canvas_to_world(row, col);
+			
+			this.last_row_1 = row;
+			this.last_col_1 = col;
 			
 			
 			
@@ -1654,17 +1768,9 @@ class Wilson
 				return;
 			}
 			
+			e.preventDefault();
 			
-			
-			let rect = this.parent.canvas.getBoundingClientRect();
-			
-			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
-			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
-			
-			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
-			{
-				this.mousedown_callback(row, col, e);
-			}
+			this.mousedown_callback(...world_coordinates, e);
 		},
 		
 		
@@ -1683,6 +1789,8 @@ class Wilson
 			this.mouse_x = e.clientX;
 			this.mouse_y = e.clientY;
 			
+			this.currently_dragging = false;
+			
 			
 			
 			if (this.mouseup_callback === null)
@@ -1694,13 +1802,15 @@ class Wilson
 			
 			let rect = this.parent.canvas.getBoundingClientRect();
 			
-			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
-			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
+			let row = (this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding) * this.parent.canvas_height / this.parent.draggables.restricted_height;
+			let col = (this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding) * this.parent.canvas_width / this.parent.draggables.restricted_width;
 			
-			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
-			{
-				this.mouseup_callback(row, col, e);
-			}
+			let world_coordinates = this.parent.utils.interpolate.canvas_to_world(row, col);
+			
+			this.mouseup_callback(...world_coordinates, e);
+			
+			this.last_row_1 = row;
+			this.last_col_1 = col;
 		},
 		
 		
@@ -1716,33 +1826,39 @@ class Wilson
 			
 			e.preventDefault();
 			
-			let new_mouse_x = e.clientX;
-			let new_mouse_y = e.clientY;
+			this.mouse_x = e.clientX;
+			this.mouse_y = e.clientY;
 			
-			let col_delta = new_mouse_x - this.mouse_x;
-			let row_delta = new_mouse_y - this.mouse_y;
-			
-			this.mouse_x = new_mouse_x;
-			this.mouse_y = new_mouse_y;
-			
-			
-			
-			if (this.mousemove_callback === null)
-			{
-				return;
-			}
 			
 			
 			
 			let rect = this.parent.canvas.getBoundingClientRect();
 			
-			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
-			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
+			let row = (this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding) * this.parent.canvas_height / this.parent.draggables.restricted_height;
+			let col = (this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding) * this.parent.canvas_width / this.parent.draggables.restricted_width;
 			
-			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
+			let world_coordinates = this.parent.utils.interpolate.canvas_to_world(row, col);
+			
+			
+			
+			let last_world_coordinates = this.parent.utils.interpolate.canvas_to_world(this.last_row_1, this.last_col_1);
+			
+			
+			
+			if (this.mousedrag_callback !== null && this.currently_dragging)
 			{
-				this.mousemove_callback(row, col, row_delta, col_delta, e);
+				this.mousedrag_callback(...world_coordinates, world_coordinates[0] - last_world_coordinates[0], world_coordinates[1] - last_world_coordinates[1], e);
 			}
+			
+			else if (this.mousemove_callback !== null && !this.currently_dragging)
+			{
+				this.mousemove_callback(...world_coordinates, world_coordinates[0] - last_world_coordinates[0], world_coordinates[1] - last_world_coordinates[1], e);
+			}
+			
+			
+			
+			this.last_row_1 = row;
+			this.last_col_1 = col;
 		},
 		
 		
@@ -1756,10 +1872,20 @@ class Wilson
 			
 			
 			
-			e.preventDefault();
-			
 			this.mouse_x = e.touches[0].clientX;
 			this.mouse_y = e.touches[0].clientY;
+			
+			
+			
+			let rect = this.parent.canvas.getBoundingClientRect();
+			
+			let row = (this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding) * this.parent.canvas_height / this.parent.draggables.restricted_height;
+			let col = (this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding) * this.parent.canvas_width / this.parent.draggables.restricted_width;
+			
+			let world_coordinates = this.parent.utils.interpolate.canvas_to_world(row, col);
+			
+			this.last_row_1 = row;
+			this.last_col_1 = col;
 			
 			
 			
@@ -1770,15 +1896,9 @@ class Wilson
 			
 			
 			
-			let rect = this.parent.canvas.getBoundingClientRect();
+			e.preventDefault();
 			
-			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
-			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
-			
-			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
-			{
-				this.touchstart_callback(row, col, e);
-			}
+			this.touchstart_callback(...world_coordinates, e);
 		},
 		
 		
@@ -1790,12 +1910,19 @@ class Wilson
 				return;
 			}
 			
-			
-			
 			e.preventDefault();
 			
-			this.mouse_x = e.touches[0].clientX;
-			this.mouse_y = e.touches[0].clientY;
+			
+			
+			this.touch_distance = -1;
+			
+			this.last_row_2 = -1;
+			this.last_col_2 = -1;
+			
+			if (e.touches.length === 0)
+			{
+				this.was_pinching = false;
+			}
 			
 			
 			
@@ -1806,14 +1933,11 @@ class Wilson
 			
 			
 			
-			let rect = this.parent.canvas.getBoundingClientRect();
-			
-			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
-			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
-			
-			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
+			if (this.last_row_1 !== -1)
 			{
-				this.touchend_callback(row, col, e);
+				let last_world_coordinates = this.parent.utils.interpolate.canvas_to_world(this.last_row_1, this.last_col_1);
+				
+				this.touchend_callback(...last_world_coordinates, e);
 			}
 		},
 		
@@ -1838,35 +1962,65 @@ class Wilson
 			
 			if (e.touches.length >= 2 && this.pinch_callback !== null)
 			{
-				let x_delta = e.touches[0].clientX - e.touches[1].clientX;
-				let y_delta = e.touches[0].clientY - e.touches[1].clientY;
-				
-				let new_touch_distance = Math.sqrt(x_distance * x_distance + y_distance * y_distance);
-				
-				let touch_distance_delta = new_touch_distance - this.touch_distance;
-				
-				this.touch_distance = new_touch_distance;
+				this.was_pinching = true;
 				
 				
 				
-				let touch_center_row = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top - this.parent.top_border - this.parent.top_padding;
-				let touch_center_col = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left - this.parent.left_border - this.parent.left_padding;
+				let row_1 = (e.touches[0].clientY - rect.top - this.parent.top_border - this.parent.top_padding) * this.parent.canvas_height / this.parent.draggables.restricted_height;
+				let col_1 = (e.touches[0].clientX - rect.left - this.parent.left_border - this.parent.left_padding) * this.parent.canvas_width / this.parent.draggables.restricted_width;
+				
+				let row_2 = (e.touches[1].clientY - rect.top - this.parent.top_border - this.parent.top_padding) * this.parent.canvas_height / this.parent.draggables.restricted_height;
+				let col_2 = (e.touches[1].clientX - rect.left - this.parent.left_border - this.parent.left_padding) * this.parent.canvas_width / this.parent.draggables.restricted_width;
+				
+				let world_coordinates_1 = this.parent.utils.interpolate.canvas_to_world(row_1, col_1);
+				let world_coordinates_2 = this.parent.utils.interpolate.canvas_to_world(row_2, col_2);
+				
+				let x_distance = world_coordinates_1[0] - world_coordinates_2[0];
+				let y_distance = world_coordinates_1[1] - world_coordinates_2[1];
+				
+				let touch_distance = Math.sqrt(x_distance * x_distance + y_distance * y_distance);
 				
 				
 				
-				this.pinch_callback(touch_center_row, touch_center_col, touch_distance_delta, e);
+				let center_x = (world_coordinates_1[0] + world_coordinates_2[0]) / 2;
+				let center_y = (world_coordinates_1[1] + world_coordinates_2[1]) / 2;
+				
+				
+				
+				let last_world_coordinates_1 = this.parent.utils.interpolate.canvas_to_world(this.last_row_1, this.last_col_1);
+				let last_world_coordinates_2 = this.parent.utils.interpolate.canvas_to_world(this.last_row_2, this.last_col_2);
+				
+				let last_x_distance = last_world_coordinates_1[0] - last_world_coordinates_2[0];
+				let last_y_distance = last_world_coordinates_1[1] - last_world_coordinates_2[1];
+				
+				let last_touch_distance = Math.sqrt(last_x_distance * last_x_distance + last_y_distance * last_y_distance);
+				
+				
+				if (this.last_row_2 !== -1)
+				{
+					this.pinch_callback(center_x, center_y, touch_distance - last_touch_distance, e);
+				}
+				
+				
+				
+				this.last_row_1 = row_1;
+				this.last_col_1 = col_1;
+				
+				this.last_row_2 = row_2;
+				this.last_col_2 = col_2;
 			}
 			
 			
 			
-			let new_mouse_x = e.touches[0].clientX;
-			let new_mouse_y = e.touches[0].clientY;
+			else if (this.was_pinching)
+			{
+				return;
+			}
 			
-			let col_delta = new_mouse_x - this.mouse_x;
-			let row_delta = new_mouse_y - this.mouse_y;
 			
-			this.mouse_x = new_mouse_x;
-			this.mouse_y = new_mouse_y;
+			
+			this.mouse_x = e.touches[0].clientX;
+			this.mouse_y = e.touches[0].clientY;
 			
 			
 			
@@ -1877,13 +2031,21 @@ class Wilson
 			
 			
 			
-			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
-			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
+			let row = (this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding) * this.parent.canvas_height / this.parent.draggables.restricted_height;
+			let col = (this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding) * this.parent.canvas_width / this.parent.draggables.restricted_width;
 			
-			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
-			{
-				this.touchmove_callback(row, col, row_delta, col_delta, e);
-			}
+			let world_coordinates = this.parent.utils.interpolate.canvas_to_world(row, col);
+			
+			let last_world_coordinates = this.parent.utils.interpolate.canvas_to_world(this.last_row_1, this.last_col_1);
+			
+			
+			
+			this.touchmove_callback(...world_coordinates, world_coordinates[0] - last_world_coordinates[0], world_coordinates[1] - last_world_coordinates[1], e);
+			
+			
+			
+			this.last_row_1 = row;
+			this.last_col_1 = col;
 		},
 		
 		
@@ -1895,21 +2057,31 @@ class Wilson
 				return;
 			}
 			
-			
-			
 			e.preventDefault();
 			
-			
-			
-			let rect = this.parent.canvas.getBoundingClientRect();
-			
-			let row = this.mouse_y - rect.top - this.parent.top_border - this.parent.top_padding;
-			let col = this.mouse_x - rect.left - this.parent.left_border - this.parent.left_padding;
-			
-			if (row >= 0 && row < rect.height - 2 * (this.parent.top_border + this.parent.top_padding) && col >= 0 && col < rect.width - 2 * (this.parent.left_border + this.parent.left_padding))
+			if (this.last_row_1 !== -1)
 			{
-				this.wheel_callback(row, col, e.deltaY, e);
+				let last_world_coordinates = this.parent.utils.interpolate.canvas_to_world(this.last_row_1, this.last_col_1);
+				
+				this.wheel_callback(...last_world_coordinates, e.deltaY, e);
 			}
+		},
+		
+		
+		
+		//Returns what the world center should be to make zooms look correct.
+		get_zoomed_world_center(fixed_point_x, fixed_point_y, new_world_width, new_world_height)
+		{
+			let mouse_x_proportion = (fixed_point_x - this.parent.world_center_x) / this.parent.world_width;
+			let mouse_y_proportion = (fixed_point_y - this.parent.world_center_y) / this.parent.world_height;
+			
+			let new_fixed_point_x = mouse_x_proportion * new_world_width;
+			let new_fixed_point_y = mouse_y_proportion * new_world_height;
+			
+			let zoomed_center_x = fixed_point_x - new_fixed_point_x;
+			let zoomed_center_y = fixed_point_y - new_fixed_point_y;
+			
+			return [zoomed_center_x, zoomed_center_y];
 		}
 	}
 	
@@ -1945,14 +2117,14 @@ class Wilson
 	//Downloads the current state of the canvas as a png. If using a WebGL canvas, another frame will be drawn before downloading.
 	download_frame(filename)
 	{
-		if (this.render_type === 1)
+		if (this.render.render_type === 1)
 		{
-			this.draw_frame(this.last_image);
+			this.render.draw_frame(this.render.last_image);
 		}
 		
-		else if (this.render_type === 2)
+		else if (this.render.render_type === 2)
 		{
-			this.draw_frame();
+			this.render.draw_frame();
 		}
 		
 		
