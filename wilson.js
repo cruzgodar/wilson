@@ -32,6 +32,8 @@ class Wilson
 		{
 			renderer: "cpu", "hybrid", "gpu"
 			
+			canvas_width, canvas_height
+			
 			world_width, world_height
 			world_center_x, world_center_y
 			
@@ -220,20 +222,17 @@ class Wilson
 		
 		
 		
-		if (typeof options.use_draggables !== "undefined" && options.use_draggables)
-		{
-			this.use_draggables = true;
-			
-			this.draggables.mousedown_callback = typeof options.draggables_mousedown_callback === "undefined" ? null : options.draggables_mousedown_callback;
-			this.draggables.mouseup_callback = typeof options.draggables_mouseup_callback === "undefined" ? null : options.draggables_mouseup_callback;
-			this.draggables.mousemove_callback = typeof options.draggables_mousemove_callback === "undefined" ? null : options.draggables_mousemove_callback;
-			
-			this.draggables.touchstart_callback = typeof options.draggables_touchstart_callback === "undefined" ? null : options.draggables_touchstart_callback;
-			this.draggables.touchend_callback = typeof options.draggables_touchend_callback === "undefined" ? null : options.draggables_touchend_callback;
-			this.draggables.touchmove_callback = typeof options.draggables_touchmove_callback === "undefined" ? null : options.draggables_touchmove_callback;
-			
-			this.draggables.init();
-		}
+		this.use_draggables = true;
+		
+		this.draggables.mousedown_callback = typeof options.draggables_mousedown_callback === "undefined" ? null : options.draggables_mousedown_callback;
+		this.draggables.mouseup_callback = typeof options.draggables_mouseup_callback === "undefined" ? null : options.draggables_mouseup_callback;
+		this.draggables.mousemove_callback = typeof options.draggables_mousemove_callback === "undefined" ? null : options.draggables_mousemove_callback;
+		
+		this.draggables.touchstart_callback = typeof options.draggables_touchstart_callback === "undefined" ? null : options.draggables_touchstart_callback;
+		this.draggables.touchend_callback = typeof options.draggables_touchend_callback === "undefined" ? null : options.draggables_touchend_callback;
+		this.draggables.touchmove_callback = typeof options.draggables_touchmove_callback === "undefined" ? null : options.draggables_touchmove_callback;
+		
+		this.draggables.init();
 		
 		
 		
@@ -350,36 +349,56 @@ class Wilson
 		
 		
 		
-		if (typeof options.use_draggables !== "undefined" && options.use_draggables)
-		{
-			this.draggables.container = document.createElement("div");
-			
-			this.draggables.container.classList.add("wilson-draggables-container");
-			
-			applet_canvas_container.appendChild(this.draggables.container);
-			
-			this.fullscreen.canvases_to_resize.push(this.draggables.container);
-			
-			
-			
-			let computed_style = window.getComputedStyle(this.canvas);
-			
-			let width = this.canvas.clientWidth - parseFloat(computed_style.paddingLeft) - parseFloat(computed_style.paddingRight);
-			let height = this.canvas.clientHeight - parseFloat(computed_style.paddingTop) - parseFloat(computed_style.paddingBottom);
-			
-			this.draggables.container.style.width = (width + 2 * this.draggables.draggable_radius) + "px";
-			this.draggables.container.style.height = (height + 2 * this.draggables.draggable_radius) + "px";
-			
-			this.draggables.container_width = width + 2 * this.draggables.draggable_radius;
-			this.draggables.container_height = height + 2 * this.draggables.draggable_radius;
-			
-			this.draggables.restricted_width = width;
-			this.draggables.restricted_height = height;
-			
-			
-			
-			this.draggables.container.style.marginTop = (parseFloat(computed_style.borderTopWidth) + parseFloat(computed_style.paddingTop) - this.draggables.draggable_radius) + "px";
-		}
+	
+		this.draggables.container = document.createElement("div");
+		
+		this.draggables.container.classList.add("wilson-draggables-container");
+		
+		this.draggables.container.setAttribute("data-aos", "fade-up");
+		
+		this.draggables.container.setAttribute("data-aos-delay-increase", "0");
+		
+		applet_canvas_container.appendChild(this.draggables.container);
+		
+		this.fullscreen.canvases_to_resize.push(this.draggables.container);
+		
+		
+		
+		let computed_style = window.getComputedStyle(this.canvas);
+		
+		let width = this.canvas.clientWidth - parseFloat(computed_style.paddingLeft) - parseFloat(computed_style.paddingRight);
+		let height = this.canvas.clientHeight - parseFloat(computed_style.paddingTop) - parseFloat(computed_style.paddingBottom);
+		
+		this.draggables.container.style.width = (width + 2 * this.draggables.draggable_radius) + "px";
+		this.draggables.container.style.height = (height + 2 * this.draggables.draggable_radius) + "px";
+		
+		this.draggables.container_width = width + 2 * this.draggables.draggable_radius;
+		this.draggables.container_height = height + 2 * this.draggables.draggable_radius;
+		
+		this.draggables.restricted_width = width;
+		this.draggables.restricted_height = height;
+		
+		
+		
+		this.draggables.container.style.marginTop = (parseFloat(computed_style.borderTopWidth) + parseFloat(computed_style.paddingTop) - this.draggables.draggable_radius) + "px";
+		
+		
+		
+		this.fullscreen.fullscreen_components_container = document.createElement("div");
+		
+		this.fullscreen.fullscreen_components_container.classList.add("wilson-fullscreen-components-container");
+		
+		applet_canvas_container.parentNode.insertBefore(this.fullscreen.fullscreen_components_container, applet_canvas_container);
+		
+		this.fullscreen.fullscreen_components_container.appendChild(applet_canvas_container);
+		
+		
+		
+		this.fullscreen.fullscreen_components_container_location = document.createElement("div");
+		
+		this.fullscreen.fullscreen_components_container.parentNode.insertBefore(this.fullscreen.fullscreen_components_container_location, this.fullscreen.fullscreen_components_container);
+		
+		this.fullscreen.fullscreen_components_container_location.appendChild(this.fullscreen.fullscreen_components_container);
 		
 		
 		
@@ -1157,19 +1176,19 @@ class Wilson
 		switch_fullscreen_callback: null,
 
 		fullscreen_old_scroll: 0,
-		fullscreen_locked_scroll: 0,
 		
 		old_footer_button_offset: 0,
 		
 		enter_fullscreen_button: null,
 		exit_fullscreen_button: null,
 		
-		
-		
 		use_fullscreen_button: true,
 		
 		enter_fullscreen_button_icon_path: null,
 		exit_fullscreen_button_icon_path: null,
+		
+		fullscreen_components_container_location: null,
+		fullscreen_components_container: null,
 		
 		
 		
@@ -1244,10 +1263,24 @@ class Wilson
 				let element = document.createElement("style");
 				
 				element.textContent = `
-					.wilson-applet-canvas-container.wilson-fullscreen
+					.wilson-fullscreen-components-container.wilson-fullscreen
+					{
+						position: fixed !important;
+						top: 0 !important;
+						left: 0 !important;
+						
+						z-index: 100 !important;
+					}
+					
+					.wilson-fullscreen-components-container.wilson-fullscreen .wilson-applet-canvas-container
 					{
 						margin-top: 0 !important;
 						margin-bottom: 0 !important;
+					}
+					
+					.wilson-fullscreen-components-container.wilson-fullscreen:not(.wilson-true-fullscreen-canvas) .wilson-output-canvas-container
+					{
+						margin-left: calc(50vw - 50vmin) !important;
 					}
 					
 					.wilson-true-fullscreen-canvas
@@ -1364,13 +1397,19 @@ class Wilson
 				
 				setTimeout(() =>
 				{
+					document.body.appendChild(this.fullscreen_components_container);
+					
+					
+					
 					this.parent.canvas.classList.add("wilson-fullscreen");
-					this.parent.canvas.parentNode.parentNode.classList.add("wilson-fullscreen");
+					this.parent.canvas.parentNode.classList.add("wilson-fullscreen");
+					this.fullscreen_components_container.classList.add("wilson-fullscreen");
 					
 					
 					
 					try {this.enter_fullscreen_button.remove();}
 					catch(ex) {}
+					
 					
 					
 					if (this.use_fullscreen_button)
@@ -1385,6 +1424,8 @@ class Wilson
 						
 						document.body.appendChild(this.exit_fullscreen_button);
 						
+						Page.Load.HoverEvents.add(this.exit_fullscreen_button);
+						
 						this.exit_fullscreen_button.addEventListener("click", () =>
 						{
 							this.switch_fullscreen();
@@ -1393,8 +1434,19 @@ class Wilson
 					
 					
 					
+					this.old_footer_button_offset = Page.Footer.Floating.current_offset;
+					
+					Page.Footer.Floating.current_offset = -43.75;
+					
+					document.querySelector("#show-footer-menu-button").style.bottom = "-43.75px";
+					
+					
+					
 					document.documentElement.style.overflowY = "hidden";
 					document.body.style.overflowY = "hidden";
+					
+					document.documentElement.style.userSelect = "none";
+					document.documentElement.style.WebkitUserSelect = "none";
 					
 					document.addEventListener("gesturestart", this.prevent_gestures);
 					document.addEventListener("gesturechange", this.prevent_gestures);
@@ -1407,6 +1459,8 @@ class Wilson
 					
 					if (this.true_fullscreen)
 					{
+						this.fullscreen_components_container.classList.add("wilson-true-fullscreen-canvas");
+						
 						for (let i = 0; i < this.canvases_to_resize.length; i++)
 						{
 							this.canvases_to_resize[i].classList.add("wilson-true-fullscreen-canvas");
@@ -1418,11 +1472,11 @@ class Wilson
 							catch(ex) {}
 							
 							this.parent.draggables.on_resize();
+							
+							Page.Load.AOS.on_resize();
 						}
 						
-						window.scroll(0, window.scrollY + this.canvases_to_resize[0].getBoundingClientRect().top + 2);
-						
-						this.fullscreen_locked_scroll = window.scrollY;
+						window.scroll(0, 0);
 					}
 					
 					
@@ -1437,6 +1491,8 @@ class Wilson
 							catch(ex) {}
 							
 							this.parent.draggables.on_resize();
+							
+							Page.Load.AOS.on_resize();
 						}
 						
 						
@@ -1495,13 +1551,21 @@ class Wilson
 				
 				setTimeout(() =>
 				{
+					this.fullscreen_components_container_location.appendChild(this.fullscreen_components_container);
+					
+					
+					
+					this.parent.canvas.classList.remove("wilson-fullscreen");
 					this.parent.canvas.parentNode.classList.remove("wilson-fullscreen");
-					this.parent.canvas.parentNode.parentNode.classList.remove("wilson-fullscreen");
+					this.fullscreen_components_container.classList.remove("wilson-fullscreen");
 					
 					
 					
 					document.documentElement.style.overflowY = "visible";
 					document.body.style.overflowY = "visible";
+					
+					document.documentElement.style.userSelect = "auto";
+					document.documentElement.style.WebkitUserSelect = "auto";
 					
 					document.removeEventListener("gesturestart", this.prevent_gestures);
 					document.removeEventListener("gesturechange", this.prevent_gestures);
@@ -1530,11 +1594,19 @@ class Wilson
 						
 						this.parent.canvas.parentNode.appendChild(this.enter_fullscreen_button);
 						
+						Page.Load.HoverEvents.add(this.enter_fullscreen_button);
+						
 						this.enter_fullscreen_button.addEventListener("click", () =>
 						{
 							this.switch_fullscreen();
 						});
 					}
+					
+					
+					
+					Page.Footer.Floating.current_offset = this.old_footer_button_offset;
+					
+					document.querySelector("#show-footer-menu-button").style.bottom = this.old_footer_button_offset + "px";
 					
 					
 					
@@ -1563,6 +1635,10 @@ class Wilson
 						catch(ex) {}
 						
 						this.parent.draggables.on_resize();
+						
+						
+						
+						Page.Load.AOS.on_resize();
 					}
 					
 					
@@ -1595,33 +1671,13 @@ class Wilson
 			
 			
 			
-			if (window.innerWidth / window.innerHeight < 1 && !this.true_fullscreen)
-			{
-				window.scroll(0, window.scrollY + this.canvases_to_resize[0].getBoundingClientRect().top - (window.innerHeight - this.canvases_to_resize[0].offsetHeight) / 2 + 2);
-			}
-			
-			else
-			{
-				window.scroll(0, window.scrollY + this.canvases_to_resize[0].getBoundingClientRect().top + 2);
-			}
-			
-			this.fullscreen_locked_scroll = window.scrollY;
+			window.scroll(0, 0);
 			
 			
 			
 			setTimeout(() =>
 			{
-				if (window.innerWidth / window.innerHeight < 1 && !this.true_fullscreen)
-				{
-					window.scroll(0, window.scrollY + this.canvases_to_resize[0].getBoundingClientRect().top - (window.innerHeight - this.canvases_to_resize[0].offsetHeight) / 2 + 2);
-				}
-				
-				else
-				{
-					window.scroll(0, window.scrollY + this.canvases_to_resize[0].getBoundingClientRect().top + 2);
-				}
-				
-				this.fullscreen_locked_scroll = window.scrollY;
+				window.scroll(0, 0);
 			}, 500);
 		},
 
