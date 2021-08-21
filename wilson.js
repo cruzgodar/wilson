@@ -2185,14 +2185,17 @@ class Wilson
 		
 		
 		
-		let link = document.createElement("a");
-		
-		link.download = filename;
-		
-		link.href = this.canvas.toDataURL();
-		
-		link.click();
-		
-		link.remove();
+		this.canvas.toBlob((blob) => 
+		{
+			let link = document.createElement("a");
+			
+			link.download = filename;
+			
+			link.href = window.URL.createObjectURL(blob);
+			
+			link.click();
+			
+			link.remove();
+		});
 	}
 };
