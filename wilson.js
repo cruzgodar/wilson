@@ -826,7 +826,6 @@ class Wilson
 			document.documentElement.addEventListener("mouseup", handle_mouseup_event_bound, false);
 			
 			window.addEventListener("resize", on_resize_bound);
-			Page.temporary_handlers["resize"].push(on_resize_bound);
 		},
 		
 		
@@ -1177,8 +1176,6 @@ class Wilson
 
 		fullscreen_old_scroll: 0,
 		
-		old_footer_button_offset: 0,
-		
 		enter_fullscreen_button: null,
 		exit_fullscreen_button: null,
 		
@@ -1351,8 +1348,6 @@ class Wilson
 				
 				this.parent.canvas.parentNode.appendChild(this.enter_fullscreen_button);
 				
-				Page.Load.HoverEvents.add(this.enter_fullscreen_button);
-				
 				this.enter_fullscreen_button.addEventListener("click", () =>
 				{
 					this.switch_fullscreen();
@@ -1363,15 +1358,12 @@ class Wilson
 			
 			let on_resize_bound = this.on_resize.bind(this);
 			window.addEventListener("resize", on_resize_bound);
-			Page.temporary_handlers["resize"].push(on_resize_bound);
 			
 			let on_scroll_bound = this.on_scroll.bind(this);
 			window.addEventListener("scroll", on_scroll_bound);
-			Page.temporary_handlers["scroll"].push(on_scroll_bound);
 			
 			let on_keypress_bound = this.on_keypress.bind(this);
 			document.documentElement.addEventListener("keydown", on_keypress_bound);
-			Page.temporary_handlers["keydown"].push(on_keypress_bound);
 		},
 
 
@@ -1424,21 +1416,11 @@ class Wilson
 						
 						document.body.appendChild(this.exit_fullscreen_button);
 						
-						Page.Load.HoverEvents.add(this.exit_fullscreen_button);
-						
 						this.exit_fullscreen_button.addEventListener("click", () =>
 						{
 							this.switch_fullscreen();
 						});
 					}
-					
-					
-					
-					this.old_footer_button_offset = Page.Footer.Floating.current_offset;
-					
-					Page.Footer.Floating.current_offset = -43.75;
-					
-					document.querySelector("#show-footer-menu-button").style.bottom = "-43.75px";
 					
 					
 					
@@ -1472,8 +1454,6 @@ class Wilson
 							catch(ex) {}
 							
 							this.parent.draggables.on_resize();
-							
-							Page.Load.AOS.on_resize();
 						}
 						
 						window.scroll(0, 0);
@@ -1491,19 +1471,16 @@ class Wilson
 							catch(ex) {}
 							
 							this.parent.draggables.on_resize();
-							
-							Page.Load.AOS.on_resize();
 						}
 						
 						
 						
 						//One of these is for vertical aspect ratios and the other is for horizontal ones, but we add both in case the user resizes the window while in applet is fullscreen.
 						
-						this.parent.canvas.parentNode.parentNode.insertAdjacentHTML("beforebegin", `<div class="wilson-letterboxed-canvas-background no-floating-footer"></div>`);
-						this.parent.canvas.parentNode.parentNode.insertAdjacentHTML("afterend", `<div class="wilson-letterboxed-canvas-background no-floating-footer"></div>`);
+						this.parent.canvas.parentNode.parentNode.insertAdjacentHTML("beforebegin", `<div class="wilson-letterboxed-canvas-background"></div>`);
+						this.parent.canvas.parentNode.parentNode.insertAdjacentHTML("afterend", `<div class="wilson-letterboxed-canvas-background"></div>`);
 						
 						this.parent.canvas.parentNode.parentNode.classList.add("wilson-black-background");
-						this.parent.canvas.parentNode.parentNode.classList.add("no-floating-footer");
 						
 						
 						
@@ -1594,8 +1571,6 @@ class Wilson
 						
 						this.parent.canvas.parentNode.appendChild(this.enter_fullscreen_button);
 						
-						Page.Load.HoverEvents.add(this.enter_fullscreen_button);
-						
 						this.enter_fullscreen_button.addEventListener("click", () =>
 						{
 							this.switch_fullscreen();
@@ -1604,11 +1579,7 @@ class Wilson
 					
 					
 					
-					Page.Footer.Floating.current_offset = this.old_footer_button_offset;
-					
-					document.querySelector("#show-footer-menu-button").style.bottom = this.old_footer_button_offset + "px";
-					
-					
+					this.fullscreen_components_container.classList.remove("wilson-true-fullscreen-canvas");
 					
 					for (let i = 0; i < this.canvases_to_resize.length; i++)
 					{
@@ -1635,10 +1606,6 @@ class Wilson
 						catch(ex) {}
 						
 						this.parent.draggables.on_resize();
-						
-						
-						
-						Page.Load.AOS.on_resize();
 					}
 					
 					
@@ -2056,14 +2023,6 @@ class Wilson
 				{
 					this.pinch_callback(center_x, center_y, touch_distance - last_touch_distance, e);
 				}
-				
-				
-				
-				this.last_row_1 = row_1;
-				this.last_col_1 = col_1;
-				
-				this.last_row_2 = row_2;
-				this.last_col_2 = col_2;
 			}
 			
 			
@@ -2096,7 +2055,44 @@ class Wilson
 			
 			
 			
-			this.touchmove_callback(...world_coordinates, world_coordinates[0] - last_world_coordinates[0], world_coordinates[1] - last_world_coordinates[1], e);
+			if (e.touches.length === 1)
+			{
+				this.touchmove_callback(...world_coordinates, world_coordinates[0] - last_world_coordinates[0], world_coordinates[1] - last_world_coordinates[1], e);
+			}
+			
+			else
+			{
+				//Only fire a touchmove event if both touches are moving in a similar direction.
+				let x_delta_1 = world_coordinates[0] - last_world_coordinates[0];
+				let y_delta_1 = world_coordinates[1] - last_world_coordinates[1];
+				
+				
+				
+				let mouse_x_2 = e.touches[1].clientX;
+				let mouse_y_2 = e.touches[1].clientY;
+				
+				let row_2 = (mouse_y_2 - rect.top - this.parent.top_border - this.parent.top_padding) * this.parent.canvas_height / this.parent.draggables.restricted_height;
+			let col_2 = (mouse_x_2 - rect.left - this.parent.left_border - this.parent.left_padding) * this.parent.canvas_width / this.parent.draggables.restricted_width;
+				
+				let world_coordinates_2 = this.parent.utils.interpolate.canvas_to_world(row_2, col_2);
+				
+				let last_world_coordinates_2 = this.parent.utils.interpolate.canvas_to_world(this.last_row_2, this.last_col_2);
+				
+				let x_delta_2 = world_coordinates_2[0] - last_world_coordinates_2[0];
+				let y_delta_2 = world_coordinates_2[1] - last_world_coordinates_2[1];
+				
+				
+				
+				if (Math.abs(x_delta_1 - x_delta_2) / this.parent.world_width < .005 && Math.abs(y_delta_1 - y_delta_2) / this.parent.world_height < .005)
+				{
+					this.touchmove_callback((world_coordinates[0] + world_coordinates_2[0]) / 2, (world_coordinates[1] + world_coordinates_2[1]) / 2, (x_delta_1 + x_delta_2) / 2, (y_delta_1 + y_delta_2) / 2, e);
+				}
+				
+				
+				
+				this.last_row_2 = row_2;
+				this.last_col_2 = col_2;
+			}
 			
 			
 			
@@ -2182,8 +2178,6 @@ class Wilson
 		{
 			this.render.draw_frame();
 		}
-		
-		
 		
 		this.canvas.toBlob((blob) => 
 		{
