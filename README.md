@@ -33,4 +33,4 @@ To render a frame to the canvas, use a 1-dimensional `Uint8ClampedArray` filled 
     wilson_canvas.render.draw_frame(image_data);
 ```
 
-For a step-by-step guide to handling interactivity, fullscreen, draggables, and everything else Wilson can do, have a look at the [website](https://cruzgodar.com/projects/wilson/wilson.html).
+For a step-by-step guide to handling interactivity, fullscreen, draggables, and everything else Wilson can do, have a look at the [website](https://cruzgodar.com/projects/wilson/).
