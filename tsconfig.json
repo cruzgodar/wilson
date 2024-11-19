@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"target": "ES2018",                                  
+		"module": "ESNext",
+		"lib": ["ES2021.String", "dom"],
+		"baseUrl": ".",
+		"rootDir": "./",
+		"esModuleInterop": false,
+		"forceConsistentCasingInFileNames": true,
+		"skipLibCheck": true,
+		"strict": true,
+		"noImplicitAny": true,
+		"strictNullChecks": true,
+		"paths":
+		{
+			"/*": ["*"]
+		},
+	}
+}

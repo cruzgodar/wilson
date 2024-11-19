@@ -1,0 +1,184 @@
+/*
+	Wilson arranges its canvases in a hierarchy of a few containers:
+	- Blank div (the fullscreen compoents location)
+		- Fullscreen container
+			- Applet container
+				- Canvas container
+					- Canvas
+					- Fullscreen button
+				- Draggables container
+
+*/
+
+.WILSON_canvas-container
+{
+	position: relative;
+	-webkit-user-select: none;
+	user-select: none;
+	width: fit-content;
+}
+
+.WILSON_canvas-container.WILSON_fullscreen
+{
+	width: 100%;
+}
+
+.WILSON_applet-container
+{
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+.WILSON_center-content
+{
+	display: flex;
+	justify-content: center;
+	margin: 0 auto;
+}
+
+
+
+.WILSON_draggables-container
+{
+	position: absolute;
+	
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+.WILSON_draggable
+{
+	position: absolute;
+	
+	width: 20px;
+	height: 20px;
+	
+	left: 0;
+	top: 0;
+	
+	background-color: rgb(255, 255, 255);
+	border: 2px solid rgb(64, 64, 64);
+	border-radius: 50%;
+	
+	touch-action: none;
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	user-select: none;
+	
+	cursor: pointer;
+	
+	transition: width .125s ease-in-out,
+		height .125s ease-in-out,
+		top .125s ease-in-out,
+		left .125s ease-in-out;
+}
+
+.WILSON_draggable:active
+{
+	width: 16px;
+	height: 16px;
+	
+	left: 2px;
+	top: 2px;
+}
+
+
+
+.WILSON_fullscreen-container.WILSON_fullscreen
+{
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+	
+	z-index: 100 !important;
+}
+
+.WILSON_fullscreen-container.WILSON_fullscreen .WILSON_applet-container
+{
+	margin-top: 0 !important;
+	margin-bottom: 0 !important;
+}
+
+.WILSON_fullscreen-container.WILSON_fullscreen:not(.WILSON_true-fullscreen) .WILSON_canvas-container
+{
+	margin-left: calc(50vw - 50vmin) !important;
+}
+
+.WILSON_true-fullscreen
+{
+	width: 100vw !important;
+	height: 100% !important;
+	
+	border: none !important;
+	border-radius: 0 !important;
+	padding: 0 !important;
+}
+
+.WILSON_letterboxed-fullscreen
+{
+	width: 100vmin !important;
+	height: 100vmin !important;
+	
+	border: none !important;
+	border-radius: 0 !important;
+	padding: 0 !important;
+}
+
+.WILSON_letterboxed-background
+{
+	width: 100vw;
+	height: calc((100vh - 100vmin) / 2);
+	
+	background-color: rgb(0, 0, 0);
+}
+
+.WILSON_black-background
+{
+	width: 100vw !important;
+	height: 100% !important;
+	
+	background-color: rgb(0, 0, 0) !important;
+}
+
+
+
+.WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button
+{
+	width: 15px;
+	height: 15px;
+	
+	background: var(--background);
+	border: 2px solid var(--normal-contrast);
+	border-radius: 25%;
+	padding: 5px;
+	
+	cursor: pointer;
+	outline: none;
+}
+
+.WILSON_enter-fullscreen-button
+{
+	position: absolute;
+	
+	right: 10px;
+	top: 10px;
+	
+	z-index: 50;
+}
+
+.WILSON_exit-fullscreen-button
+{
+	position: fixed;
+	
+	right: 10px;
+	top: 10px;
+	
+	z-index: 100;
+}
+
+.WILSON_enter-fullscreen-button img, .WILSON_exit-fullscreen-button img
+{
+	width: 100%;
+	height: 100%;
+	filter: invert(calc(.25 + var(--theme) * .5657));
+}
