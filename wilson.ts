@@ -112,12 +112,6 @@ type DraggableOptions = {
 	callbacks?: DraggableCallBacks,
 };
 
-const defaultDraggableOptions: DraggableOptions = {
-	radius: 10,
-	static: false,
-	callbacks: {},
-};
-
 type FullscreenOptions = {
 	letterboxed?: boolean,
 	switchFullscreenCallback?: () => void,
@@ -130,12 +124,6 @@ type FullscreenOptions = {
 		useFullscreenButton: false,
 	}
 );
-
-const defaultFullscreenOptions: FullscreenOptions = {
-	letterboxed: false,
-	switchFullscreenCallback: () => {},
-	useFullscreenButton: false,
-};
 
 
 
@@ -179,8 +167,30 @@ export default class WilsonCPU
 	#useP3ColorSpace: boolean;
 
 	#callbacks: InteractionCallbacks;
-	#draggableOptions: DraggableOptions;
-	#fullscreenOptions: FullscreenOptions;
+
+
+
+	#draggablesRadius: number;
+	#draggablesStatic: boolean;
+	#draggableCallbacks: DraggableCallBacks;
+
+	#draggablesContainerWidth: number;
+	#draggablesContainerHeight: number;
+	#draggablesContainerRestrictedWidth: number;
+	#draggablesContainerRestrictedHeight: number;
+
+
+	#fullscreenLetterboxed: boolean;
+	#switchFullscreenCallback: () => void;
+	#fullscreenUseFullscreenButton: boolean;
+	#fullscreenEnterFullscreenButtonIconPath?: string;
+	#fullscreenExitFullscreenButtonIconPath?: string;
+
+	#appletContainer: HTMLDivElement;
+	#canvasContainer: HTMLDivElement;
+	#draggablesContainer: HTMLDivElement;
+	#fullscreenContainer: HTMLDivElement;
+	#fullscreenContainerLocation: HTMLDivElement;
 
 	constructor(canvas: HTMLCanvasElement, options: WilsonCPUOptions)
 	{
@@ -204,8 +214,20 @@ export default class WilsonCPU
 		this.#useP3ColorSpace = options.useP3ColorSpace ?? true;
 
 		this.#callbacks = { ...defaultInteractionCallbacks, ...options.callbacks };
-		this.#draggableOptions = { ...defaultDraggableOptions, ...options.draggableOptions };
-		this.#fullscreenOptions = { ...defaultFullscreenOptions, ...options.fullscreenOptions };
+		
+		this.#draggablesRadius = options.draggableOptions?.radius ?? 10;
+		this.#draggablesStatic = options.draggableOptions?.static ?? false;
+		this.#draggableCallbacks = { ...defaultDraggableCallbacks, ...options.draggableOptions?.callbacks };
+
+		this.#fullscreenLetterboxed = options.fullscreenOptions?.letterboxed ?? false;
+		this.#switchFullscreenCallback = options.fullscreenOptions?.switchFullscreenCallback ?? (() => {});
+		this.#fullscreenUseFullscreenButton = options.fullscreenOptions?.useFullscreenButton ?? false;
+
+		if (options.fullscreenOptions?.useFullscreenButton)
+		{
+			this.#fullscreenEnterFullscreenButtonIconPath = options.fullscreenOptions?.enterFullscreenButtonIconPath;
+			this.#fullscreenExitFullscreenButtonIconPath = options.fullscreenOptions?.exitFullscreenButtonIconPath;
+		}
 		
 
 
@@ -241,6 +263,81 @@ export default class WilsonCPU
 
 	#initCanvases(options: WilsonCPUOptions)
 	{
-		
+		this.#appletContainer = document.createElement("div");
+		this.#appletContainer.classList.add("WILSON_applet-container");
+		this.#appletContainer.classList.add("WILSON_center-content");
+		this.canvas.parentElement && this.canvas.parentElement.insertBefore(
+			this.#appletContainer,
+			this.canvas
+		);
+
+		this.#canvasContainer = document.createElement("div");
+		this.#canvasContainer.classList.add("WILSON_canvas-container");
+		this.#appletContainer.appendChild(this.#canvasContainer);
+		this.#canvasContainer.appendChild(this.canvas);
+
+
+
+		this.#draggablesContainer = document.createElement("div");
+		this.#draggablesContainer.classList.add("WILSON_draggables-container");
+		this.#appletContainer.appendChild(this.#draggablesContainer);
+
+
+
+		const computedStyle = getComputedStyle(this.canvas);
+
+		const width = this.canvas.clientWidth
+			- parseFloat(computedStyle.paddingLeft)
+			- parseFloat(computedStyle.paddingRight);
+
+		const height = this.canvas.clientHeight
+			- parseFloat(computedStyle.paddingTop)
+			- parseFloat(computedStyle.paddingBottom);
+
+		this.#draggablesContainerWidth = width + 2 * this.#draggablesRadius;
+		this.#draggablesContainerHeight = height + 2 * this.#draggablesRadius;
+
+		this.#draggablesContainer.style.width = `${this.#draggablesContainerWidth}px`;
+		this.#draggablesContainer.style.height = `${this.#draggablesContainerHeight}px`;
+
+		this.#draggablesContainerRestrictedWidth = width;
+		this.#draggablesContainerRestrictedHeight = height;
+
+		this.#draggablesContainer.style.marginTop =
+			(parseFloat(computedStyle.borderTopWidth)
+			+ parseFloat(computedStyle.paddingTop)
+			- this.#draggablesRadius) + "px";
+
+
+
+		this.#fullscreenContainer = document.createElement("div");
+		this.#fullscreenContainer.classList.add("WILSON_fullscreen-container");
+
+		this.#appletContainer.parentElement && this.#appletContainer.parentElement.insertBefore(
+			this.#fullscreenContainer,
+			this.#appletContainer
+		);
+		this.#fullscreenContainer.appendChild(this.#appletContainer);
+
+
+
+		this.#fullscreenContainerLocation = document.createElement("div");
+		this.#fullscreenContainer.parentElement &&
+			this.#fullscreenContainer.parentElement.insertBefore(
+				this.#fullscreenContainerLocation,
+				this.#fullscreenContainer
+			);
+		this.#fullscreenContainerLocation.appendChild(this.#fullscreenContainer);
+
+
+
+		for (const canvas of [this.canvas, this.#draggablesContainer])
+		{
+			canvas.addEventListener("gesturestart", e => e.preventDefault());
+			canvas.addEventListener("gesturechange", e => e.preventDefault());
+			canvas.addEventListener("gestureend", e => e.preventDefault());
+
+			canvas.addEventListener("click", e => e.preventDefault());
+		}
 	}
 }
