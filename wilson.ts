@@ -183,7 +183,9 @@ class Wilson
 	#draggablesContainerRestrictedWidth: number;
 	#draggablesContainerRestrictedHeight: number;
 
-
+	
+	currentlyFullscreen: boolean = false;
+	#fullscreenOldScroll: number = 0;
 	#fullscreenLetterboxed: boolean;
 	#fullscreenAutoResizeCanvas: boolean;
 	#switchFullscreenCallback: () => void;
@@ -196,6 +198,11 @@ class Wilson
 	#draggablesContainer: HTMLDivElement;
 	#fullscreenContainer: HTMLDivElement;
 	#fullscreenContainerLocation: HTMLDivElement;
+
+	#metaThemeColorElement: HTMLMetaElement | null = document.querySelector("meta[name='theme-color']");
+	#oldMetaThemeColor: string | null = null;
+
+
 
 	constructor(canvas: HTMLCanvasElement, options: WilsonOptions)
 	{
@@ -223,7 +230,7 @@ class Wilson
 		this.#draggablesStatic = options.draggableOptions?.static ?? false;
 		this.#draggableCallbacks = { ...defaultDraggableCallbacks, ...options.draggableOptions?.callbacks };
 
-		this.#fullscreenLetterboxed = options.fullscreenOptions?.letterboxed ?? false;
+		this.#fullscreenLetterboxed = options.fullscreenOptions?.letterboxed ?? true;
 		this.#fullscreenAutoResizeCanvas = options.fullscreenOptions?.autoResizeCanvas ?? true;
 		this.#switchFullscreenCallback = options.fullscreenOptions?.switchFullscreenCallback ?? (() => {});
 		this.#fullscreenUseButton = options.fullscreenOptions?.useFullscreenButton ?? false;
@@ -401,23 +408,189 @@ class Wilson
 
 	#initFullscreen()
 	{
-		if (this.#fullscreenUseButton && this.#fullscreenEnterFullscreenButtonIconPath)
+		if (this.#fullscreenUseButton)
 		{
 			const enterFullscreenButton = document.createElement("div");
 
 			enterFullscreenButton.classList.add("WILSON_enter-fullscreen-button");
 
-			this.canvas.parentElement && this.canvas.parentElement.appendChild(enterFullscreenButton);
+			this.#canvasContainer.appendChild(enterFullscreenButton);
 
 			const img = document.createElement("img");
-			img.src = this.#fullscreenEnterFullscreenButtonIconPath;
+			img.src = this.#fullscreenEnterFullscreenButtonIconPath as string;
 			enterFullscreenButton.appendChild(img);
 
 			enterFullscreenButton.addEventListener("click", () =>
 			{
 				this.enterFullscreen();
 			});
+
+
+
+			const exitFullscreenButton = document.createElement("div");
+
+			exitFullscreenButton.classList.add("WILSON_exit-fullscreen-button");
+
+			this.#canvasContainer.appendChild(exitFullscreenButton);
+
+			const img2 = document.createElement("img");
+			img2.src = this.#fullscreenExitFullscreenButtonIconPath as string;
+			exitFullscreenButton.appendChild(img2);
+
+			exitFullscreenButton.addEventListener("click", () =>
+			{
+				this.exitFullscreen();
+			});
 		}
+	}
+
+
+
+	#preventGestures(e: Event)
+	{
+		e.preventDefault();
+	}
+
+	enterFullscreen()
+	{
+		this.currentlyFullscreen = true;
+
+		this.#fullscreenOldScroll = window.scrollY;
+
+		if (this.#metaThemeColorElement)
+		{
+			this.#oldMetaThemeColor = this.#metaThemeColorElement.getAttribute("content");
+		}
+
+
+
+		document.body.appendChild(this.#fullscreenContainer);
+
+		this.canvas.classList.add("WILSON_fullscreen");
+		this.#canvasContainer.classList.add("WILSON_fullscreen");
+		this.#fullscreenContainer.classList.add("WILSON_fullscreen");
+
+
+
+		document.documentElement.style.overflowY = "hidden";
+		document.body.style.overflowY = "hidden";
+
+		document.body.style.width = "100vw";
+		document.body.style.height = "100%";
+
+		document.documentElement.style.userSelect = "none";
+
+		document.addEventListener("gesturestart", this.#preventGestures);
+		document.addEventListener("gesturechange", this.#preventGestures);
+		document.addEventListener("gestureend", this.#preventGestures);
+
+		if (this.#metaThemeColorElement)
+		{
+			this.#metaThemeColorElement.setAttribute("content", "#000000");
+		}
+
+
+
+		if (this.#fullscreenLetterboxed)
+		{
+			for (const canvas of [this.canvas, this.#draggablesContainer])
+			{
+				canvas.classList.add("WILSON_letterboxed-fullscreen");
+			}
+
+			// This covers both vertical aspect ratios and horizontal ones;
+			// we add both in case the user resizes the window while in applet is fullscreen.
+
+			this.#appletContainer.insertAdjacentHTML(
+				"beforebegin",
+				/* html */ `<div class='WILSON_letterboxed-background'></div>`
+			);
+
+			this.#appletContainer.insertAdjacentHTML(
+				"afterend",
+				/* html */ `<div class='WILSON_letterboxed-background'></div>`
+			);
+
+			this.#appletContainer.classList.add("WILSON_black-background");
+		}
+
+		else
+		{
+			this.#fullscreenContainer.classList.add("WILSON_true-fullscreen");
+
+			for (const canvas of [this.canvas, this.#draggablesContainer])
+			{
+				canvas.classList.add("WILSON_true-fullscreen");
+
+				// We do this to accomodate weirdly-set-up applets like the ones with draggable inputs, since they rely on their canvas container to keep the content below flowing properly.
+				this.#appletContainer.classList.add("WILSON_black-background");
+
+				this.#switchFullscreenCallback();
+				this.#onResize();
+			}
+
+			window.scroll(0, 0);
+		}
+
+		this.#switchFullscreenCallback();
+		this.#onResize();	
+	}
+
+	exitFullscreen()
+	{
+		this.currentlyFullscreen = false;
+
+		if (this.#metaThemeColorElement && this.#oldMetaThemeColor)
+		{
+			this.#metaThemeColorElement.setAttribute("content", this.#oldMetaThemeColor);
+		}
+
+		this.#fullscreenContainerLocation.appendChild(this.#fullscreenContainer);
+
+		this.canvas.classList.remove("WILSON_fullscreen");
+		this.#canvasContainer.classList.remove("WILSON_fullscreen");
+		this.#fullscreenContainer.classList.remove("WILSON_fullscreen");
+
+
+
+		document.documentElement.style.overflowY = "scroll";
+		document.body.style.overflowY = "visible";
+
+		document.body.style.width = "";
+		document.body.style.height = "";
+
+		document.documentElement.style.userSelect = "auto";
+
+		document.removeEventListener("gesturestart", this.#preventGestures);
+		document.removeEventListener("gesturechange", this.#preventGestures);
+		document.removeEventListener("gestureend", this.#preventGestures);
+
+
+
+		this.#fullscreenContainer.classList.remove("WILSON_true-fullscreen");
+
+		for (const canvas of [this.canvas, this.#draggablesContainer])
+		{
+			canvas.classList.remove("WILSON_true-fullscreen");
+			canvas.classList.remove("WILSON_letterboxed-fullscreen");
+
+			this.#appletContainer.classList.remove("WILSON_black-background");
+
+			const elements = document.querySelectorAll(".WILSON_letterboxed-background");
+			elements.forEach(element => element.remove());
+
+			this.#switchFullscreenCallback();
+		}
+
+		this.#onResize();
+		
+		window.scrollTo(0, this.#fullscreenOldScroll);
+		setTimeout(() => window.scrollTo(0, this.#fullscreenOldScroll), 10);
+	}
+
+	#onResize()
+	{
+
 	}
 
 

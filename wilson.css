@@ -89,23 +89,23 @@
 
 .WILSON_fullscreen-container.WILSON_fullscreen
 {
-	position: fixed !important;
-	top: 0 !important;
-	left: 0 !important;
+	position: fixed;
+	top: 0;
+	left: 0;
 	font-size: 0;
 	
-	z-index: 100 !important;
+	z-index: 1000;
 }
 
 .WILSON_fullscreen-container.WILSON_fullscreen .WILSON_applet-container
 {
-	margin-top: 0 !important;
-	margin-bottom: 0 !important;
+	margin-top: 0;
+	margin-bottom: 0;
 }
 
 .WILSON_fullscreen-container.WILSON_fullscreen:not(.WILSON_true-fullscreen) .WILSON_canvas-container
 {
-	margin-left: calc(50vw - 50vmin) !important;
+	margin-left: calc(50vw - 50vmin);
 }
 
 .WILSON_true-fullscreen
@@ -138,10 +138,10 @@
 
 .WILSON_black-background
 {
-	width: 100vw !important;
-	height: 100% !important;
+	width: 100vw;
+	height: 100%;
 	
-	background-color: rgb(0, 0, 0) !important;
+	background-color: rgb(0, 0, 0);
 }
 
 
@@ -177,7 +177,19 @@
 	right: 10px;
 	top: 10px;
 	
-	z-index: 100;
+	z-index: 1000;
+
+	display: none;
+}
+
+.WILSON_fullscreen-container.WILSON_fullscreen .WILSON_enter-fullscreen-button
+{
+	display: none;
+}
+
+.WILSON_fullscreen-container.WILSON_fullscreen .WILSON_exit-fullscreen-button
+{
+	display: block;
 }
 
 .WILSON_enter-fullscreen-button img, .WILSON_exit-fullscreen-button img
