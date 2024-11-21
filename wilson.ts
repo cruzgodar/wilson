@@ -127,7 +127,7 @@ type FullscreenOptions = {
 
 
 
-export type WilsonCPUOptions = {
+export type WilsonOptions = {
 	canvasWidth: number,
 	canvasHeight: number,
 
@@ -158,8 +158,8 @@ class Wilson
 {
 	canvas: HTMLCanvasElement;
 
-	#canvasWidth: number;
-	#canvasHeight: number;
+	canvasWidth: number;
+	canvasHeight: number;
 
 	#worldWidth: number;
 	#worldHeight: number;
@@ -194,15 +194,15 @@ class Wilson
 	#fullscreenContainer: HTMLDivElement;
 	#fullscreenContainerLocation: HTMLDivElement;
 
-	constructor(canvas: HTMLCanvasElement, options: WilsonCPUOptions)
+	constructor(canvas: HTMLCanvasElement, options: WilsonOptions)
 	{
 		this.canvas = canvas;
 
-		this.#canvasWidth = options.canvasWidth;
-		this.#canvasHeight = options.canvasHeight;
+		this.canvasWidth = options.canvasWidth;
+		this.canvasHeight = options.canvasHeight;
 
-		this.canvas.setAttribute("width", this.#canvasWidth.toString());
-		this.canvas.setAttribute("height", this.#canvasHeight.toString());
+		this.canvas.setAttribute("width", this.canvasWidth.toString());
+		this.canvas.setAttribute("height", this.canvasHeight.toString());
 
 		
 
@@ -329,12 +329,12 @@ class Wilson
 
 
 		this.#initInteraction();
-		// this.#initFullscreen();
+		this.#initFullscreen();
 
 
 
 		console.log(
-			`[Wilson] Initialized a ${this.#canvasWidth}x${this.#canvasHeight} canvas`
+			`[Wilson] Initialized a ${this.canvasWidth}x${this.canvasHeight} canvas`
 			+ (this.canvas.id ? ` with ID ${this.canvas.id}` : "")
 		);
 	}
@@ -420,9 +420,9 @@ class Wilson
 	interpolateCanvasToWorld([row, col]: [number, number])
 	{
 		return [
-			(col / this.#canvasWidth - .5) * this.#worldWidth
+			(col / this.canvasWidth - .5) * this.#worldWidth
 				+ this.#worldCenterX,
-			(.5 - row / this.#canvasHeight) * this.#worldHeight
+			(.5 - row / this.canvasHeight) * this.#worldHeight
 				+ this.#worldCenterY];
 	}
 
@@ -430,9 +430,36 @@ class Wilson
 	{
 		return [
 			Math.floor((.5 - (y - this.#worldCenterY) / this.#worldHeight)
-				* this.#canvasHeight),
+				* this.canvasHeight),
 			Math.floor(((x - this.#worldCenterX) / this.#worldWidth + .5)
-				* this.#canvasWidth)
+				* this.canvasWidth)
 		];
+	}
+}
+
+
+
+export class WilsonCPU extends Wilson
+{
+	ctx: CanvasRenderingContext2D;
+
+	constructor(canvas: HTMLCanvasElement, options: WilsonOptions)
+	{
+		super(canvas, options);
+
+		this.ctx = canvas.getContext("2d")!;
+	}
+
+	drawFrame(image: Uint8ClampedArray)
+	{
+		this.ctx.putImageData(
+			new ImageData(
+				image,
+				this.canvasWidth,
+				this.canvasHeight
+			),
+			0,
+			0
+		);
 	}
 }

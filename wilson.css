@@ -16,6 +16,7 @@
 	-webkit-user-select: none;
 	user-select: none;
 	width: fit-content;
+	font-size: 0;
 }
 
 .WILSON_canvas-container.WILSON_fullscreen
@@ -27,6 +28,7 @@
 {
 	-webkit-user-select: none;
 	user-select: none;
+	font-size: 0;
 }
 
 .WILSON_center-content
@@ -44,6 +46,7 @@
 	
 	-webkit-user-select: none;
 	user-select: none;
+	font-size: 0;
 }
 
 .WILSON_draggable
@@ -89,6 +92,7 @@
 	position: fixed !important;
 	top: 0 !important;
 	left: 0 !important;
+	font-size: 0;
 	
 	z-index: 100 !important;
 }
@@ -147,15 +151,13 @@
 	width: 15px;
 	height: 15px;
 	
-	background: var(--background);
-	border: 2px solid var(--normal-contrast);
+	background: rgb(255, 255, 255);
+	border: 2px solid rgb(64, 64, 64);
 	border-radius: 25%;
 	padding: 5px;
 	
 	cursor: pointer;
 	outline: none;
-
-	transition: transform .125s ease-in-out;
 }
 
 .WILSON_enter-fullscreen-button
@@ -182,5 +184,4 @@
 {
 	width: 100%;
 	height: 100%;
-	filter: invert(calc(.25 + var(--theme) * .5657));
 }
