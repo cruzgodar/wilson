@@ -1,11 +1,11 @@
 type ShaderProgramId = string;
 
 type InteractionCallbacks = {
-	mousedown?: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
+	mousedown: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
 
-	mouseup?: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
+	mouseup: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
 
-	mousemove?: ({
+	mousemove: ({
 		x,
 		y,
 		xDelta,
@@ -19,7 +19,7 @@ type InteractionCallbacks = {
 		event: MouseEvent
 	}) => void,
 
-	mousedrag?: ({
+	mousedrag: ({
 		x,
 		y,
 		xDelta,
@@ -33,11 +33,11 @@ type InteractionCallbacks = {
 		event: MouseEvent
 	}) => void,
 
-	touchstart?: ({ x, y, event }: { x: number, y: number, event: TouchEvent }) => void,
+	touchstart: ({ x, y, event }: { x: number, y: number, event: TouchEvent }) => void,
 
-	touchend?: ({ x, y, event }: { x: number, y: number, event: TouchEvent }) => void,
+	touchend: ({ x, y, event }: { x: number, y: number, event: TouchEvent }) => void,
 
-	touchmove?: ({
+	touchmove: ({
 		x,
 		y,
 		xDelta,
@@ -51,7 +51,7 @@ type InteractionCallbacks = {
 		event: TouchEvent
 	}) => void,
 
-	pinch?: ({
+	pinch: ({
 		centerX,
 		centerY,
 		spreadDelta,
@@ -63,7 +63,7 @@ type InteractionCallbacks = {
 		event: TouchEvent
 	}) => void,
 
-	wheel?: ({
+	wheel: ({
 		x,
 		y,
 		scrollDelta,
@@ -148,14 +148,16 @@ export type WilsonCPUOptions = {
 
 	#shaderPrograms: Record<ShaderProgramId, WebGLProgram> = {};
 	#uniforms: Record<ShaderProgramId, Record<string, WebGLUniformLocation>> = {};
+
+
+
+	ctx: CanvasRenderingContext2D;
 */
 
-export default class WilsonCPU
+class Wilson
 {
 	canvas: HTMLCanvasElement;
 
-	ctx: CanvasRenderingContext2D;
-	
 	#canvasWidth: number;
 	#canvasHeight: number;
 
@@ -182,7 +184,7 @@ export default class WilsonCPU
 
 	#fullscreenLetterboxed: boolean;
 	#switchFullscreenCallback: () => void;
-	#fullscreenUseFullscreenButton: boolean;
+	#fullscreenUseButton: boolean;
 	#fullscreenEnterFullscreenButtonIconPath?: string;
 	#fullscreenExitFullscreenButtonIconPath?: string;
 
@@ -202,8 +204,6 @@ export default class WilsonCPU
 		this.canvas.setAttribute("width", this.#canvasWidth.toString());
 		this.canvas.setAttribute("height", this.#canvasHeight.toString());
 
-		const computedStyle = window.getComputedStyle(this.canvas);
-
 		
 
 		this.#worldWidth = options.worldWidth ?? 2;
@@ -221,7 +221,7 @@ export default class WilsonCPU
 
 		this.#fullscreenLetterboxed = options.fullscreenOptions?.letterboxed ?? false;
 		this.#switchFullscreenCallback = options.fullscreenOptions?.switchFullscreenCallback ?? (() => {});
-		this.#fullscreenUseFullscreenButton = options.fullscreenOptions?.useFullscreenButton ?? false;
+		this.#fullscreenUseButton = options.fullscreenOptions?.useFullscreenButton ?? false;
 
 		if (options.fullscreenOptions?.useFullscreenButton)
 		{
@@ -231,38 +231,23 @@ export default class WilsonCPU
 		
 
 
-		const colorSpace = (this.#useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
-			? "display-p3"
-			: "srgb";
+		// const colorSpace = (this.#useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
+		// 	? "display-p3"
+		// 	: "srgb";
 
-		const ctx = this.canvas.getContext("2d", { colorSpace });
+		// const ctx = this.canvas.getContext("2d", { colorSpace });
 
-		if (!ctx)
-		{
-			throw new Error(`[Wilson] Could not get 2d context for canvas: ${ctx}`);
-		}
+		// if (!ctx)
+		// {
+		// 	throw new Error(`[Wilson] Could not get 2d context for canvas: ${ctx}`);
+		// }
 
-		this.ctx = ctx;
-
-
-
-		this.#initCanvases(options);
-		this.#initInteraction();
-		this.#initDraggables();
-		this.#initFullscreen();
+		// this.ctx = ctx;
 
 
 
-		console.log(
-			`[Wilson] Registered a ${this.#canvasWidth}x${this.#canvasHeight} canvas`
-			+ (this.canvas.id ? ` with ID ${this.canvas.id}` : "")
-		);
-	}
+		// Initialize the container structure.
 
-
-
-	#initCanvases(options: WilsonCPUOptions)
-	{
 		this.#appletContainer = document.createElement("div");
 		this.#appletContainer.classList.add("WILSON_applet-container");
 		this.#appletContainer.classList.add("WILSON_center-content");
@@ -339,5 +324,115 @@ export default class WilsonCPU
 
 			canvas.addEventListener("click", e => e.preventDefault());
 		}
+
+
+
+
+		this.#initInteraction();
+		// this.#initFullscreen();
+
+
+
+		console.log(
+			`[Wilson] Initialized a ${this.#canvasWidth}x${this.#canvasHeight} canvas`
+			+ (this.canvas.id ? ` with ID ${this.canvas.id}` : "")
+		);
+	}
+
+
+	
+	#currentlyDragging: boolean = false;
+	#lastWorldX: number = 0;
+	#lastWorldY: number = 0;
+	#onMousedown(e: MouseEvent) {}
+	#onMouseup(e: MouseEvent) {}
+	#onMousemove(e: MouseEvent) {}
+	#onTouchstart(e: TouchEvent) {}
+	#onTouchend(e: TouchEvent) {}
+	#onTouchmove(e: TouchEvent) {}
+	#onWheel(e: WheelEvent) {}
+
+	#initInteraction()
+	{
+		for (const canvas of [this.canvas, this.#draggablesContainer])
+		{
+			canvas.addEventListener("mousedown", (e) => this.#onMousedown(e as MouseEvent));
+			canvas.addEventListener("mouseup", (e) => this.#onMouseup(e as MouseEvent));
+			canvas.addEventListener("mousemove", (e) => this.#onMousemove(e as MouseEvent));
+			canvas.addEventListener("touchstart", (e) => this.#onTouchstart(e as TouchEvent));
+			canvas.addEventListener("touchend", (e) => this.#onTouchend(e as TouchEvent));
+			canvas.addEventListener("touchmove", (e) => this.#onTouchmove(e as TouchEvent));
+			canvas.addEventListener("wheel", (e) => this.#onWheel(e as WheelEvent));
+
+			canvas.addEventListener("mouseleave", (e) =>
+			{
+				if (this.#currentlyDragging)
+				{
+					this.#currentlyDragging = false;
+
+					if (this.#callbacks.mouseup)
+					{
+						this.#callbacks.mouseup({
+							x: this.#lastWorldX,
+							y: this.#lastWorldY,
+							event: e as MouseEvent
+						});
+					}
+				}
+			});
+		}
+	}
+
+
+
+	#draggableOnMousedown(e: MouseEvent) {}
+	#draggableOnMouseup(e: MouseEvent) {}
+	#draggableOnMousemove(e: MouseEvent) {}
+	#draggableOnTouchstart(e: TouchEvent) {}
+	#draggableOnTouchend(e: TouchEvent) {}
+	#draggableOnTouchmove(e: TouchEvent) {}
+
+
+
+	#initFullscreen()
+	{
+		if (this.#fullscreenUseButton && this.#fullscreenEnterFullscreenButtonIconPath)
+		{
+			const enterFullscreenButton = document.createElement("div");
+
+			enterFullscreenButton.classList.add("WILSON_enter-fullscreen-button");
+
+			this.canvas.parentElement && this.canvas.parentElement.appendChild(enterFullscreenButton);
+
+			const img = document.createElement("img");
+			img.src = this.#fullscreenEnterFullscreenButtonIconPath;
+			enterFullscreenButton.appendChild(img);
+
+			enterFullscreenButton.addEventListener("click", () =>
+			{
+				this.enterFullscreen();
+			});
+		}
+	}
+
+
+
+	interpolateCanvasToWorld([row, col]: [number, number])
+	{
+		return [
+			(col / this.#canvasWidth - .5) * this.#worldWidth
+				+ this.#worldCenterX,
+			(.5 - row / this.#canvasHeight) * this.#worldHeight
+				+ this.#worldCenterY];
+	}
+
+	interpolateWorldToCanvas([x, y]: [number, number])
+	{
+		return [
+			Math.floor((.5 - (y - this.#worldCenterY) / this.#worldHeight)
+				* this.#canvasHeight),
+			Math.floor(((x - this.#worldCenterX) / this.#worldWidth + .5)
+				* this.#canvasWidth)
+		];
 	}
 }

@@ -154,6 +154,8 @@
 	
 	cursor: pointer;
 	outline: none;
+
+	transition: transform .125s ease-in-out;
 }
 
 .WILSON_enter-fullscreen-button
