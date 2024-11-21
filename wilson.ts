@@ -114,6 +114,7 @@ type DraggableOptions = {
 
 type FullscreenOptions = {
 	letterboxed?: boolean,
+	autoResizeCanvas?: boolean,
 	switchFullscreenCallback?: () => void,
 } & (
 	{
@@ -160,6 +161,7 @@ class Wilson
 
 	canvasWidth: number;
 	canvasHeight: number;
+	canvasAspectRatio: number;
 
 	#worldWidth: number;
 	#worldHeight: number;
@@ -183,6 +185,7 @@ class Wilson
 
 
 	#fullscreenLetterboxed: boolean;
+	#fullscreenAutoResizeCanvas: boolean;
 	#switchFullscreenCallback: () => void;
 	#fullscreenUseButton: boolean;
 	#fullscreenEnterFullscreenButtonIconPath?: string;
@@ -200,6 +203,7 @@ class Wilson
 
 		this.canvasWidth = options.canvasWidth;
 		this.canvasHeight = options.canvasHeight;
+		this.canvasAspectRatio = this.canvasWidth / this.canvasHeight;
 
 		this.canvas.setAttribute("width", this.canvasWidth.toString());
 		this.canvas.setAttribute("height", this.canvasHeight.toString());
@@ -220,6 +224,7 @@ class Wilson
 		this.#draggableCallbacks = { ...defaultDraggableCallbacks, ...options.draggableOptions?.callbacks };
 
 		this.#fullscreenLetterboxed = options.fullscreenOptions?.letterboxed ?? false;
+		this.#fullscreenAutoResizeCanvas = options.fullscreenOptions?.autoResizeCanvas ?? true;
 		this.#switchFullscreenCallback = options.fullscreenOptions?.switchFullscreenCallback ?? (() => {});
 		this.#fullscreenUseButton = options.fullscreenOptions?.useFullscreenButton ?? false;
 
@@ -461,5 +466,38 @@ export class WilsonCPU extends Wilson
 			0,
 			0
 		);
+	}
+
+	resizeCanvas(width: number, height?: number)
+	{
+		this.canvasWidth = width;
+		this.canvasHeight = height ?? width * this.canvasAspectRatio;
+
+		this.canvas.setAttribute("width", this.canvasWidth.toString());
+		this.canvas.setAttribute("height", this.canvasHeight.toString());
+	}
+
+
+
+	downloadFrame(filename: string)
+	{
+		this.canvas.toBlob((blob) =>
+		{
+			if (!blob)
+			{
+				console.error(`[Wilson] Could not create a blob from a canvas with ID ${this.canvas.id}`);
+				return;
+			}
+
+			const link = document.createElement("a");
+
+			link.download = filename;
+
+			link.href = window.URL.createObjectURL(blob);
+
+			link.click();
+
+			link.remove();
+		});
 	}
 }

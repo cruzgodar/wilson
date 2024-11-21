@@ -13,4 +13,7 @@ body
 {
 	width: 75vmin;
 	height: calc(75vmin * 9 / 16);
+
+	border: 2px solid rgb(64, 64, 64);
+	border-radius: 16px;
 }

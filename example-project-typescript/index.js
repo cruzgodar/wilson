@@ -10,10 +10,10 @@ const wilson = new WilsonCPU(canvas, {
         exitFullscreenButtonIconPath: "/exit-fullscreen.png",
     },
 });
-wilson.ctx.fillStyle = "#ff0000";
-wilson.ctx.fillRect(0, 0, resolution, resolution);
+wilson.ctx.fillStyle = "#000000";
+wilson.ctx.fillRect(0, 0, wilson.canvasWidth, wilson.canvasHeight);
 setInterval(() => {
-    const [x, y] = wilson.interpolateWorldToCanvas([Math.random(), Math.random()]);
+    const [row, col] = wilson.interpolateWorldToCanvas([Math.random() * 2 - 1, Math.random() * 2 - 1]);
     wilson.ctx.fillStyle = "#00ff00";
-    wilson.ctx.fillRect(x, y, 10, 10);
+    wilson.ctx.fillRect(col, row, 1, 1);
 }, 1000 / 60);
