@@ -8,19 +8,20 @@ const wilson = new WilsonCPU(canvas, {
 	canvasHeight: resolution * 9 / 16,
 
 	fullscreenOptions: {
+		fillScreen: true,
 		useFullscreenButton: true,
 		enterFullscreenButtonIconPath: "/enter-fullscreen.png",
 		exitFullscreenButtonIconPath: "/exit-fullscreen.png",
+		switchFullscreenCallback: drawFrame
 	},
 });
 
-wilson.ctx.fillStyle = "#000000";
-wilson.ctx.fillRect(0, 0, wilson.canvasWidth, wilson.canvasHeight);
+drawFrame();
 
-setInterval(() =>
+function drawFrame()
 {
-	const [row, col] = wilson.interpolateWorldToCanvas([Math.random() * 2 - 1, Math.random() * 2 - 1]);
-
-	wilson.ctx.fillStyle = "#00ff00";
-	wilson.ctx.fillRect(col, row, 1, 1);
-}, 1000 / 60);
+	wilson.ctx.fillStyle = "#ff0000";
+	wilson.ctx.fillRect(0, 0, wilson.canvasWidth, wilson.canvasHeight);
+	wilson.ctx.fillStyle = "#000000";
+	wilson.ctx.fillRect(1, 1, wilson.canvasWidth - 2, wilson.canvasHeight - 2);
+}

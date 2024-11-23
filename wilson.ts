@@ -113,8 +113,7 @@ type DraggableOptions = {
 };
 
 type FullscreenOptions = {
-	letterboxed?: boolean,
-	autoResizeCanvas?: boolean,
+	fillScreen?: boolean,
 	switchFullscreenCallback?: () => void,
 } & (
 	{
@@ -178,16 +177,15 @@ class Wilson
 	#draggablesStatic: boolean;
 	#draggableCallbacks: DraggableCallBacks;
 
-	#draggablesContainerWidth: number;
-	#draggablesContainerHeight: number;
-	#draggablesContainerRestrictedWidth: number;
-	#draggablesContainerRestrictedHeight: number;
+	#draggablesContainerWidth: number = 0;
+	#draggablesContainerHeight: number = 0;
+	#draggablesContainerRestrictedWidth: number = 0;
+	#draggablesContainerRestrictedHeight: number = 0;
 
 	
 	currentlyFullscreen: boolean = false;
 	#fullscreenOldScroll: number = 0;
-	#fullscreenLetterboxed: boolean;
-	#fullscreenAutoResizeCanvas: boolean;
+	#fullscreenFillScreen: boolean;
 	#switchFullscreenCallback: () => void;
 	#fullscreenUseButton: boolean;
 	#fullscreenEnterFullscreenButtonIconPath?: string;
@@ -230,8 +228,7 @@ class Wilson
 		this.#draggablesStatic = options.draggableOptions?.static ?? false;
 		this.#draggableCallbacks = { ...defaultDraggableCallbacks, ...options.draggableOptions?.callbacks };
 
-		this.#fullscreenLetterboxed = options.fullscreenOptions?.letterboxed ?? true;
-		this.#fullscreenAutoResizeCanvas = options.fullscreenOptions?.autoResizeCanvas ?? true;
+		this.#fullscreenFillScreen = options.fullscreenOptions?.fillScreen ?? false;
 		this.#switchFullscreenCallback = options.fullscreenOptions?.switchFullscreenCallback ?? (() => {});
 		this.#fullscreenUseButton = options.fullscreenOptions?.useFullscreenButton ?? false;
 
@@ -279,31 +276,7 @@ class Wilson
 		this.#draggablesContainer.classList.add("WILSON_draggables-container");
 		this.#appletContainer.appendChild(this.#draggablesContainer);
 
-
-
-		const computedStyle = getComputedStyle(this.canvas);
-
-		const width = this.canvas.clientWidth
-			- parseFloat(computedStyle.paddingLeft)
-			- parseFloat(computedStyle.paddingRight);
-
-		const height = this.canvas.clientHeight
-			- parseFloat(computedStyle.paddingTop)
-			- parseFloat(computedStyle.paddingBottom);
-
-		this.#draggablesContainerWidth = width + 2 * this.#draggablesRadius;
-		this.#draggablesContainerHeight = height + 2 * this.#draggablesRadius;
-
-		this.#draggablesContainer.style.width = `${this.#draggablesContainerWidth}px`;
-		this.#draggablesContainer.style.height = `${this.#draggablesContainerHeight}px`;
-
-		this.#draggablesContainerRestrictedWidth = width;
-		this.#draggablesContainerRestrictedHeight = height;
-
-		this.#draggablesContainer.style.marginTop =
-			(parseFloat(computedStyle.borderTopWidth)
-			+ parseFloat(computedStyle.paddingTop)
-			- this.#draggablesRadius) + "px";
+		this.#updateDraggablesContainerSize();
 
 
 
@@ -349,6 +322,15 @@ class Wilson
 			`[Wilson] Initialized a ${this.canvasWidth}x${this.canvasHeight} canvas`
 			+ (this.canvas.id ? ` with ID ${this.canvas.id}` : "")
 		);
+	}
+
+	resizeCanvas(width: number, height?: number)
+	{
+		this.canvasWidth = width;
+		this.canvasHeight = height ?? width * this.canvasAspectRatio;
+
+		this.canvas.setAttribute("width", this.canvasWidth.toString());
+		this.canvas.setAttribute("height", this.canvasHeight.toString());
 	}
 
 
@@ -404,6 +386,33 @@ class Wilson
 	#draggableOnTouchend(e: TouchEvent) {}
 	#draggableOnTouchmove(e: TouchEvent) {}
 
+	#updateDraggablesContainerSize()
+	{
+		const computedStyle = getComputedStyle(this.canvas);
+
+		const width = this.canvas.clientWidth
+			- parseFloat(computedStyle.paddingLeft)
+			- parseFloat(computedStyle.paddingRight);
+
+		const height = this.canvas.clientHeight
+			- parseFloat(computedStyle.paddingTop)
+			- parseFloat(computedStyle.paddingBottom);
+
+		this.#draggablesContainerWidth = width + 2 * this.#draggablesRadius;
+		this.#draggablesContainerHeight = height + 2 * this.#draggablesRadius;
+
+		this.#draggablesContainer.style.width = `${this.#draggablesContainerWidth}px`;
+		this.#draggablesContainer.style.height = `${this.#draggablesContainerHeight}px`;
+
+		this.#draggablesContainerRestrictedWidth = width;
+		this.#draggablesContainerRestrictedHeight = height;
+
+		this.#draggablesContainer.style.marginTop =
+			(parseFloat(computedStyle.borderTopWidth)
+			+ parseFloat(computedStyle.paddingTop)
+			- this.#draggablesRadius) + "px";
+	}
+
 
 
 	#initFullscreen()
@@ -451,6 +460,11 @@ class Wilson
 		e.preventDefault();
 	}
 
+
+
+	#canvasOldWidthStyle: string = "";
+	#canvasOldHeightStyle: string = "";
+
 	enterFullscreen()
 	{
 		this.currentlyFullscreen = true;
@@ -461,6 +475,11 @@ class Wilson
 		{
 			this.#oldMetaThemeColor = this.#metaThemeColorElement.getAttribute("content");
 		}
+
+
+
+		this.#canvasOldWidthStyle = this.canvas.style.width;
+		this.#canvasOldHeightStyle = this.canvas.style.height;
 
 
 
@@ -491,50 +510,28 @@ class Wilson
 
 
 
-		if (this.#fullscreenLetterboxed)
-		{
-			for (const canvas of [this.canvas, this.#draggablesContainer])
-			{
-				canvas.classList.add("WILSON_letterboxed-fullscreen");
-			}
-
-			// This covers both vertical aspect ratios and horizontal ones;
-			// we add both in case the user resizes the window while in applet is fullscreen.
-
-			this.#appletContainer.insertAdjacentHTML(
-				"beforebegin",
-				/* html */ `<div class='WILSON_letterboxed-background'></div>`
-			);
-
-			this.#appletContainer.insertAdjacentHTML(
-				"afterend",
-				/* html */ `<div class='WILSON_letterboxed-background'></div>`
-			);
-
-			this.#appletContainer.classList.add("WILSON_black-background");
-		}
-
-		else
+		if (this.#fullscreenFillScreen)
 		{
 			this.#fullscreenContainer.classList.add("WILSON_true-fullscreen");
 
-			for (const canvas of [this.canvas, this.#draggablesContainer])
-			{
-				canvas.classList.add("WILSON_true-fullscreen");
-
-				// We do this to accomodate weirdly-set-up applets like the ones with draggable inputs, since they rely on their canvas container to keep the content below flowing properly.
-				this.#appletContainer.classList.add("WILSON_black-background");
-
-				this.#switchFullscreenCallback();
-				this.#onResize();
-			}
+			this.canvas.style.width = "100vw";
+			this.canvas.style.height = "100vh";
 
 			window.scroll(0, 0);
 		}
 
+		else
+		{
+			this.canvas.style.width = `min(100vw, calc(100vh * ${this.canvasAspectRatio}))`;
+			this.canvas.style.height = `min(100vh, calc(100vw / ${this.canvasAspectRatio}))`;
+		}
+
+		this.#onResize();
 		this.#switchFullscreenCallback();
-		this.#onResize();	
+		requestAnimationFrame(() => this.#updateDraggablesContainerSize());
 	}
+
+
 
 	exitFullscreen()
 	{
@@ -567,22 +564,11 @@ class Wilson
 
 
 
-		this.#fullscreenContainer.classList.remove("WILSON_true-fullscreen");
-
-		for (const canvas of [this.canvas, this.#draggablesContainer])
-		{
-			canvas.classList.remove("WILSON_true-fullscreen");
-			canvas.classList.remove("WILSON_letterboxed-fullscreen");
-
-			this.#appletContainer.classList.remove("WILSON_black-background");
-
-			const elements = document.querySelectorAll(".WILSON_letterboxed-background");
-			elements.forEach(element => element.remove());
-
-			this.#switchFullscreenCallback();
-		}
+		this.canvas.style.width = this.#canvasOldWidthStyle;
+		this.canvas.style.height = this.#canvasOldHeightStyle;
 
 		this.#onResize();
+		this.#switchFullscreenCallback();
 		
 		window.scrollTo(0, this.#fullscreenOldScroll);
 		setTimeout(() => window.scrollTo(0, this.#fullscreenOldScroll), 10);
@@ -590,7 +576,23 @@ class Wilson
 
 	#onResize()
 	{
+		if (this.currentlyFullscreen && this.#fullscreenFillScreen)
+		{
+			// Resize the canvas to fill the screen but keep the same total number of pixels.
+			const windowAspectRatio = window.innerWidth / window.innerHeight;
 
+			const width = Math.round(
+				Math.sqrt(this.canvasWidth * this.canvasHeight * windowAspectRatio)
+			);
+
+			const height = Math.round(
+				Math.sqrt(this.canvasWidth * this.canvasHeight / windowAspectRatio)
+			);
+
+			this.resizeCanvas(width, height);
+		}
+
+		this.#updateDraggablesContainerSize();
 	}
 
 
@@ -639,15 +641,6 @@ export class WilsonCPU extends Wilson
 			0,
 			0
 		);
-	}
-
-	resizeCanvas(width: number, height?: number)
-	{
-		this.canvasWidth = width;
-		this.canvasHeight = height ?? width * this.canvasAspectRatio;
-
-		this.canvas.setAttribute("width", this.canvasWidth.toString());
-		this.canvas.setAttribute("height", this.canvasHeight.toString());
 	}
 
 
