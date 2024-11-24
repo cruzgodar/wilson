@@ -160,11 +160,8 @@ type FullscreenOptions = {
 
 
 
-export type WilsonOptions = ({
-	canvasWidth: number,
-} | {
-	canvasHeight: number,
-}) & {
+export type WilsonOptions = ({ canvasWidth: number } | { canvasHeight: number })
+& {
 	worldWidth?: number,
 	worldHeight?: number,
 	worldCenterX?: number,
@@ -561,6 +558,11 @@ class Wilson
 
 	#draggableOnMousedown(e: MouseEvent, id: string)
 	{
+		if (this.#draggablesStatic)
+		{
+			return;
+		}
+
 		e.preventDefault();
 		
 		this.#currentMouseDraggableId = id;
@@ -579,6 +581,11 @@ class Wilson
 
 	#draggableOnMouseup(e: MouseEvent, id: string)
 	{
+		if (this.#draggablesStatic)
+		{
+			return;
+		}
+		
 		e.preventDefault();
 
 		this.#currentMouseDraggableId = undefined;
@@ -597,6 +604,11 @@ class Wilson
 
 	#draggableOnMousemove(e: MouseEvent, id: string)
 	{
+		if (this.#draggablesStatic)
+		{
+			return;
+		}
+		
 		e.preventDefault();
 
 		if (!this.#draggableElements[id].currentlyDragging)
@@ -638,6 +650,11 @@ class Wilson
 
 	#draggableOnTouchstart(e: TouchEvent, id: string)
 	{
+		if (this.#draggablesStatic)
+		{
+			return;
+		}
+		
 		e.preventDefault();
 
 		this.#draggableElements[id].currentlyDragging = true;
@@ -655,6 +672,11 @@ class Wilson
 
 	#draggableOnTouchend(e: TouchEvent, id: string)
 	{
+		if (this.#draggablesStatic)
+		{
+			return;
+		}
+		
 		e.preventDefault();
 
 		this.#draggableElements[id].currentlyDragging = false;
@@ -673,6 +695,11 @@ class Wilson
 
 	#draggableOnTouchmove(e: TouchEvent, id: string)
 	{
+		if (this.#draggablesStatic)
+		{
+			return;
+		}
+		
 		e.preventDefault();
 
 		if (!this.#draggableElements[id].currentlyDragging)

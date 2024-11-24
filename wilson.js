@@ -285,6 +285,9 @@ _Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson
     document.documentElement.addEventListener("mousemove", __classPrivateFieldGet(this, _Wilson_documentDraggableMousemoveListener, "f"));
     document.documentElement.addEventListener("mouseup", __classPrivateFieldGet(this, _Wilson_documentDraggableMouseupListener, "f"));
 }, _Wilson_draggableOnMousedown = function _Wilson_draggableOnMousedown(e, id) {
+    if (__classPrivateFieldGet(this, _Wilson_draggablesStatic, "f")) {
+        return;
+    }
     e.preventDefault();
     __classPrivateFieldSet(this, _Wilson_currentMouseDraggableId, id, "f");
     __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging = true;
@@ -297,6 +300,9 @@ _Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson
         });
     });
 }, _Wilson_draggableOnMouseup = function _Wilson_draggableOnMouseup(e, id) {
+    if (__classPrivateFieldGet(this, _Wilson_draggablesStatic, "f")) {
+        return;
+    }
     e.preventDefault();
     __classPrivateFieldSet(this, _Wilson_currentMouseDraggableId, undefined, "f");
     __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging = false;
@@ -309,6 +315,9 @@ _Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson
         });
     });
 }, _Wilson_draggableOnMousemove = function _Wilson_draggableOnMousemove(e, id) {
+    if (__classPrivateFieldGet(this, _Wilson_draggablesStatic, "f")) {
+        return;
+    }
     e.preventDefault();
     if (!__classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging) {
         return;
@@ -334,6 +343,9 @@ _Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson
         __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y = y;
     });
 }, _Wilson_draggableOnTouchstart = function _Wilson_draggableOnTouchstart(e, id) {
+    if (__classPrivateFieldGet(this, _Wilson_draggablesStatic, "f")) {
+        return;
+    }
     e.preventDefault();
     __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging = true;
     requestAnimationFrame(() => {
@@ -345,6 +357,9 @@ _Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson
         });
     });
 }, _Wilson_draggableOnTouchend = function _Wilson_draggableOnTouchend(e, id) {
+    if (__classPrivateFieldGet(this, _Wilson_draggablesStatic, "f")) {
+        return;
+    }
     e.preventDefault();
     __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging = false;
     requestAnimationFrame(() => {
@@ -356,6 +371,9 @@ _Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson
         });
     });
 }, _Wilson_draggableOnTouchmove = function _Wilson_draggableOnTouchmove(e, id) {
+    if (__classPrivateFieldGet(this, _Wilson_draggablesStatic, "f")) {
+        return;
+    }
     e.preventDefault();
     if (!__classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging) {
         return;
