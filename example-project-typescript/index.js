@@ -5,12 +5,13 @@ const wilson = new WilsonCPU(canvas, {
     canvasWidth: resolution,
     onResizeCanvas: drawFrame,
     fullscreenOptions: {
-        fillScreen: true,
+        fillScreen: false,
         useFullscreenButton: true,
         enterFullscreenButtonIconPath: "/enter-fullscreen.png",
         exitFullscreenButtonIconPath: "/exit-fullscreen.png",
     },
 });
+wilson.addDraggable({ x: 0, y: 0 });
 drawFrame();
 function drawFrame() {
     wilson.ctx.fillStyle = "color(display-p3 1 0 0)";

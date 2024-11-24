@@ -88,22 +88,55 @@ const defaultInteractionCallbacks: InteractionCallbacks = {
 	wheel: ({ x, y, scrollDelta, event }) => {},
 };
 
-type DraggableCallBacks = Pick<InteractionCallbacks,
-	"mousedown"
-	| "mouseup"
-	| "mousemove"
-	| "touchstart"
-	| "touchend"
-	| "touchmove"
->;
+type DraggableCallBacks = {
+	mousedown: ({ id, x, y, event }: { id: string, x: number, y: number, event: MouseEvent }) => void,
+
+	mouseup: ({ id, x, y, event }: { id: string, x: number, y: number, event: MouseEvent }) => void,
+
+	mousedrag: ({
+		id,
+		x,
+		y,
+		xDelta,
+		yDelta,
+		event
+	}: {
+		id: string,
+		x: number,
+		y: number,
+		xDelta: number,
+		yDelta: number,
+		event: MouseEvent
+	}) => void,
+
+	touchstart: ({ id, x, y, event }: { id: string, x: number, y: number, event: TouchEvent }) => void,
+
+	touchend: ({ id, x, y, event }: { id: string, x: number, y: number, event: TouchEvent }) => void,
+
+	touchmove: ({
+		id,
+		x,
+		y,
+		xDelta,
+		yDelta,
+		event
+	}: {
+		id: string,
+		x: number,
+		y: number,
+		xDelta: number,
+		yDelta: number,
+		event: TouchEvent
+	}) => void,
+}
 
 const defaultDraggableCallbacks: DraggableCallBacks = {
-	mousedown: ({ x, y, event }) => {},
-	mouseup: ({ x, y, event }) => {},
-	mousemove: ({ x, y, xDelta, yDelta, event }) => {},
-	touchstart: ({ x, y, event }) => {},
-	touchend: ({ x, y, event }) => {},
-	touchmove: ({ x, y, xDelta, yDelta, event }) => {},
+	mousedown: ({ id, x, y, event }) => {},
+	mouseup: ({ id, x, y, event }) => {},
+	mousedrag: ({ id, x, y, xDelta, yDelta, event }) => {},
+	touchstart: ({ id, x, y, event }) => {},
+	touchend: ({ id, x, y, event }) => {},
+	touchmove: ({ id, x, y, xDelta, yDelta, event }) => {},
 };
 
 type DraggableOptions = {
@@ -240,7 +273,7 @@ class Wilson
 
 		this.#callbacks = { ...defaultInteractionCallbacks, ...options.callbacks };
 		
-		this.#draggablesRadius = options.draggableOptions?.radius ?? 10;
+		this.#draggablesRadius = options.draggableOptions?.radius ?? 12;
 		this.#draggablesStatic = options.draggableOptions?.static ?? false;
 		this.#draggableCallbacks = { ...defaultDraggableCallbacks, ...options.draggableOptions?.callbacks };
 
@@ -301,6 +334,15 @@ class Wilson
 
 
 
+		if (!this.#metaThemeColorElement)
+		{
+			this.#metaThemeColorElement = document.createElement("meta");
+			this.#metaThemeColorElement.setAttribute("name", "theme-color");
+			document.head.appendChild(this.#metaThemeColorElement);
+		}
+
+
+
 		for (const canvas of [this.canvas, this.#draggablesContainer])
 		{
 			canvas.addEventListener("gesturestart", e => e.preventDefault());
@@ -327,7 +369,25 @@ class Wilson
 		);
 	}
 
-	
+
+
+	#onResizeWindow()
+	{
+		if (this.currentlyFullscreen && this.#fullscreenFillScreen)
+		{
+			// Resize the canvas to fill the screen but keep the same total number of pixels.
+			const windowAspectRatio = window.innerWidth / window.innerHeight;
+
+			const width = Math.round(
+				Math.sqrt(this.canvasWidth * this.canvasHeight * windowAspectRatio)
+			);
+
+			this.resizeCanvas({ width });
+			this.#onResizeCanvas();
+		}
+
+		this.#updateDraggablesContainerSize();
+	}
 
 	#handleKeydownEvent(e: KeyboardEvent)
 	{
@@ -410,14 +470,225 @@ class Wilson
 		}
 	}
 
+	#draggableElements: {
+		[id: string]: {
+			element: HTMLDivElement,
+			x: number,
+			y: number,
+			currentlyDragging: boolean,
+		}
+	} = {};
+	#draggableDefaultId: number = 0;
 
+	addDraggable({ x, y, id }: { x: number, y: number, id?: string })
+	{
+		//First convert to page coordinates.
+		const uncappedRow = Math.floor(
+			this.#draggablesContainerRestrictedHeight * (
+				1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
+			)
+		) + this.#draggablesRadius;
 
-	#draggableOnMousedown(e: MouseEvent) {}
-	#draggableOnMouseup(e: MouseEvent) {}
-	#draggableOnMousemove(e: MouseEvent) {}
-	#draggableOnTouchstart(e: TouchEvent) {}
-	#draggableOnTouchend(e: TouchEvent) {}
-	#draggableOnTouchmove(e: TouchEvent) {}
+		const uncappedCol = Math.floor(
+			this.#draggablesContainerRestrictedWidth * (
+				(x - this.#worldCenterX) / this.#worldWidth + .5
+			)
+		) + this.#draggablesRadius;
+
+		const row = Math.min(
+			Math.max(this.#draggablesRadius, uncappedRow),
+			this.#draggablesContainerHeight - this.#draggablesRadius
+		);
+
+		const col = Math.min(
+			Math.max(this.#draggablesRadius, uncappedCol),
+			this.#draggablesContainerWidth - this.#draggablesRadius
+		);
+
+		const useableId = id ?? `WILSON_draggable-${this.#draggableDefaultId}`;
+		this.#draggableDefaultId++;
+
+		const element = document.createElement("div");
+		element.classList.add("WILSON_draggable");
+		element.id = useableId;
+		element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+		
+		element.addEventListener("mousedown", e => this.#draggableOnMousedown(e as MouseEvent, useableId));
+		element.addEventListener("mouseup", e => this.#draggableOnMouseup(e as MouseEvent, useableId));
+		element.addEventListener("mousemove", e => this.#draggableOnMousemove(e as MouseEvent, useableId));
+		element.addEventListener("touchstart", e => this.#draggableOnTouchstart(e as TouchEvent, useableId));
+		element.addEventListener("touchend", e => this.#draggableOnTouchend(e as TouchEvent, useableId));
+		element.addEventListener("touchmove", e => this.#draggableOnTouchmove(e as TouchEvent, useableId));
+
+		this.#draggablesContainer.appendChild(element);
+
+		this.#draggableElements[useableId] = {
+			element: element,
+			x: x,
+			y: y,
+			currentlyDragging: false,
+		};
+
+		return element;
+	}
+
+	#draggableOnMousedown(e: MouseEvent, id: string)
+	{
+		e.preventDefault();
+
+		this.#draggableElements[id].currentlyDragging = true;
+
+		this.#draggableCallbacks.mousedown({
+			id,
+			x: this.#draggableElements[id].x,
+			y: this.#draggableElements[id].y,
+			event: e,
+		});
+	}
+
+	#draggableOnMouseup(e: MouseEvent, id: string)
+	{
+		e.preventDefault();
+
+		this.#draggableElements[id].currentlyDragging = false;
+
+		this.#draggableCallbacks.mouseup({
+			id,
+			x: this.#draggableElements[id].x,
+			y: this.#draggableElements[id].y,
+			event: e,
+		});
+	}
+
+	#draggableOnMousemove(e: MouseEvent, id: string)
+	{
+		e.preventDefault();
+
+		if (!this.#draggableElements[id].currentlyDragging)
+		{
+			return;
+		}
+
+		const rect = this.#draggablesContainer.getBoundingClientRect();
+		const row = Math.min(Math.max(this.#draggablesRadius, e.clientY - rect.top), this.#draggablesContainerHeight - this.#draggablesRadius);
+		const col = Math.min(Math.max(this.#draggablesRadius, e.clientX - rect.left), this.#draggablesContainerWidth - this.#draggablesRadius);
+
+		this.#draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+
+		const x = (
+			(col - this.#draggablesRadius - this.#draggablesContainerRestrictedWidth / 2)
+				/ this.#draggablesContainerRestrictedWidth
+		) * this.#worldWidth + this.#worldCenterX;
+		
+		const y = (
+			-(row - this.#draggablesRadius - this.#draggablesContainerRestrictedHeight / 2)
+				/ this.#draggablesContainerRestrictedHeight
+		) * this.#worldHeight + this.#worldCenterY;
+
+		this.#draggableCallbacks.mousedrag({
+			id,
+			x,
+			y,
+			xDelta: x - this.#draggableElements[id].x,
+			yDelta: y - this.#draggableElements[id].y,
+			event: e,
+		});
+
+		this.#draggableElements[id].x = x;
+		this.#draggableElements[id].y = y;
+	}
+
+	#draggableOnTouchstart(e: TouchEvent, id: string)
+	{
+		e.preventDefault();
+
+		this.#draggableElements[id].currentlyDragging = true;
+
+		this.#draggableCallbacks.touchstart({
+			id,
+			x: this.#draggableElements[id].x,
+			y: this.#draggableElements[id].y,
+			event: e,
+		});
+	}
+
+	#draggableOnTouchend(e: TouchEvent, id: string)
+	{
+		e.preventDefault();
+
+		this.#draggableElements[id].currentlyDragging = false;
+
+		this.#draggableCallbacks.touchend({
+			id,
+			x: this.#draggableElements[id].x,
+			y: this.#draggableElements[id].y,
+			event: e,
+		});
+	}
+
+	#draggableOnTouchmove(e: TouchEvent, id: string)
+	{
+		e.preventDefault();
+
+		if (!this.#draggableElements[id].currentlyDragging)
+		{
+			return;
+		}
+
+		const rect = this.#draggablesContainer.getBoundingClientRect();
+
+		const worldCoordinates = Array.from(e.touches).map(touch =>
+		{
+			const row = Math.min(Math.max(this.#draggablesRadius, touch.clientY - rect.top), this.#draggablesContainerHeight - this.#draggablesRadius);
+			const col = Math.min(Math.max(this.#draggablesRadius, touch.clientX - rect.left), this.#draggablesContainerWidth - this.#draggablesRadius);
+
+			const x = (
+				(col - this.#draggablesRadius - this.#draggablesContainerRestrictedWidth / 2)
+					/ this.#draggablesContainerRestrictedWidth
+			) * this.#worldWidth + this.#worldCenterX;
+			
+			const y = (
+				-(row - this.#draggablesRadius - this.#draggablesContainerRestrictedHeight / 2)
+					/ this.#draggablesContainerRestrictedHeight
+			) * this.#worldHeight + this.#worldCenterY;
+
+			return [x, y, row, col] as [number, number, number, number];
+		});
+
+		const distancesFromDraggableCenter = worldCoordinates.map(coordinate =>
+		{
+			return (coordinate[0] - this.#draggableElements[id].x) ** 2
+				+ (coordinate[1] - this.#draggableElements[id].y) ** 2;
+		});
+
+		let minIndex = 0;
+		let minDistance = distancesFromDraggableCenter[0];
+
+		for (let i = 1; i < distancesFromDraggableCenter.length; i++)
+		{
+			if (distancesFromDraggableCenter[i] < minDistance)
+			{
+				minIndex = i;
+				minDistance = distancesFromDraggableCenter[i];
+			}
+		}
+
+		const [x, y, row, col] = worldCoordinates[minIndex];
+
+		this.#draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+
+		this.#draggableCallbacks.touchmove({
+			id,
+			x,
+			y,
+			xDelta: x - this.#draggableElements[id].x,
+			yDelta: y - this.#draggableElements[id].y,
+			event: e,
+		});
+
+		this.#draggableElements[id].x = x;
+		this.#draggableElements[id].y = y;
+	}
 
 	#updateDraggablesContainerSize()
 	{
@@ -592,9 +863,9 @@ class Wilson
 	{
 		this.currentlyFullscreen = false;
 
-		if (this.#metaThemeColorElement && this.#oldMetaThemeColor)
+		if (this.#metaThemeColorElement)
 		{
-			this.#metaThemeColorElement.setAttribute("content", this.#oldMetaThemeColor);
+			this.#metaThemeColorElement.setAttribute("content", this.#oldMetaThemeColor ?? "");
 		}
 
 		this.#fullscreenContainerLocation.appendChild(this.#fullscreenContainer);
@@ -648,26 +919,6 @@ class Wilson
 		{
 			this.#exitFullscreen();
 		}
-	}
-
-
-
-	#onResizeWindow()
-	{
-		if (this.currentlyFullscreen && this.#fullscreenFillScreen)
-		{
-			// Resize the canvas to fill the screen but keep the same total number of pixels.
-			const windowAspectRatio = window.innerWidth / window.innerHeight;
-
-			const width = Math.round(
-				Math.sqrt(this.canvasWidth * this.canvasHeight * windowAspectRatio)
-			);
-
-			this.resizeCanvas({ width });
-			this.#onResizeCanvas();
-		}
-
-		this.#updateDraggablesContainerSize();
 	}
 
 

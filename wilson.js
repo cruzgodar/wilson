@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Wilson_instances, _Wilson_worldWidth, _Wilson_worldHeight, _Wilson_worldCenterX, _Wilson_worldCenterY, _Wilson_onResizeCanvasUser, _Wilson_callbacks, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_fullscreenOldScroll, _Wilson_fullscreenFillScreen, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_handleKeydownEvent, _Wilson_onResizeCanvas, _Wilson_currentlyDragging, _Wilson_lastWorldX, _Wilson_lastWorldY, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMousemove, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_onWheel, _Wilson_initInteraction, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_initFullscreen, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_enterFullscreen, _Wilson_exitFullscreen, _Wilson_onResizeWindow;
+var _Wilson_instances, _Wilson_worldWidth, _Wilson_worldHeight, _Wilson_worldCenterX, _Wilson_worldCenterY, _Wilson_onResizeCanvasUser, _Wilson_callbacks, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_fullscreenOldScroll, _Wilson_fullscreenFillScreen, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_onResizeCanvas, _Wilson_currentlyDragging, _Wilson_lastWorldX, _Wilson_lastWorldY, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMousemove, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_onWheel, _Wilson_initInteraction, _Wilson_draggableElements, _Wilson_draggableDefaultId, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_initFullscreen, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_enterFullscreen, _Wilson_exitFullscreen;
 const defaultInteractionCallbacks = {
     mousedown: ({ x, y, event }) => { },
     mouseup: ({ x, y, event }) => { },
@@ -22,12 +22,12 @@ const defaultInteractionCallbacks = {
     wheel: ({ x, y, scrollDelta, event }) => { },
 };
 const defaultDraggableCallbacks = {
-    mousedown: ({ x, y, event }) => { },
-    mouseup: ({ x, y, event }) => { },
-    mousemove: ({ x, y, xDelta, yDelta, event }) => { },
-    touchstart: ({ x, y, event }) => { },
-    touchend: ({ x, y, event }) => { },
-    touchmove: ({ x, y, xDelta, yDelta, event }) => { },
+    mousedown: ({ id, x, y, event }) => { },
+    mouseup: ({ id, x, y, event }) => { },
+    mousedrag: ({ id, x, y, xDelta, yDelta, event }) => { },
+    touchstart: ({ id, x, y, event }) => { },
+    touchend: ({ id, x, y, event }) => { },
+    touchmove: ({ id, x, y, xDelta, yDelta, event }) => { },
 };
 /*
     gl: WebGLRenderingContext | WebGL2RenderingContext | null = null;
@@ -72,6 +72,8 @@ class Wilson {
         _Wilson_currentlyDragging.set(this, false);
         _Wilson_lastWorldX.set(this, 0);
         _Wilson_lastWorldY.set(this, 0);
+        _Wilson_draggableElements.set(this, {});
+        _Wilson_draggableDefaultId.set(this, 0);
         _Wilson_canvasOldWidth.set(this, 0);
         _Wilson_canvasOldWidthStyle.set(this, "");
         _Wilson_canvasOldHeightStyle.set(this, "");
@@ -95,7 +97,7 @@ class Wilson {
         __classPrivateFieldSet(this, _Wilson_onResizeCanvasUser, (_e = options === null || options === void 0 ? void 0 : options.onResizeCanvas) !== null && _e !== void 0 ? _e : (() => { }), "f");
         this.useP3ColorSpace = (_f = options.useP3ColorSpace) !== null && _f !== void 0 ? _f : true;
         __classPrivateFieldSet(this, _Wilson_callbacks, { ...defaultInteractionCallbacks, ...options.callbacks }, "f");
-        __classPrivateFieldSet(this, _Wilson_draggablesRadius, (_h = (_g = options.draggableOptions) === null || _g === void 0 ? void 0 : _g.radius) !== null && _h !== void 0 ? _h : 10, "f");
+        __classPrivateFieldSet(this, _Wilson_draggablesRadius, (_h = (_g = options.draggableOptions) === null || _g === void 0 ? void 0 : _g.radius) !== null && _h !== void 0 ? _h : 12, "f");
         __classPrivateFieldSet(this, _Wilson_draggablesStatic, (_k = (_j = options.draggableOptions) === null || _j === void 0 ? void 0 : _j.static) !== null && _k !== void 0 ? _k : false, "f");
         __classPrivateFieldSet(this, _Wilson_draggableCallbacks, { ...defaultDraggableCallbacks, ...(_l = options.draggableOptions) === null || _l === void 0 ? void 0 : _l.callbacks }, "f");
         __classPrivateFieldSet(this, _Wilson_fullscreenFillScreen, (_o = (_m = options.fullscreenOptions) === null || _m === void 0 ? void 0 : _m.fillScreen) !== null && _o !== void 0 ? _o : false, "f");
@@ -125,6 +127,11 @@ class Wilson {
         __classPrivateFieldGet(this, _Wilson_fullscreenContainer, "f").parentElement &&
             __classPrivateFieldGet(this, _Wilson_fullscreenContainer, "f").parentElement.insertBefore(__classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f"), __classPrivateFieldGet(this, _Wilson_fullscreenContainer, "f"));
         __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").appendChild(__classPrivateFieldGet(this, _Wilson_fullscreenContainer, "f"));
+        if (!__classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f")) {
+            __classPrivateFieldSet(this, _Wilson_metaThemeColorElement, document.createElement("meta"), "f");
+            __classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f").setAttribute("name", "theme-color");
+            document.head.appendChild(__classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f"));
+        }
         for (const canvas of [this.canvas, __classPrivateFieldGet(this, _Wilson_draggablesContainer, "f")]) {
             canvas.addEventListener("gesturestart", e => e.preventDefault());
             canvas.addEventListener("gesturechange", e => e.preventDefault());
@@ -152,6 +159,34 @@ class Wilson {
         }
         this.canvas.setAttribute("width", this.canvasWidth.toString());
         this.canvas.setAttribute("height", this.canvasHeight.toString());
+    }
+    addDraggable({ x, y, id }) {
+        var _a;
+        //First convert to page coordinates.
+        const uncappedRow = Math.floor(__classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedHeight, "f") * (1 - ((y - __classPrivateFieldGet(this, _Wilson_worldCenterY, "f")) / __classPrivateFieldGet(this, _Wilson_worldHeight, "f") + .5))) + __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f");
+        const uncappedCol = Math.floor(__classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedWidth, "f") * ((x - __classPrivateFieldGet(this, _Wilson_worldCenterX, "f")) / __classPrivateFieldGet(this, _Wilson_worldWidth, "f") + .5)) + __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f");
+        const row = Math.min(Math.max(__classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"), uncappedRow), __classPrivateFieldGet(this, _Wilson_draggablesContainerHeight, "f") - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"));
+        const col = Math.min(Math.max(__classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"), uncappedCol), __classPrivateFieldGet(this, _Wilson_draggablesContainerWidth, "f") - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"));
+        const useableId = id !== null && id !== void 0 ? id : `WILSON_draggable-${__classPrivateFieldGet(this, _Wilson_draggableDefaultId, "f")}`;
+        __classPrivateFieldSet(this, _Wilson_draggableDefaultId, (_a = __classPrivateFieldGet(this, _Wilson_draggableDefaultId, "f"), _a++, _a), "f");
+        const element = document.createElement("div");
+        element.classList.add("WILSON_draggable");
+        element.id = useableId;
+        element.style.transform = `translate(${col - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f")}px, ${row - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f")}px)`;
+        element.addEventListener("mousedown", e => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_draggableOnMousedown).call(this, e, useableId));
+        element.addEventListener("mouseup", e => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_draggableOnMouseup).call(this, e, useableId));
+        element.addEventListener("mousemove", e => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_draggableOnMousemove).call(this, e, useableId));
+        element.addEventListener("touchstart", e => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_draggableOnTouchstart).call(this, e, useableId));
+        element.addEventListener("touchend", e => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_draggableOnTouchend).call(this, e, useableId));
+        element.addEventListener("touchmove", e => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_draggableOnTouchmove).call(this, e, useableId));
+        __classPrivateFieldGet(this, _Wilson_draggablesContainer, "f").appendChild(element);
+        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[useableId] = {
+            element: element,
+            x: x,
+            y: y,
+            currentlyDragging: false,
+        };
+        return element;
     }
     enterFullscreen() {
         // @ts-ignore
@@ -196,7 +231,16 @@ class Wilson {
         ];
     }
 }
-_Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson_worldCenterX = new WeakMap(), _Wilson_worldCenterY = new WeakMap(), _Wilson_onResizeCanvasUser = new WeakMap(), _Wilson_callbacks = new WeakMap(), _Wilson_draggablesRadius = new WeakMap(), _Wilson_draggablesStatic = new WeakMap(), _Wilson_draggableCallbacks = new WeakMap(), _Wilson_draggablesContainerWidth = new WeakMap(), _Wilson_draggablesContainerHeight = new WeakMap(), _Wilson_draggablesContainerRestrictedWidth = new WeakMap(), _Wilson_draggablesContainerRestrictedHeight = new WeakMap(), _Wilson_fullscreenOldScroll = new WeakMap(), _Wilson_fullscreenFillScreen = new WeakMap(), _Wilson_fullscreenUseButton = new WeakMap(), _Wilson_fullscreenEnterFullscreenButtonIconPath = new WeakMap(), _Wilson_fullscreenExitFullscreenButtonIconPath = new WeakMap(), _Wilson_appletContainer = new WeakMap(), _Wilson_canvasContainer = new WeakMap(), _Wilson_draggablesContainer = new WeakMap(), _Wilson_fullscreenContainer = new WeakMap(), _Wilson_fullscreenContainerLocation = new WeakMap(), _Wilson_metaThemeColorElement = new WeakMap(), _Wilson_oldMetaThemeColor = new WeakMap(), _Wilson_currentlyDragging = new WeakMap(), _Wilson_lastWorldX = new WeakMap(), _Wilson_lastWorldY = new WeakMap(), _Wilson_canvasOldWidth = new WeakMap(), _Wilson_canvasOldWidthStyle = new WeakMap(), _Wilson_canvasOldHeightStyle = new WeakMap(), _Wilson_instances = new WeakSet(), _Wilson_handleKeydownEvent = function _Wilson_handleKeydownEvent(e) {
+_Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson_worldCenterX = new WeakMap(), _Wilson_worldCenterY = new WeakMap(), _Wilson_onResizeCanvasUser = new WeakMap(), _Wilson_callbacks = new WeakMap(), _Wilson_draggablesRadius = new WeakMap(), _Wilson_draggablesStatic = new WeakMap(), _Wilson_draggableCallbacks = new WeakMap(), _Wilson_draggablesContainerWidth = new WeakMap(), _Wilson_draggablesContainerHeight = new WeakMap(), _Wilson_draggablesContainerRestrictedWidth = new WeakMap(), _Wilson_draggablesContainerRestrictedHeight = new WeakMap(), _Wilson_fullscreenOldScroll = new WeakMap(), _Wilson_fullscreenFillScreen = new WeakMap(), _Wilson_fullscreenUseButton = new WeakMap(), _Wilson_fullscreenEnterFullscreenButtonIconPath = new WeakMap(), _Wilson_fullscreenExitFullscreenButtonIconPath = new WeakMap(), _Wilson_appletContainer = new WeakMap(), _Wilson_canvasContainer = new WeakMap(), _Wilson_draggablesContainer = new WeakMap(), _Wilson_fullscreenContainer = new WeakMap(), _Wilson_fullscreenContainerLocation = new WeakMap(), _Wilson_metaThemeColorElement = new WeakMap(), _Wilson_oldMetaThemeColor = new WeakMap(), _Wilson_currentlyDragging = new WeakMap(), _Wilson_lastWorldX = new WeakMap(), _Wilson_lastWorldY = new WeakMap(), _Wilson_draggableElements = new WeakMap(), _Wilson_draggableDefaultId = new WeakMap(), _Wilson_canvasOldWidth = new WeakMap(), _Wilson_canvasOldWidthStyle = new WeakMap(), _Wilson_canvasOldHeightStyle = new WeakMap(), _Wilson_instances = new WeakSet(), _Wilson_onResizeWindow = function _Wilson_onResizeWindow() {
+    if (this.currentlyFullscreen && __classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f")) {
+        // Resize the canvas to fill the screen but keep the same total number of pixels.
+        const windowAspectRatio = window.innerWidth / window.innerHeight;
+        const width = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight * windowAspectRatio));
+        this.resizeCanvas({ width });
+        __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_onResizeCanvas).call(this);
+    }
+    __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesContainerSize).call(this);
+}, _Wilson_handleKeydownEvent = function _Wilson_handleKeydownEvent(e) {
     if (e.key === "Escape" && this.currentlyFullscreen) {
         this.exitFullscreen();
     }
@@ -224,7 +268,105 @@ _Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson
             }
         });
     }
-}, _Wilson_draggableOnMousedown = function _Wilson_draggableOnMousedown(e) { }, _Wilson_draggableOnMouseup = function _Wilson_draggableOnMouseup(e) { }, _Wilson_draggableOnMousemove = function _Wilson_draggableOnMousemove(e) { }, _Wilson_draggableOnTouchstart = function _Wilson_draggableOnTouchstart(e) { }, _Wilson_draggableOnTouchend = function _Wilson_draggableOnTouchend(e) { }, _Wilson_draggableOnTouchmove = function _Wilson_draggableOnTouchmove(e) { }, _Wilson_updateDraggablesContainerSize = function _Wilson_updateDraggablesContainerSize() {
+}, _Wilson_draggableOnMousedown = function _Wilson_draggableOnMousedown(e, id) {
+    e.preventDefault();
+    __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging = true;
+    __classPrivateFieldGet(this, _Wilson_draggableCallbacks, "f").mousedown({
+        id,
+        x: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x,
+        y: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y,
+        event: e,
+    });
+}, _Wilson_draggableOnMouseup = function _Wilson_draggableOnMouseup(e, id) {
+    e.preventDefault();
+    __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging = false;
+    __classPrivateFieldGet(this, _Wilson_draggableCallbacks, "f").mouseup({
+        id,
+        x: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x,
+        y: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y,
+        event: e,
+    });
+}, _Wilson_draggableOnMousemove = function _Wilson_draggableOnMousemove(e, id) {
+    e.preventDefault();
+    if (!__classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging) {
+        return;
+    }
+    const rect = __classPrivateFieldGet(this, _Wilson_draggablesContainer, "f").getBoundingClientRect();
+    const row = Math.min(Math.max(__classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"), e.clientY - rect.top), __classPrivateFieldGet(this, _Wilson_draggablesContainerHeight, "f") - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"));
+    const col = Math.min(Math.max(__classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"), e.clientX - rect.left), __classPrivateFieldGet(this, _Wilson_draggablesContainerWidth, "f") - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"));
+    __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].element.style.transform = `translate(${col - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f")}px, ${row - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f")}px)`;
+    const x = ((col - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f") - __classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedWidth, "f") / 2)
+        / __classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedWidth, "f")) * __classPrivateFieldGet(this, _Wilson_worldWidth, "f") + __classPrivateFieldGet(this, _Wilson_worldCenterX, "f");
+    const y = (-(row - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f") - __classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedHeight, "f") / 2)
+        / __classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedHeight, "f")) * __classPrivateFieldGet(this, _Wilson_worldHeight, "f") + __classPrivateFieldGet(this, _Wilson_worldCenterY, "f");
+    __classPrivateFieldGet(this, _Wilson_draggableCallbacks, "f").mousedrag({
+        id,
+        x,
+        y,
+        xDelta: x - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x,
+        yDelta: y - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y,
+        event: e,
+    });
+    __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x = x;
+    __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y = y;
+}, _Wilson_draggableOnTouchstart = function _Wilson_draggableOnTouchstart(e, id) {
+    e.preventDefault();
+    __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging = true;
+    __classPrivateFieldGet(this, _Wilson_draggableCallbacks, "f").touchstart({
+        id,
+        x: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x,
+        y: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y,
+        event: e,
+    });
+}, _Wilson_draggableOnTouchend = function _Wilson_draggableOnTouchend(e, id) {
+    e.preventDefault();
+    __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging = false;
+    __classPrivateFieldGet(this, _Wilson_draggableCallbacks, "f").touchend({
+        id,
+        x: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x,
+        y: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y,
+        event: e,
+    });
+}, _Wilson_draggableOnTouchmove = function _Wilson_draggableOnTouchmove(e, id) {
+    e.preventDefault();
+    if (!__classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging) {
+        return;
+    }
+    const rect = __classPrivateFieldGet(this, _Wilson_draggablesContainer, "f").getBoundingClientRect();
+    const worldCoordinates = Array.from(e.touches).map(touch => {
+        const row = Math.min(Math.max(__classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"), touch.clientY - rect.top), __classPrivateFieldGet(this, _Wilson_draggablesContainerHeight, "f") - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"));
+        const col = Math.min(Math.max(__classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"), touch.clientX - rect.left), __classPrivateFieldGet(this, _Wilson_draggablesContainerWidth, "f") - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"));
+        const x = ((col - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f") - __classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedWidth, "f") / 2)
+            / __classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedWidth, "f")) * __classPrivateFieldGet(this, _Wilson_worldWidth, "f") + __classPrivateFieldGet(this, _Wilson_worldCenterX, "f");
+        const y = (-(row - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f") - __classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedHeight, "f") / 2)
+            / __classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedHeight, "f")) * __classPrivateFieldGet(this, _Wilson_worldHeight, "f") + __classPrivateFieldGet(this, _Wilson_worldCenterY, "f");
+        return [x, y, row, col];
+    });
+    const distancesFromDraggableCenter = worldCoordinates.map(coordinate => {
+        return (coordinate[0] - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x) ** 2
+            + (coordinate[1] - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y) ** 2;
+    });
+    let minIndex = 0;
+    let minDistance = distancesFromDraggableCenter[0];
+    for (let i = 1; i < distancesFromDraggableCenter.length; i++) {
+        if (distancesFromDraggableCenter[i] < minDistance) {
+            minIndex = i;
+            minDistance = distancesFromDraggableCenter[i];
+        }
+    }
+    const [x, y, row, col] = worldCoordinates[minIndex];
+    __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].element.style.transform = `translate(${col - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f")}px, ${row - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f")}px)`;
+    __classPrivateFieldGet(this, _Wilson_draggableCallbacks, "f").touchmove({
+        id,
+        x,
+        y,
+        xDelta: x - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x,
+        yDelta: y - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y,
+        event: e,
+    });
+    __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x = x;
+    __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y = y;
+}, _Wilson_updateDraggablesContainerSize = function _Wilson_updateDraggablesContainerSize() {
     const computedStyle = getComputedStyle(this.canvas);
     const width = this.canvas.clientWidth
         - parseFloat(computedStyle.paddingLeft)
@@ -303,9 +445,10 @@ _Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson
     __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_onResizeCanvas).call(this);
     requestAnimationFrame(() => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesContainerSize).call(this));
 }, _Wilson_exitFullscreen = function _Wilson_exitFullscreen() {
+    var _a;
     this.currentlyFullscreen = false;
-    if (__classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f") && __classPrivateFieldGet(this, _Wilson_oldMetaThemeColor, "f")) {
-        __classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f").setAttribute("content", __classPrivateFieldGet(this, _Wilson_oldMetaThemeColor, "f"));
+    if (__classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f")) {
+        __classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f").setAttribute("content", (_a = __classPrivateFieldGet(this, _Wilson_oldMetaThemeColor, "f")) !== null && _a !== void 0 ? _a : "");
     }
     __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").appendChild(__classPrivateFieldGet(this, _Wilson_fullscreenContainer, "f"));
     this.canvas.classList.remove("WILSON_fullscreen");
@@ -326,15 +469,6 @@ _Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson
     __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_onResizeCanvas).call(this);
     window.scrollTo(0, __classPrivateFieldGet(this, _Wilson_fullscreenOldScroll, "f"));
     setTimeout(() => window.scrollTo(0, __classPrivateFieldGet(this, _Wilson_fullscreenOldScroll, "f")), 10);
-}, _Wilson_onResizeWindow = function _Wilson_onResizeWindow() {
-    if (this.currentlyFullscreen && __classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f")) {
-        // Resize the canvas to fill the screen but keep the same total number of pixels.
-        const windowAspectRatio = window.innerWidth / window.innerHeight;
-        const width = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight * windowAspectRatio));
-        this.resizeCanvas({ width });
-        __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_onResizeCanvas).call(this);
-    }
-    __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesContainerSize).call(this);
 };
 export class WilsonCPU extends Wilson {
     constructor(canvas, options) {

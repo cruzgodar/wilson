@@ -8,12 +8,14 @@ const wilson = new WilsonCPU(canvas, {
 	onResizeCanvas: drawFrame,
 
 	fullscreenOptions: {
-		fillScreen: true,
+		fillScreen: false,
 		useFullscreenButton: true,
 		enterFullscreenButtonIconPath: "/enter-fullscreen.png",
 		exitFullscreenButtonIconPath: "/exit-fullscreen.png",
 	},
 });
+
+wilson.addDraggable({ x: 0, y: 0 });
 
 drawFrame();
 
