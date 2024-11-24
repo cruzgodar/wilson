@@ -356,6 +356,7 @@ class Wilson
 
 
 		this.#initInteraction();
+		this.#initDraggables();
 		this.#initFullscreen();
 
 		window.addEventListener("resize", () => this.#onResizeWindow());
@@ -479,6 +480,29 @@ class Wilson
 		}
 	} = {};
 	#draggableDefaultId: number = 0;
+	#currentMouseDraggableId?: string;
+
+	#documentDraggableMousemoveListener = (e: MouseEvent) =>
+	{
+		if (this.#currentMouseDraggableId !== undefined)
+		{
+			this.#draggableOnMousemove(e, this.#currentMouseDraggableId);
+		}
+	}
+
+	#documentDraggableMouseupListener = (e: MouseEvent) =>
+	{
+		if (this.#currentMouseDraggableId !== undefined)
+		{
+			this.#draggableOnMouseup(e, this.#currentMouseDraggableId);
+		}
+	}
+
+	#initDraggables()
+	{
+		document.documentElement.addEventListener("mousemove", this.#documentDraggableMousemoveListener);
+		document.documentElement.addEventListener("mouseup", this.#documentDraggableMouseupListener);
+	}
 
 	addDraggable({ x, y, id }: { x: number, y: number, id?: string })
 	{
@@ -535,14 +559,18 @@ class Wilson
 	#draggableOnMousedown(e: MouseEvent, id: string)
 	{
 		e.preventDefault();
-
+		
+		this.#currentMouseDraggableId = id;
 		this.#draggableElements[id].currentlyDragging = true;
 
-		this.#draggableCallbacks.mousedown({
-			id,
-			x: this.#draggableElements[id].x,
-			y: this.#draggableElements[id].y,
-			event: e,
+		requestAnimationFrame(() =>
+		{
+			this.#draggableCallbacks.mousedown({
+				id,
+				x: this.#draggableElements[id].x,
+				y: this.#draggableElements[id].y,
+				event: e,
+			});
 		});
 	}
 
@@ -550,13 +578,17 @@ class Wilson
 	{
 		e.preventDefault();
 
+		this.#currentMouseDraggableId = undefined;
 		this.#draggableElements[id].currentlyDragging = false;
 
-		this.#draggableCallbacks.mouseup({
-			id,
-			x: this.#draggableElements[id].x,
-			y: this.#draggableElements[id].y,
-			event: e,
+		requestAnimationFrame(() =>
+		{
+			this.#draggableCallbacks.mouseup({
+				id,
+				x: this.#draggableElements[id].x,
+				y: this.#draggableElements[id].y,
+				event: e,
+			});
 		});
 	}
 
@@ -584,18 +616,21 @@ class Wilson
 			-(row - this.#draggablesRadius - this.#draggablesContainerRestrictedHeight / 2)
 				/ this.#draggablesContainerRestrictedHeight
 		) * this.#worldHeight + this.#worldCenterY;
+		
+		requestAnimationFrame(() =>
+		{
+			this.#draggableCallbacks.mousedrag({
+				id,
+				x,
+				y,
+				xDelta: x - this.#draggableElements[id].x,
+				yDelta: y - this.#draggableElements[id].y,
+				event: e,
+			});
 
-		this.#draggableCallbacks.mousedrag({
-			id,
-			x,
-			y,
-			xDelta: x - this.#draggableElements[id].x,
-			yDelta: y - this.#draggableElements[id].y,
-			event: e,
+			this.#draggableElements[id].x = x;
+			this.#draggableElements[id].y = y;
 		});
-
-		this.#draggableElements[id].x = x;
-		this.#draggableElements[id].y = y;
 	}
 
 	#draggableOnTouchstart(e: TouchEvent, id: string)
@@ -603,12 +638,15 @@ class Wilson
 		e.preventDefault();
 
 		this.#draggableElements[id].currentlyDragging = true;
-
-		this.#draggableCallbacks.touchstart({
-			id,
-			x: this.#draggableElements[id].x,
-			y: this.#draggableElements[id].y,
-			event: e,
+		
+		requestAnimationFrame(() =>
+		{
+			this.#draggableCallbacks.touchstart({
+				id,
+				x: this.#draggableElements[id].x,
+				y: this.#draggableElements[id].y,
+				event: e,
+			});
 		});
 	}
 
@@ -618,11 +656,15 @@ class Wilson
 
 		this.#draggableElements[id].currentlyDragging = false;
 
-		this.#draggableCallbacks.touchend({
-			id,
-			x: this.#draggableElements[id].x,
-			y: this.#draggableElements[id].y,
-			event: e,
+
+		requestAnimationFrame(() =>
+		{
+			this.#draggableCallbacks.touchend({
+				id,
+				x: this.#draggableElements[id].x,
+				y: this.#draggableElements[id].y,
+				event: e,
+			});
 		});
 	}
 
@@ -655,6 +697,8 @@ class Wilson
 			return [x, y, row, col] as [number, number, number, number];
 		});
 
+
+
 		const distancesFromDraggableCenter = worldCoordinates.map(coordinate =>
 		{
 			return (coordinate[0] - this.#draggableElements[id].x) ** 2
@@ -677,17 +721,22 @@ class Wilson
 
 		this.#draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
 
-		this.#draggableCallbacks.touchmove({
-			id,
-			x,
-			y,
-			xDelta: x - this.#draggableElements[id].x,
-			yDelta: y - this.#draggableElements[id].y,
-			event: e,
-		});
 
-		this.#draggableElements[id].x = x;
-		this.#draggableElements[id].y = y;
+
+		requestAnimationFrame(() =>
+		{
+			this.#draggableCallbacks.touchmove({
+				id,
+				x,
+				y,
+				xDelta: x - this.#draggableElements[id].x,
+				yDelta: y - this.#draggableElements[id].y,
+				event: e,
+			});
+
+			this.#draggableElements[id].x = x;
+			this.#draggableElements[id].y = y;
+		});
 	}
 
 	#updateDraggablesContainerSize()

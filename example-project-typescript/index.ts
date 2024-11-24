@@ -16,6 +16,10 @@ const wilson = new WilsonCPU(canvas, {
 });
 
 wilson.addDraggable({ x: 0, y: 0 });
+wilson.addDraggable({ x: 1, y: 0 });
+wilson.addDraggable({ x: -1, y: 0 });
+wilson.addDraggable({ x: 0, y: 1 });
+wilson.addDraggable({ x: 0, y: -1 });
 
 drawFrame();
 
