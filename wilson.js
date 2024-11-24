@@ -201,6 +201,20 @@ class Wilson {
         };
         return element;
     }
+    removeDraggable(id) {
+        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].element.remove();
+        delete __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id];
+    }
+    setDraggablePosition({ id, x, y }) {
+        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x = x;
+        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y = y;
+        const element = __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].element;
+        const uncappedRow = Math.floor(__classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedHeight, "f") * (1 - ((y - __classPrivateFieldGet(this, _Wilson_worldCenterY, "f")) / __classPrivateFieldGet(this, _Wilson_worldHeight, "f") + .5))) + __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f");
+        const uncappedCol = Math.floor(__classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedWidth, "f") * ((x - __classPrivateFieldGet(this, _Wilson_worldCenterX, "f")) / __classPrivateFieldGet(this, _Wilson_worldWidth, "f") + .5)) + __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f");
+        const row = Math.min(Math.max(__classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"), uncappedRow), __classPrivateFieldGet(this, _Wilson_draggablesContainerHeight, "f") - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"));
+        const col = Math.min(Math.max(__classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"), uncappedCol), __classPrivateFieldGet(this, _Wilson_draggablesContainerWidth, "f") - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f"));
+        element.style.transform = `translate(${col - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f")}px, ${row - __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f")}px)`;
+    }
     enterFullscreen() {
         // @ts-ignore
         if (document.startViewTransition && this.animateFullscreen) {

@@ -556,6 +556,44 @@ class Wilson
 		return element;
 	}
 
+	removeDraggable(id: string)
+	{
+		this.#draggableElements[id].element.remove();
+		delete this.#draggableElements[id];
+	}
+
+	setDraggablePosition({ id, x, y }: { id: string, x: number, y: number })
+	{
+		this.#draggableElements[id].x = x;
+		this.#draggableElements[id].y = y;
+
+		const element = this.#draggableElements[id].element;
+
+		const uncappedRow = Math.floor(
+			this.#draggablesContainerRestrictedHeight * (
+				1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
+			)
+		) + this.#draggablesRadius;
+
+		const uncappedCol = Math.floor(
+			this.#draggablesContainerRestrictedWidth * (
+				(x - this.#worldCenterX) / this.#worldWidth + .5
+			)
+		) + this.#draggablesRadius;
+
+		const row = Math.min(
+			Math.max(this.#draggablesRadius, uncappedRow),
+			this.#draggablesContainerHeight - this.#draggablesRadius
+		);
+
+		const col = Math.min(
+			Math.max(this.#draggablesRadius, uncappedCol),
+			this.#draggablesContainerWidth - this.#draggablesRadius
+		);
+
+		element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+	}
+
 	#draggableOnMousedown(e: MouseEvent, id: string)
 	{
 		if (this.#draggablesStatic)
