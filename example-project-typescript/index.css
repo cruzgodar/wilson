@@ -15,5 +15,6 @@ body
 	height: calc(75vmin * 9 / 16);
 
 	border: 2px solid rgb(64, 64, 64);
+	padding: 2px;
 	border-radius: 16px;
 }

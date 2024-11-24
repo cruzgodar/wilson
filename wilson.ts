@@ -431,8 +431,7 @@ class Wilson
 
 			enterFullscreenButton.addEventListener("click", () =>
 			{
-				// @ts-ignore
-				document.startViewTransition(() => this.enterFullscreen());
+				this.enterFullscreen();
 			});
 
 
@@ -449,8 +448,7 @@ class Wilson
 
 			exitFullscreenButton.addEventListener("click", () =>
 			{
-				// @ts-ignore
-				document.startViewTransition(() => this.exitFullscreen());
+				this.exitFullscreen();
 			});
 		}
 	}
@@ -463,11 +461,13 @@ class Wilson
 	}
 
 
-
+	
+	#canvasOldWidth: number = 0;
+	#canvasOldHeight: number = 0;
 	#canvasOldWidthStyle: string = "";
 	#canvasOldHeightStyle: string = "";
 
-	enterFullscreen()
+	#enterFullscreen()
 	{
 		this.currentlyFullscreen = true;
 
@@ -478,7 +478,9 @@ class Wilson
 			this.#oldMetaThemeColor = this.#metaThemeColorElement.getAttribute("content");
 		}
 
-
+		
+		this.#canvasOldWidth = this.canvasWidth;
+		this.#canvasOldHeight = this.canvasHeight;
 
 		this.#canvasOldWidthStyle = this.canvas.style.width;
 		this.#canvasOldHeightStyle = this.canvas.style.height;
@@ -533,9 +535,15 @@ class Wilson
 		requestAnimationFrame(() => this.#updateDraggablesContainerSize());
 	}
 
+	enterFullscreen()
+	{
+		// @ts-ignore
+		document.startViewTransition ? document.startViewTransition(() => this.#enterFullscreen()) : this.#enterFullscreen();
+	}
 
 
-	exitFullscreen()
+
+	#exitFullscreen()
 	{
 		this.currentlyFullscreen = false;
 
@@ -565,6 +573,7 @@ class Wilson
 		document.removeEventListener("gestureend", this.#preventGestures);
 
 
+		this.resizeCanvas(this.#canvasOldWidth, this.#canvasOldHeight);
 
 		this.canvas.style.width = this.#canvasOldWidthStyle;
 		this.canvas.style.height = this.#canvasOldHeightStyle;
@@ -575,6 +584,14 @@ class Wilson
 		window.scrollTo(0, this.#fullscreenOldScroll);
 		setTimeout(() => window.scrollTo(0, this.#fullscreenOldScroll), 10);
 	}
+
+	exitFullscreen()
+	{
+		// @ts-ignore
+		document.startViewTransition ? document.startViewTransition(() => this.#exitFullscreen()) : this.#exitFullscreen();
+	}
+
+	
 
 	#onResize()
 	{
