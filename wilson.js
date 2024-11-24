@@ -79,12 +79,12 @@ class Wilson {
         const computedStyle = getComputedStyle(canvas);
         this.canvasAspectRatio = parseFloat(computedStyle.width) / parseFloat(computedStyle.height);
         if ("canvasWidth" in options) {
-            this.canvasWidth = options.canvasWidth;
-            this.canvasHeight = options.canvasWidth / this.canvasAspectRatio;
+            this.canvasWidth = Math.round(options.canvasWidth);
+            this.canvasHeight = Math.round(options.canvasWidth / this.canvasAspectRatio);
         }
         else {
-            this.canvasWidth = options.canvasHeight * this.canvasAspectRatio;
-            this.canvasHeight = options.canvasHeight;
+            this.canvasWidth = Math.round(options.canvasHeight * this.canvasAspectRatio);
+            this.canvasHeight = Math.round(options.canvasHeight);
         }
         this.canvas.setAttribute("width", this.canvasWidth.toString());
         this.canvas.setAttribute("height", this.canvasHeight.toString());
@@ -292,7 +292,7 @@ _Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson
     if (__classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f")) {
         __classPrivateFieldGet(this, _Wilson_fullscreenContainer, "f").classList.add("WILSON_true-fullscreen");
         this.canvas.style.width = "100vw";
-        this.canvas.style.height = "100vh";
+        this.canvas.style.height = "100%";
         window.scroll(0, 0);
     }
     else {

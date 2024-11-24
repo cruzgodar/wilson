@@ -213,14 +213,14 @@ class Wilson
 
 		if ("canvasWidth" in options)
 		{
-			this.canvasWidth = options.canvasWidth;
-			this.canvasHeight = options.canvasWidth / this.canvasAspectRatio;
+			this.canvasWidth = Math.round(options.canvasWidth);
+			this.canvasHeight = Math.round(options.canvasWidth / this.canvasAspectRatio);
 		}
 
 		else
 		{
-			this.canvasWidth = options.canvasHeight * this.canvasAspectRatio;
-			this.canvasHeight = options.canvasHeight;
+			this.canvasWidth = Math.round(options.canvasHeight * this.canvasAspectRatio);
+			this.canvasHeight = Math.round(options.canvasHeight);
 		}
 		
 
@@ -550,7 +550,7 @@ class Wilson
 			this.#fullscreenContainer.classList.add("WILSON_true-fullscreen");
 
 			this.canvas.style.width = "100vw";
-			this.canvas.style.height = "100vh";
+			this.canvas.style.height = "100%";
 
 			window.scroll(0, 0);
 		}
