@@ -431,7 +431,8 @@ class Wilson
 
 			enterFullscreenButton.addEventListener("click", () =>
 			{
-				this.enterFullscreen();
+				// @ts-ignore
+				document.startViewTransition(() => this.enterFullscreen());
 			});
 
 
@@ -448,7 +449,8 @@ class Wilson
 
 			exitFullscreenButton.addEventListener("click", () =>
 			{
-				this.exitFullscreen();
+				// @ts-ignore
+				document.startViewTransition(() => this.exitFullscreen());
 			});
 		}
 	}
@@ -569,7 +571,7 @@ class Wilson
 
 		this.#onResize();
 		this.#switchFullscreenCallback();
-		
+
 		window.scrollTo(0, this.#fullscreenOldScroll);
 		setTimeout(() => window.scrollTo(0, this.#fullscreenOldScroll), 10);
 	}

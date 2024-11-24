@@ -271,7 +271,8 @@ _Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson
         img.src = __classPrivateFieldGet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, "f");
         enterFullscreenButton.appendChild(img);
         enterFullscreenButton.addEventListener("click", () => {
-            this.enterFullscreen();
+            // @ts-ignore
+            document.startViewTransition(() => this.enterFullscreen());
         });
         const exitFullscreenButton = document.createElement("div");
         exitFullscreenButton.classList.add("WILSON_exit-fullscreen-button");
@@ -280,7 +281,8 @@ _Wilson_worldWidth = new WeakMap(), _Wilson_worldHeight = new WeakMap(), _Wilson
         img2.src = __classPrivateFieldGet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, "f");
         exitFullscreenButton.appendChild(img2);
         exitFullscreenButton.addEventListener("click", () => {
-            this.exitFullscreen();
+            // @ts-ignore
+            document.startViewTransition(() => this.exitFullscreen());
         });
     }
 }, _Wilson_preventGestures = function _Wilson_preventGestures(e) {

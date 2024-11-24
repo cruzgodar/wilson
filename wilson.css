@@ -1,6 +1,6 @@
 /*
 	Wilson arranges its canvases in a hierarchy of a few containers:
-	- Blank div (the fullscreen compoents location)
+	- Blank div (the fullscreen components location)
 		- Fullscreen container
 			- Applet container
 				- Canvas container
@@ -17,6 +17,11 @@
 	user-select: none;
 	width: fit-content;
 	font-size: 0;
+}
+
+.WILSON_canvas-container canvas
+{
+	view-transition-name: WILSON_canvas;
 }
 
 .WILSON_canvas-container.WILSON_fullscreen
@@ -47,6 +52,8 @@
 	-webkit-user-select: none;
 	user-select: none;
 	font-size: 0;
+
+	view-transition-name: WILSON_draggables-container;
 }
 
 .WILSON_draggable
@@ -143,6 +150,11 @@
 	z-index: 50;
 }
 
+.WILSON_fullscreen-container:not(.WILSON_fullscreen) .WILSON_enter-fullscreen-button
+{
+	view-transition-name: WILSON_fullscreen-button;
+}
+
 .WILSON_exit-fullscreen-button
 {
 	position: fixed;
@@ -163,6 +175,8 @@
 .WILSON_fullscreen-container.WILSON_fullscreen .WILSON_exit-fullscreen-button
 {
 	display: block;
+
+	view-transition-name: WILSON_fullscreen-button;
 }
 
 .WILSON_enter-fullscreen-button img, .WILSON_exit-fullscreen-button img
@@ -170,3 +184,57 @@
 	width: 100%;
 	height: 100%;
 }
+
+/* @keyframes zoom-in
+{
+	to
+	{
+		transform: scale(2);
+	}
+}
+
+@keyframes zoom-out
+{
+	from
+	{
+		opacity: 0;
+	}
+}
+
+::view-transition-old(root)
+{
+	animation: .25s ease-out both zoom-in;
+}
+
+::view-transition-new(root)
+{
+	animation: .25s ease-out both zoom-out; */
+/* } */
+
+
+
+/* @keyframes fade-out
+{
+	to
+	{
+		opacity: 0;
+	}
+}
+
+@keyframes fade-in
+{
+	from
+	{
+		opacity: 0;
+	}
+}
+
+::view-transition-old(fullscreen-button)
+{
+	animation: .25s ease-out both fade-out;
+}
+
+::view-transition-new(fullscreen-button)
+{
+	animation: .25s ease-in both fade-in;
+} */
