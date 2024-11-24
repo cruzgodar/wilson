@@ -148,11 +148,29 @@ class Wilson {
     }
     enterFullscreen() {
         // @ts-ignore
-        document.startViewTransition ? document.startViewTransition(() => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_enterFullscreen).call(this)) : __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_enterFullscreen).call(this);
+        if (document.startViewTransition) {
+            if (!__classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f")) {
+                __classPrivateFieldGet(this, _Wilson_appletContainer, "f").style.setProperty("view-transition-name", "WILSON_applet-container");
+            }
+            // @ts-ignore
+            document.startViewTransition(() => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_enterFullscreen).call(this));
+        }
+        else {
+            __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_enterFullscreen).call(this);
+        }
     }
     exitFullscreen() {
         // @ts-ignore
-        document.startViewTransition ? document.startViewTransition(() => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_exitFullscreen).call(this)) : __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_exitFullscreen).call(this);
+        if (document.startViewTransition) {
+            if (!__classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f")) {
+                __classPrivateFieldGet(this, _Wilson_appletContainer, "f").style.setProperty("view-transition-name", "WILSON_applet-container");
+            }
+            // @ts-ignore
+            document.startViewTransition(() => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_exitFullscreen).call(this));
+        }
+        else {
+            __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_exitFullscreen).call(this);
+        }
     }
     interpolateCanvasToWorld([row, col]) {
         return [

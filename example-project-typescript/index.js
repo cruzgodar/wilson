@@ -5,7 +5,7 @@ const wilson = new WilsonCPU(canvas, {
     canvasWidth: resolution,
     canvasHeight: resolution * 9 / 16,
     fullscreenOptions: {
-        fillScreen: true,
+        fillScreen: false,
         useFullscreenButton: true,
         enterFullscreenButtonIconPath: "/enter-fullscreen.png",
         exitFullscreenButtonIconPath: "/exit-fullscreen.png",

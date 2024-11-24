@@ -538,7 +538,21 @@ class Wilson
 	enterFullscreen()
 	{
 		// @ts-ignore
-		document.startViewTransition ? document.startViewTransition(() => this.#enterFullscreen()) : this.#enterFullscreen();
+		if (document.startViewTransition)
+		{
+			if (!this.#fullscreenFillScreen)
+			{
+				this.#appletContainer.style.setProperty("view-transition-name", "WILSON_applet-container")
+			}
+
+			// @ts-ignore
+			document.startViewTransition(() => this.#enterFullscreen());
+		}
+
+		else
+		{
+			this.#enterFullscreen();
+		}
 	}
 
 
@@ -588,10 +602,24 @@ class Wilson
 	exitFullscreen()
 	{
 		// @ts-ignore
-		document.startViewTransition ? document.startViewTransition(() => this.#exitFullscreen()) : this.#exitFullscreen();
+		if (document.startViewTransition)
+		{
+			if (!this.#fullscreenFillScreen)
+			{
+				this.#appletContainer.style.setProperty("view-transition-name", "WILSON_applet-container")
+			}
+
+			// @ts-ignore
+			document.startViewTransition(() => this.#exitFullscreen());
+		}
+		
+		else
+		{
+			this.#exitFullscreen();
+		}
 	}
 
-	
+
 
 	#onResize()
 	{
