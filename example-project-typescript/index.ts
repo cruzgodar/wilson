@@ -5,14 +5,13 @@ const resolution = 500;
 
 const wilson = new WilsonCPU(canvas, {
 	canvasWidth: resolution,
-	canvasHeight: resolution * 9 / 16,
+	onResizeCanvas: drawFrame,
 
 	fullscreenOptions: {
-		fillScreen: false,
+		fillScreen: true,
 		useFullscreenButton: true,
 		enterFullscreenButtonIconPath: "/enter-fullscreen.png",
 		exitFullscreenButtonIconPath: "/exit-fullscreen.png",
-		switchFullscreenCallback: drawFrame
 	},
 });
 

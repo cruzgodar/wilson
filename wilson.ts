@@ -114,7 +114,6 @@ type DraggableOptions = {
 
 type FullscreenOptions = {
 	fillScreen?: boolean,
-	switchFullscreenCallback?: () => void,
 } & (
 	{
 		useFullscreenButton: true,
@@ -127,14 +126,17 @@ type FullscreenOptions = {
 
 
 
-export type WilsonOptions = {
+export type WilsonOptions = ({
 	canvasWidth: number,
+} | {
 	canvasHeight: number,
-
+}) & {
 	worldWidth?: number,
 	worldHeight?: number,
 	worldCenterX?: number,
 	worldCenterY?: number,
+
+	onResizeCanvas?: () => void,
 
 	useP3ColorSpace?: boolean,
 
@@ -167,7 +169,9 @@ class Wilson
 	#worldCenterX: number;
 	#worldCenterY: number;
 
-	#useP3ColorSpace: boolean;
+	#onResizeCanvasUser: () => void;
+
+	useP3ColorSpace: boolean;
 
 	#callbacks: InteractionCallbacks;
 
@@ -186,7 +190,6 @@ class Wilson
 	currentlyFullscreen: boolean = false;
 	#fullscreenOldScroll: number = 0;
 	#fullscreenFillScreen: boolean;
-	#switchFullscreenCallback: () => void;
 	#fullscreenUseButton: boolean;
 	#fullscreenEnterFullscreenButtonIconPath?: string;
 	#fullscreenExitFullscreenButtonIconPath?: string;
@@ -205,10 +208,21 @@ class Wilson
 	constructor(canvas: HTMLCanvasElement, options: WilsonOptions)
 	{
 		this.canvas = canvas;
+		const computedStyle = getComputedStyle(canvas);
+		this.canvasAspectRatio = parseFloat(computedStyle.width) / parseFloat(computedStyle.height);
 
-		this.canvasWidth = options.canvasWidth;
-		this.canvasHeight = options.canvasHeight;
-		this.canvasAspectRatio = this.canvasWidth / this.canvasHeight;
+		if ("canvasWidth" in options)
+		{
+			this.canvasWidth = options.canvasWidth;
+			this.canvasHeight = options.canvasWidth / this.canvasAspectRatio;
+		}
+
+		else
+		{
+			this.canvasWidth = options.canvasHeight * this.canvasAspectRatio;
+			this.canvasHeight = options.canvasHeight;
+		}
+		
 
 		this.canvas.setAttribute("width", this.canvasWidth.toString());
 		this.canvas.setAttribute("height", this.canvasHeight.toString());
@@ -220,7 +234,9 @@ class Wilson
 		this.#worldCenterX = options.worldCenterX ?? 0;
 		this.#worldCenterY = options.worldCenterY ?? 0;
 
-		this.#useP3ColorSpace = options.useP3ColorSpace ?? true;
+		this.#onResizeCanvasUser = options?.onResizeCanvas ?? (() => {});
+
+		this.useP3ColorSpace = options.useP3ColorSpace ?? true;
 
 		this.#callbacks = { ...defaultInteractionCallbacks, ...options.callbacks };
 		
@@ -229,7 +245,6 @@ class Wilson
 		this.#draggableCallbacks = { ...defaultDraggableCallbacks, ...options.draggableOptions?.callbacks };
 
 		this.#fullscreenFillScreen = options.fullscreenOptions?.fillScreen ?? false;
-		this.#switchFullscreenCallback = options.fullscreenOptions?.switchFullscreenCallback ?? (() => {});
 		this.#fullscreenUseButton = options.fullscreenOptions?.useFullscreenButton ?? false;
 
 		if (options.fullscreenOptions?.useFullscreenButton)
@@ -237,21 +252,6 @@ class Wilson
 			this.#fullscreenEnterFullscreenButtonIconPath = options.fullscreenOptions?.enterFullscreenButtonIconPath;
 			this.#fullscreenExitFullscreenButtonIconPath = options.fullscreenOptions?.exitFullscreenButtonIconPath;
 		}
-		
-
-
-		// const colorSpace = (this.#useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
-		// 	? "display-p3"
-		// 	: "srgb";
-
-		// const ctx = this.canvas.getContext("2d", { colorSpace });
-
-		// if (!ctx)
-		// {
-		// 	throw new Error(`[Wilson] Could not get 2d context for canvas: ${ctx}`);
-		// }
-
-		// this.ctx = ctx;
 
 
 
@@ -316,6 +316,8 @@ class Wilson
 		this.#initInteraction();
 		this.#initFullscreen();
 
+		window.addEventListener("resize", () => this.#onResizeWindow());
+
 
 
 		console.log(
@@ -324,10 +326,32 @@ class Wilson
 		);
 	}
 
-	resizeCanvas(width: number, height?: number)
+
+
+	#onResizeCanvas()
 	{
-		this.canvasWidth = width;
-		this.canvasHeight = height ?? width * this.canvasAspectRatio;
+		requestAnimationFrame(() => this.#onResizeCanvasUser());
+	}
+
+
+
+	resizeCanvas(dimensions: { width: number } | { height: number })
+	{
+		const aspectRatio = (this.currentlyFullscreen && this.#fullscreenFillScreen)
+			? window.innerWidth / window.innerHeight
+			: this.canvasAspectRatio;
+		
+		if ("width" in dimensions)
+		{
+			this.canvasWidth = Math.round(dimensions.width);
+			this.canvasHeight = Math.round(dimensions.width / aspectRatio);
+		}
+
+		else
+		{
+			this.canvasWidth = Math.round(dimensions.height * aspectRatio);
+			this.canvasHeight = Math.round(dimensions.height);
+		}
 
 		this.canvas.setAttribute("width", this.canvasWidth.toString());
 		this.canvas.setAttribute("height", this.canvasHeight.toString());
@@ -463,7 +487,6 @@ class Wilson
 
 	
 	#canvasOldWidth: number = 0;
-	#canvasOldHeight: number = 0;
 	#canvasOldWidthStyle: string = "";
 	#canvasOldHeightStyle: string = "";
 
@@ -480,7 +503,6 @@ class Wilson
 
 		
 		this.#canvasOldWidth = this.canvasWidth;
-		this.#canvasOldHeight = this.canvasHeight;
 
 		this.#canvasOldWidthStyle = this.canvas.style.width;
 		this.#canvasOldHeightStyle = this.canvas.style.height;
@@ -530,8 +552,8 @@ class Wilson
 			this.canvas.style.height = `min(100vh, calc(100vw / ${this.canvasAspectRatio}))`;
 		}
 
-		this.#onResize();
-		this.#switchFullscreenCallback();
+		this.#onResizeWindow();
+		this.#onResizeCanvas();
 		requestAnimationFrame(() => this.#updateDraggablesContainerSize());
 	}
 
@@ -587,13 +609,13 @@ class Wilson
 		document.removeEventListener("gestureend", this.#preventGestures);
 
 
-		this.resizeCanvas(this.#canvasOldWidth, this.#canvasOldHeight);
+		this.resizeCanvas({ width: this.#canvasOldWidth });
 
 		this.canvas.style.width = this.#canvasOldWidthStyle;
 		this.canvas.style.height = this.#canvasOldHeightStyle;
 
-		this.#onResize();
-		this.#switchFullscreenCallback();
+		this.#onResizeWindow();
+		this.#onResizeCanvas();
 
 		window.scrollTo(0, this.#fullscreenOldScroll);
 		setTimeout(() => window.scrollTo(0, this.#fullscreenOldScroll), 10);
@@ -621,7 +643,7 @@ class Wilson
 
 
 
-	#onResize()
+	#onResizeWindow()
 	{
 		if (this.currentlyFullscreen && this.#fullscreenFillScreen)
 		{
@@ -632,11 +654,8 @@ class Wilson
 				Math.sqrt(this.canvasWidth * this.canvasHeight * windowAspectRatio)
 			);
 
-			const height = Math.round(
-				Math.sqrt(this.canvasWidth * this.canvasHeight / windowAspectRatio)
-			);
-
-			this.resizeCanvas(width, height);
+			this.resizeCanvas({ width });
+			this.#onResizeCanvas();
 		}
 
 		this.#updateDraggablesContainerSize();
@@ -673,6 +692,19 @@ export class WilsonCPU extends Wilson
 	constructor(canvas: HTMLCanvasElement, options: WilsonOptions)
 	{
 		super(canvas, options);
+
+		const colorSpace = (this.useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
+			? "display-p3"
+			: "srgb";
+
+		const ctx = this.canvas.getContext("2d", { colorSpace });
+
+		if (!ctx)
+		{
+			throw new Error(`[Wilson] Could not get 2d context for canvas: ${ctx}`);
+		}
+
+		this.ctx = ctx;
 
 		this.ctx = canvas.getContext("2d")!;
 	}
