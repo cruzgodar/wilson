@@ -8,7 +8,7 @@ const wilson = new WilsonCPU(canvas, {
 	onResizeCanvas: drawFrame,
 
 	fullscreenOptions: {
-		fillScreen: false,
+		fillScreen: true,
 		useFullscreenButton: true,
 		enterFullscreenButtonIconPath: "/enter-fullscreen.png",
 		exitFullscreenButtonIconPath: "/exit-fullscreen.png",
