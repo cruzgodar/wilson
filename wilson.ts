@@ -317,6 +317,7 @@ class Wilson
 		this.#initFullscreen();
 
 		window.addEventListener("resize", () => this.#onResizeWindow());
+		document.documentElement.addEventListener("keydown", e => this.#handleKeydownEvent(e));
 
 
 
@@ -326,7 +327,15 @@ class Wilson
 		);
 	}
 
+	
 
+	#handleKeydownEvent(e: KeyboardEvent)
+	{
+		if (e.key === "Escape" && this.currentlyFullscreen)
+		{
+			this.exitFullscreen();
+		}
+	}
 
 	#onResizeCanvas()
 	{
