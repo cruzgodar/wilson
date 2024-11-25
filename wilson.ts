@@ -285,7 +285,7 @@ class Wilson
 			this.#worldHeight = Math.max(2, 2 / this.canvasAspectRatio);
 		}
 
-		
+
 
 		this.#worldCenterX = options.worldCenterX ?? 0;
 		this.#worldCenterY = options.worldCenterY ?? 0;
@@ -383,8 +383,8 @@ class Wilson
 		this.#initDraggables();
 		this.#initFullscreen();
 
-		window.addEventListener("resize", () => this.#onResizeWindow());
-		document.documentElement.addEventListener("keydown", e => this.#handleKeydownEvent(e));
+		window.addEventListener("resize", this.#onResizeWindow);
+		document.documentElement.addEventListener("keydown", this.#handleKeydownEvent);
 
 
 
@@ -394,9 +394,33 @@ class Wilson
 		);
 	}
 
+	destroy()
+	{
+		window.removeEventListener("resize", this.#onResizeWindow);
+		document.documentElement.removeEventListener("keydown", this.#handleKeydownEvent);
+
+		document.documentElement.removeEventListener(
+			"mousemove",
+			this.#documentDraggableMousemoveListener
+		);
+
+		document.documentElement.removeEventListener(
+			"mouseup",
+			this.#documentDraggableMouseupListener
+		);
+
+		document.removeEventListener("gesturestart", this.#preventGestures);
+		document.removeEventListener("gesturechange", this.#preventGestures);
+		document.removeEventListener("gestureend", this.#preventGestures);
+
+		this.#fullscreenContainerLocation.parentElement
+			&& this.#fullscreenContainerLocation.parentElement.insertBefore(this.canvas, this.#fullscreenContainerLocation);
+		this.#fullscreenContainerLocation.remove();
+	}
 
 
-	#onResizeWindow()
+
+	#onResizeWindow = () =>
 	{
 		if (this.currentlyFullscreen && this.#fullscreenFillScreen)
 		{
@@ -414,7 +438,7 @@ class Wilson
 		this.#updateDraggablesContainerSize();
 	}
 
-	#handleKeydownEvent(e: KeyboardEvent)
+	#handleKeydownEvent = (e: KeyboardEvent) =>
 	{
 		if (e.key === "Escape" && this.currentlyFullscreen)
 		{
@@ -933,7 +957,7 @@ class Wilson
 
 
 
-	#preventGestures(e: Event)
+	#preventGestures = (e: Event) =>
 	{
 		e.preventDefault();
 	}
