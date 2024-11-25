@@ -1,5 +1,3 @@
-type ShaderProgramId = string;
-
 type InteractionCallbacks = {
 	mousedown: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
 
@@ -176,17 +174,6 @@ export type WilsonOptions = ({ canvasWidth: number } | { canvasHeight: number })
 	fullscreenOptions?: FullscreenOptions,
 };
 
-/*
-	gl: WebGLRenderingContext | WebGL2RenderingContext | null = null;
-
-	#shaderPrograms: Record<ShaderProgramId, WebGLProgram> = {};
-	#uniforms: Record<ShaderProgramId, Record<string, WebGLUniformLocation>> = {};
-
-
-
-	ctx: CanvasRenderingContext2D;
-*/
-
 class Wilson
 {
 	canvas: HTMLCanvasElement;
@@ -200,7 +187,7 @@ class Wilson
 	#worldCenterX: number;
 	#worldCenterY: number;
 
-	#onResizeCanvasUser: () => void;
+	#onResizeCanvasCallback: () => void;
 
 	useP3ColorSpace: boolean;
 
@@ -290,7 +277,7 @@ class Wilson
 		this.#worldCenterX = options.worldCenterX ?? 0;
 		this.#worldCenterY = options.worldCenterY ?? 0;
 
-		this.#onResizeCanvasUser = options?.onResizeCanvas ?? (() => {});
+		this.#onResizeCanvasCallback = options?.onResizeCanvas ?? (() => {});
 
 		this.useP3ColorSpace = options.useP3ColorSpace ?? true;
 
@@ -448,7 +435,7 @@ class Wilson
 
 	#onResizeCanvas()
 	{
-		requestAnimationFrame(() => this.#onResizeCanvasUser());
+		requestAnimationFrame(() => this.#onResizeCanvasCallback());
 	}
 
 
@@ -1142,11 +1129,13 @@ class Wilson
 
 
 
+export type WilsonCPUOptions = WilsonOptions;
+
 export class WilsonCPU extends Wilson
 {
 	ctx: CanvasRenderingContext2D;
 
-	constructor(canvas: HTMLCanvasElement, options: WilsonOptions)
+	constructor(canvas: HTMLCanvasElement, options: WilsonCPUOptions)
 	{
 		super(canvas, options);
 
@@ -1202,4 +1191,56 @@ export class WilsonCPU extends Wilson
 			link.remove();
 		});
 	}
+}
+
+
+
+type ShaderProgramId = string;
+type UniformType = "int" | "float" | "vec2" | "vec3" | "vec4" | "mat2" | "mat3" | "mat4";
+type UniformInitializer = ["int", number]
+	| ["float", number]
+	| ["vec2", [number, number]]
+	| ["vec3", [number, number, number]]
+	| ["vec4", [number, number, number, number]]
+	| ["mat2", [number, number, number, number]]
+	| ["mat3", [number, number, number, number, number, number, number, number, number]]
+	| ["mat4", [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number]];
+type UniformInitializers = {[name: string]: UniformInitializer};
+
+const uniformFunctions: Record<UniformType, string> = {
+	int: "uniform1i",
+	float: "uniform1f",
+	vec2: "uniform2fv",
+	vec3: "uniform3fv",
+	vec4: "uniform4fv",
+	mat2: "uniformMatrix2fv",
+	mat3: "uniformMatrix3fv",
+	mat4: "uniformMatrix4fv",
+};
+
+export type WilsonGPUOptions = WilsonOptions
+	& { useWebGL2?: boolean }
+	& (
+	{
+		shader: string,
+		uniforms: UniformInitializers
+	} | {
+		shaders: {[id: ShaderProgramId]: string},
+		uniforms: {[id: ShaderProgramId]: UniformInitializers},
+	});
+
+export class WilsonGPU extends Wilson
+{
+	gl: WebGLRenderingContext | WebGL2RenderingContext | null = null;
+
+	#shaderPrograms: {[id: ShaderProgramId]: WebGLProgram} = {};
+
+	#uniforms: {
+		[id: ShaderProgramId]: {
+			[name: string]: {
+				location: WebGLUniformLocation,
+				type: UniformType,
+			}
+		}
+	} = {};
 }
