@@ -260,9 +260,33 @@ class Wilson
 		this.canvas.setAttribute("height", this.canvasHeight.toString());
 
 		
+		
+		if (options.worldWidth !== undefined && options.worldHeight !== undefined)
+		{
+			this.#worldWidth = options.worldWidth;
+			this.#worldHeight = options.worldHeight;
+		}
+		
+		else if (options.worldHeight !== undefined)
+		{
+			this.#worldHeight = options.worldHeight;
+			this.#worldWidth = this.#worldHeight * this.canvasAspectRatio;
+		}
 
-		this.#worldWidth = options.worldWidth ?? 2;
-		this.#worldHeight = options.worldHeight ?? 2;
+		else if (options.worldWidth !== undefined)
+		{
+			this.#worldWidth = options.worldWidth;
+			this.#worldHeight = this.#worldWidth / this.canvasAspectRatio;
+		}
+
+		else
+		{
+			this.#worldWidth = Math.max(2, 2 * this.canvasAspectRatio);
+			this.#worldHeight = Math.max(2, 2 / this.canvasAspectRatio);
+		}
+
+		
+
 		this.#worldCenterX = options.worldCenterX ?? 0;
 		this.#worldCenterY = options.worldCenterY ?? 0;
 
