@@ -1219,15 +1219,54 @@ type UniformInitializer = ["int", number]
 	| ["mat4", [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number]];
 type UniformInitializers = {[name: string]: UniformInitializer};
 
-const uniformFunctions: Record<UniformType, string> = {
-	int: "uniform1i",
-	float: "uniform1f",
-	vec2: "uniform2fv",
-	vec3: "uniform3fv",
-	vec4: "uniform4fv",
-	mat2: "uniformMatrix2fv",
-	mat3: "uniformMatrix3fv",
-	mat4: "uniformMatrix4fv",
+const uniformFunctions: {[key in UniformType]: any} = {
+	int: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: number
+	) => gl.uniform1i(location, value),
+	
+	float: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: number
+	) => gl.uniform1f(location, value),
+	
+	vec2: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: [number, number]
+	) => gl.uniform2fv(location, value),
+
+	vec3: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: [number, number, number]
+	) => gl.uniform3fv(location, value),
+	
+	vec4: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: [number, number, number, number]
+	) => gl.uniform4fv(location, value),
+
+	mat2: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: [number, number, number, number]
+	) => gl.uniformMatrix2fv(location, false, value),
+	
+	mat3: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: [number, number, number, number, number, number, number, number, number]
+	) => gl.uniformMatrix3fv(location, false, value),
+	
+	mat4: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number]
+	) => gl.uniformMatrix4fv(location, false, value),
 };
 
 export type WilsonGPUOptions = WilsonOptions
@@ -1309,13 +1348,16 @@ export class WilsonGPU extends Wilson
 	}
 
 	#numShaders = 0;
+	#currentShaderId = "0";
 
 	loadShader({
 		id = this.#numShaders.toString(),
-		source
+		source,
+		uniforms
 	}: {
 		id: ShaderProgramId,
-		source: string
+		source: string,
+		uniforms: UniformInitializers
 	}) {
 		const vertexShaderSource = /* glsl*/`
 			attribute vec3 position;
@@ -1351,6 +1393,7 @@ export class WilsonGPU extends Wilson
 		}
 
 		this.useProgram(id);
+		this.#currentShaderId = id;
 
 		const positionBuffer = this.gl.createBuffer();
 
@@ -1363,9 +1406,9 @@ export class WilsonGPU extends Wilson
 
 		const quad = [
 			-1, -1, 0,
-			-1, 1, 0,
-			1, -1, 0,
-			1, 1, 0
+			-1,  1, 0,
+			 1, -1, 0,
+			 1,  1, 0
 		];
 		this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(quad), this.gl.STATIC_DRAW);
 
@@ -1379,6 +1422,44 @@ export class WilsonGPU extends Wilson
 		this.gl.enableVertexAttribArray(positionAttribute);
 		this.gl.vertexAttribPointer(positionAttribute, 3, this.gl.FLOAT, false, 0, 0);
 		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
+
+
+
+		// Initialize the uniforms.
+		this.#uniforms[id] = {};
+
+		for (const [name, data] of Object.entries(uniforms))
+		{
+			const location = this.gl.getUniformLocation(this.#shaderPrograms[id], name);
+
+			if (location === null)
+			{
+				throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Full shader source: ${source}`);
+			}
+
+			const [type, value] = data;
+
+			this.#uniforms[id][name] = { location, type };
+			this.setUniform({ name, value });
+		}
+	}
+
+	setUniform({
+		name,
+		value,
+		shaderId = this.#currentShaderId
+	}: {
+		name: string,
+		value: number | number[],
+		shaderId?: ShaderProgramId
+	}) {
+		this.useProgram(shaderId);
+
+		const { location, type } = this.#uniforms[shaderId][name];
+		const uniformFunction = uniformFunctions[type];
+		uniformFunction(location, value);
+
+		this.useProgram(this.#currentShaderId);
 	}
 
 	useProgram(id: ShaderProgramId)
