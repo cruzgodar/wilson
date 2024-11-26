@@ -58,33 +58,26 @@ function initWilson2()
 		
 		varying vec2 uv;
 		
-		// uniform float aspectRatio;
-		
-		// uniform vec2 worldCenterX;
-		// uniform vec2 worldCenterY;
-		// uniform float worldSize;
+		uniform vec2 worldCenter;
+		uniform vec2 worldSize;
 
 		// uniform float brightnessScale;
+		uniform vec2 c;
 		
 		
 		
 		void main(void)
 		{
-			vec2 z = vec2(uv.x * 2.0 - 0.75, uv.y * 2.0);
+			vec2 z = uv * worldSize * 0.5 + worldCenter;
 			
-			// if (aspectRatio >= 1.0)
-			// {
-			// 	z = vec2(uv.x * aspectRatio * worldSize + worldCenterX.x, uv.y * worldSize + worldCenterY.x);
-			// }
-			
-			// else
-			// {
-			// 	z = vec2(uv.x * worldSize + worldCenterX.x, uv.y / aspectRatio * worldSize + worldCenterY.x);
-			// }
-			
-			vec2 c = z;
-			
-			vec3 color = normalize(vec3(abs(z.x + z.y) / 2.0, abs(z.x) / 2.0, abs(z.y) / 2.0) + .1 / length(z) * vec3(1.0, 1.0, 1.0));
+			vec3 color = normalize(
+				vec3(
+					abs(z.x + z.y) / 2.0,
+					abs(z.x) / 2.0,
+					abs(z.y) / 2.0
+				)
+				+ .1 / length(z) * vec3(1.0)
+			);
 			
 			float brightness = exp(-length(z));
 			
@@ -102,7 +95,6 @@ function initWilson2()
 				brightness += exp(-length(z));
 			}
 			
-			
 			gl_FragColor = vec4(brightness / 10.0 * color, 1.0);
 		}
 	`;
@@ -110,21 +102,59 @@ function initWilson2()
 	const wilson = new WilsonGPU(canvas, {
 		shader,
 
+		uniforms: {
+			worldCenter: ["vec2", [0, 0]],
+			worldSize: ["vec2", [2, 2]],
+			c: ["vec2",[0, 0]],
+		},
+
 		canvasWidth: resolution,
-		onResizeCanvas: drawFrame,
+		onResizeCanvas,
 
 		fullscreenOptions: {
-			fillScreen: false,
+			fillScreen: true,
 			useFullscreenButton: true,
 			enterFullscreenButtonIconPath: "/enter-fullscreen.png",
 			exitFullscreenButtonIconPath: "/exit-fullscreen.png",
 		},
+
+		draggableOptions: {
+			draggables: [
+				{ id: "c", x: 0, y: 0 }
+			],
+
+			callbacks: {
+				ondrag: ({ id, x, y }) => {
+					if (id === "c")
+					{
+						wilson.setUniform({ name: "c", value: [x, y] });
+						wilson.drawFrame();
+					}
+				}
+			}
+		}
 	});
 
-	drawFrame();
+	onResizeCanvas();
 
-	function drawFrame()
+	function onResizeCanvas()
 	{
+		wilson.setUniform({
+			name: "worldCenter",
+			value: [
+				wilson.worldCenterX,
+				wilson.worldCenterY
+			]
+		});
+
+		wilson.setUniform({
+			name: "worldSize",
+			value: [
+				wilson.worldWidth,
+				wilson.worldHeight
+			]
+		});
+		
 		wilson.drawFrame();
 	}
 }

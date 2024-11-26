@@ -87,11 +87,9 @@ const defaultInteractionCallbacks: InteractionCallbacks = {
 };
 
 type DraggableCallBacks = {
-	mousedown: ({ id, x, y, event }: { id: string, x: number, y: number, event: MouseEvent }) => void,
+	ongrab: ({ id, x, y, event }: { id: string, x: number, y: number, event: Event }) => void,
 
-	mouseup: ({ id, x, y, event }: { id: string, x: number, y: number, event: MouseEvent }) => void,
-
-	mousedrag: ({
+	ondrag: ({
 		id,
 		x,
 		y,
@@ -104,43 +102,23 @@ type DraggableCallBacks = {
 		y: number,
 		xDelta: number,
 		yDelta: number,
-		event: MouseEvent
+		event: Event
 	}) => void,
 
-	touchstart: ({ id, x, y, event }: { id: string, x: number, y: number, event: TouchEvent }) => void,
-
-	touchend: ({ id, x, y, event }: { id: string, x: number, y: number, event: TouchEvent }) => void,
-
-	touchmove: ({
-		id,
-		x,
-		y,
-		xDelta,
-		yDelta,
-		event
-	}: {
-		id: string,
-		x: number,
-		y: number,
-		xDelta: number,
-		yDelta: number,
-		event: TouchEvent
-	}) => void,
+	onrelease: ({ id, x, y, event }: { id: string, x: number, y: number, event: Event }) => void,
 }
 
 const defaultDraggableCallbacks: DraggableCallBacks = {
-	mousedown: ({ id, x, y, event }) => {},
-	mouseup: ({ id, x, y, event }) => {},
-	mousedrag: ({ id, x, y, xDelta, yDelta, event }) => {},
-	touchstart: ({ id, x, y, event }) => {},
-	touchend: ({ id, x, y, event }) => {},
-	touchmove: ({ id, x, y, xDelta, yDelta, event }) => {},
+	ongrab: () => {},
+	ondrag: () => {},
+	onrelease: () => {},
 };
 
 type DraggableOptions = {
+	draggables?: {id: string, x: number, y: number}[],
 	radius?: number,
 	static?: boolean,
-	callbacks?: DraggableCallBacks,
+	callbacks?: Partial<DraggableCallBacks>,
 };
 
 type FullscreenOptions = {
@@ -169,7 +147,7 @@ export type WilsonOptions = ({ canvasWidth: number } | { canvasHeight: number })
 
 	useP3ColorSpace?: boolean,
 
-	callbacks?: InteractionCallbacks,
+	callbacks?: Partial<InteractionCallbacks>,
 	draggableOptions?: DraggableOptions,
 	fullscreenOptions?: FullscreenOptions,
 };
@@ -190,10 +168,10 @@ class Wilson
 	}
 	#canvasAspectRatio: number;
 
-	#worldWidth: number;
-	#worldHeight: number;
-	#worldCenterX: number;
-	#worldCenterY: number;
+	worldWidth: number;
+	worldHeight: number;
+	worldCenterX: number;
+	worldCenterY: number;
 
 	#onResizeCanvasCallback: () => void;
 
@@ -264,32 +242,32 @@ class Wilson
 		
 		if (options.worldWidth !== undefined && options.worldHeight !== undefined)
 		{
-			this.#worldWidth = options.worldWidth;
-			this.#worldHeight = options.worldHeight;
+			this.worldWidth = options.worldWidth;
+			this.worldHeight = options.worldHeight;
 		}
 		
 		else if (options.worldHeight !== undefined)
 		{
-			this.#worldHeight = options.worldHeight;
-			this.#worldWidth = this.#worldHeight * this.#canvasAspectRatio;
+			this.worldHeight = options.worldHeight;
+			this.worldWidth = this.worldHeight * this.#canvasAspectRatio;
 		}
 
 		else if (options.worldWidth !== undefined)
 		{
-			this.#worldWidth = options.worldWidth;
-			this.#worldHeight = this.#worldWidth / this.#canvasAspectRatio;
+			this.worldWidth = options.worldWidth;
+			this.worldHeight = this.worldWidth / this.#canvasAspectRatio;
 		}
 
 		else
 		{
-			this.#worldWidth = Math.max(2, 2 * this.#canvasAspectRatio);
-			this.#worldHeight = Math.max(2, 2 / this.#canvasAspectRatio);
+			this.worldWidth = Math.max(2, 2 * this.#canvasAspectRatio);
+			this.worldHeight = Math.max(2, 2 / this.#canvasAspectRatio);
 		}
 
 
 
-		this.#worldCenterX = options.worldCenterX ?? 0;
-		this.#worldCenterY = options.worldCenterY ?? 0;
+		this.worldCenterX = options.worldCenterX ?? 0;
+		this.worldCenterY = options.worldCenterY ?? 0;
 
 		this.#onResizeCanvasCallback = options?.onResizeCanvas ?? (() => {});
 
@@ -387,6 +365,14 @@ class Wilson
 		window.addEventListener("resize", this.#onResizeWindow);
 		document.documentElement.addEventListener("keydown", this.#handleKeydownEvent);
 
+		if (options.draggableOptions?.draggables)
+		{
+			for (const draggable of options.draggableOptions.draggables)
+			{
+				this.addDraggable(draggable);
+			}
+		}
+
 
 
 		console.log(
@@ -431,6 +417,11 @@ class Wilson
 			const width = Math.round(
 				Math.sqrt(this.#canvasWidth * this.#canvasHeight * windowAspectRatio)
 			);
+
+			const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
+
+			this.worldWidth = Math.max(this.#oldWorldWidth * aspectRatioChange, this.#oldWorldWidth);
+			this.worldHeight = Math.max(this.#oldWorldHeight / aspectRatioChange, this.#oldWorldHeight);
 
 			this.resizeCanvas({ width });
 			this.#onResizeCanvas();
@@ -553,18 +544,18 @@ class Wilson
 		document.documentElement.addEventListener("mouseup", this.#documentDraggableMouseupListener);
 	}
 
-	addDraggable({ x, y, id }: { x: number, y: number, id?: string })
+	addDraggable({ x, y, id }: { x: number, y: number, id: string })
 	{
 		//First convert to page coordinates.
 		const uncappedRow = Math.floor(
 			this.#draggablesContainerRestrictedHeight * (
-				1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
+				1 - ((y - this.worldCenterY) / this.worldHeight + .5)
 			)
 		) + this.#draggablesRadius;
 
 		const uncappedCol = Math.floor(
 			this.#draggablesContainerRestrictedWidth * (
-				(x - this.#worldCenterX) / this.#worldWidth + .5
+				(x - this.worldCenterX) / this.worldWidth + .5
 			)
 		) + this.#draggablesRadius;
 
@@ -596,9 +587,9 @@ class Wilson
 		this.#draggablesContainer.appendChild(element);
 
 		this.#draggableElements[useableId] = {
-			element: element,
-			x: x,
-			y: y,
+			element,
+			x,
+			y,
 			currentlyDragging: false,
 		};
 
@@ -620,13 +611,13 @@ class Wilson
 
 		const uncappedRow = Math.floor(
 			this.#draggablesContainerRestrictedHeight * (
-				1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
+				1 - ((y - this.worldCenterY) / this.worldHeight + .5)
 			)
 		) + this.#draggablesRadius;
 
 		const uncappedCol = Math.floor(
 			this.#draggablesContainerRestrictedWidth * (
-				(x - this.#worldCenterX) / this.#worldWidth + .5
+				(x - this.worldCenterX) / this.worldWidth + .5
 			)
 		) + this.#draggablesRadius;
 
@@ -657,7 +648,7 @@ class Wilson
 
 		requestAnimationFrame(() =>
 		{
-			this.#draggableCallbacks.mousedown({
+			this.#draggableCallbacks.ongrab({
 				id,
 				x: this.#draggableElements[id].x,
 				y: this.#draggableElements[id].y,
@@ -680,7 +671,7 @@ class Wilson
 
 		requestAnimationFrame(() =>
 		{
-			this.#draggableCallbacks.mouseup({
+			this.#draggableCallbacks.onrelease({
 				id,
 				x: this.#draggableElements[id].x,
 				y: this.#draggableElements[id].y,
@@ -712,16 +703,16 @@ class Wilson
 		const x = (
 			(col - this.#draggablesRadius - this.#draggablesContainerRestrictedWidth / 2)
 				/ this.#draggablesContainerRestrictedWidth
-		) * this.#worldWidth + this.#worldCenterX;
+		) * this.worldWidth + this.worldCenterX;
 		
 		const y = (
 			-(row - this.#draggablesRadius - this.#draggablesContainerRestrictedHeight / 2)
 				/ this.#draggablesContainerRestrictedHeight
-		) * this.#worldHeight + this.#worldCenterY;
+		) * this.worldHeight + this.worldCenterY;
 		
 		requestAnimationFrame(() =>
 		{
-			this.#draggableCallbacks.mousedrag({
+			this.#draggableCallbacks.ondrag({
 				id,
 				x,
 				y,
@@ -748,7 +739,7 @@ class Wilson
 		
 		requestAnimationFrame(() =>
 		{
-			this.#draggableCallbacks.touchstart({
+			this.#draggableCallbacks.ongrab({
 				id,
 				x: this.#draggableElements[id].x,
 				y: this.#draggableElements[id].y,
@@ -771,7 +762,7 @@ class Wilson
 
 		requestAnimationFrame(() =>
 		{
-			this.#draggableCallbacks.touchend({
+			this.#draggableCallbacks.onrelease({
 				id,
 				x: this.#draggableElements[id].x,
 				y: this.#draggableElements[id].y,
@@ -804,12 +795,12 @@ class Wilson
 			const x = (
 				(col - this.#draggablesRadius - this.#draggablesContainerRestrictedWidth / 2)
 					/ this.#draggablesContainerRestrictedWidth
-			) * this.#worldWidth + this.#worldCenterX;
+			) * this.worldWidth + this.worldCenterX;
 			
 			const y = (
 				-(row - this.#draggablesRadius - this.#draggablesContainerRestrictedHeight / 2)
 					/ this.#draggablesContainerRestrictedHeight
-			) * this.#worldHeight + this.#worldCenterY;
+			) * this.worldHeight + this.worldCenterY;
 
 			return [x, y, row, col] as [number, number, number, number];
 		});
@@ -842,7 +833,7 @@ class Wilson
 
 		requestAnimationFrame(() =>
 		{
-			this.#draggableCallbacks.touchmove({
+			this.#draggableCallbacks.ondrag({
 				id,
 				x,
 				y,
@@ -892,13 +883,13 @@ class Wilson
 
 			const uncappedRow = Math.floor(
 				this.#draggablesContainerRestrictedHeight * (
-					1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
+					1 - ((y - this.worldCenterY) / this.worldHeight + .5)
 				)
 			) + this.#draggablesRadius;
 
 			const uncappedCol = Math.floor(
 				this.#draggablesContainerRestrictedWidth * (
-					(x - this.#worldCenterX) / this.#worldWidth + .5
+					(x - this.worldCenterX) / this.worldWidth + .5
 				)
 			) + this.#draggablesRadius;
 
@@ -969,6 +960,9 @@ class Wilson
 	#canvasOldWidthStyle: string = "";
 	#canvasOldHeightStyle: string = "";
 
+	#oldWorldWidth: number = 0;
+	#oldWorldHeight: number = 0;
+
 	#enterFullscreen()
 	{
 		this.currentlyFullscreen = true;
@@ -985,6 +979,9 @@ class Wilson
 
 		this.#canvasOldWidthStyle = this.canvas.style.width;
 		this.#canvasOldHeightStyle = this.canvas.style.height;
+
+		this.#oldWorldWidth = this.worldWidth;
+		this.#oldWorldHeight = this.worldHeight;
 
 
 
@@ -1118,6 +1115,9 @@ class Wilson
 		this.canvas.style.width = this.#canvasOldWidthStyle;
 		this.canvas.style.height = this.#canvasOldHeightStyle;
 
+		this.worldWidth = this.#oldWorldWidth;
+		this.worldHeight = this.#oldWorldHeight;
+
 		this.#onResizeWindow();
 		this.#onResizeCanvas();
 
@@ -1150,18 +1150,18 @@ class Wilson
 	interpolateCanvasToWorld([row, col]: [number, number])
 	{
 		return [
-			(col / this.#canvasWidth - .5) * this.#worldWidth
-				+ this.#worldCenterX,
-			(.5 - row / this.#canvasHeight) * this.#worldHeight
-				+ this.#worldCenterY];
+			(col / this.#canvasWidth - .5) * this.worldWidth
+				+ this.worldCenterX,
+			(.5 - row / this.#canvasHeight) * this.worldHeight
+				+ this.worldCenterY];
 	}
 
 	interpolateWorldToCanvas([x, y]: [number, number])
 	{
 		return [
-			Math.floor((.5 - (y - this.#worldCenterY) / this.#worldHeight)
+			Math.floor((.5 - (y - this.worldCenterY) / this.worldHeight)
 				* this.#canvasHeight),
-			Math.floor(((x - this.#worldCenterX) / this.#worldWidth + .5)
+			Math.floor(((x - this.worldCenterX) / this.worldWidth + .5)
 				* this.#canvasWidth)
 		];
 	}
@@ -1520,7 +1520,7 @@ export class WilsonGPU extends Wilson
 
 		const { location, type } = this.#uniforms[shaderId][name];
 		const uniformFunction = uniformFunctions[type];
-		uniformFunction(location, value);
+		uniformFunction(this.gl, location, value);
 
 		this.useProgram(this.#currentShaderId);
 	}
