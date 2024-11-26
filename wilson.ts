@@ -178,9 +178,17 @@ class Wilson
 {
 	canvas: HTMLCanvasElement;
 
-	canvasWidth: number;
-	canvasHeight: number;
-	canvasAspectRatio: number;
+	#canvasWidth: number;
+	get canvasWidth()
+	{
+		return this.#canvasWidth;
+	}
+	#canvasHeight: number;
+	get canvasHeight()
+	{
+		return this.#canvasHeight;
+	}
+	#canvasAspectRatio: number;
 
 	#worldWidth: number;
 	#worldHeight: number;
@@ -189,7 +197,11 @@ class Wilson
 
 	#onResizeCanvasCallback: () => void;
 
-	useP3ColorSpace: boolean;
+	#useP3ColorSpace: boolean;
+	get useP3ColorSpace()
+	{
+		return this.#useP3ColorSpace;
+	}
 
 	#callbacks: InteractionCallbacks;
 
@@ -228,23 +240,23 @@ class Wilson
 	{
 		this.canvas = canvas;
 		const computedStyle = getComputedStyle(canvas);
-		this.canvasAspectRatio = parseFloat(computedStyle.width) / parseFloat(computedStyle.height);
+		this.#canvasAspectRatio = parseFloat(computedStyle.width) / parseFloat(computedStyle.height);
 
 		if ("canvasWidth" in options)
 		{
-			this.canvasWidth = Math.round(options.canvasWidth);
-			this.canvasHeight = Math.round(options.canvasWidth / this.canvasAspectRatio);
+			this.#canvasWidth = Math.round(options.canvasWidth);
+			this.#canvasHeight = Math.round(options.canvasWidth / this.#canvasAspectRatio);
 		}
 
 		else
 		{
-			this.canvasWidth = Math.round(options.canvasHeight * this.canvasAspectRatio);
-			this.canvasHeight = Math.round(options.canvasHeight);
+			this.#canvasWidth = Math.round(options.canvasHeight * this.#canvasAspectRatio);
+			this.#canvasHeight = Math.round(options.canvasHeight);
 		}
 		
 
-		this.canvas.setAttribute("width", this.canvasWidth.toString());
-		this.canvas.setAttribute("height", this.canvasHeight.toString());
+		this.canvas.setAttribute("width", this.#canvasWidth.toString());
+		this.canvas.setAttribute("height", this.#canvasHeight.toString());
 
 		
 		
@@ -257,19 +269,19 @@ class Wilson
 		else if (options.worldHeight !== undefined)
 		{
 			this.#worldHeight = options.worldHeight;
-			this.#worldWidth = this.#worldHeight * this.canvasAspectRatio;
+			this.#worldWidth = this.#worldHeight * this.#canvasAspectRatio;
 		}
 
 		else if (options.worldWidth !== undefined)
 		{
 			this.#worldWidth = options.worldWidth;
-			this.#worldHeight = this.#worldWidth / this.canvasAspectRatio;
+			this.#worldHeight = this.#worldWidth / this.#canvasAspectRatio;
 		}
 
 		else
 		{
-			this.#worldWidth = Math.max(2, 2 * this.canvasAspectRatio);
-			this.#worldHeight = Math.max(2, 2 / this.canvasAspectRatio);
+			this.#worldWidth = Math.max(2, 2 * this.#canvasAspectRatio);
+			this.#worldHeight = Math.max(2, 2 / this.#canvasAspectRatio);
 		}
 
 
@@ -279,7 +291,7 @@ class Wilson
 
 		this.#onResizeCanvasCallback = options?.onResizeCanvas ?? (() => {});
 
-		this.useP3ColorSpace = options.useP3ColorSpace ?? true;
+		this.#useP3ColorSpace = options.useP3ColorSpace ?? true;
 
 		this.#callbacks = { ...defaultInteractionCallbacks, ...options.callbacks };
 		
@@ -376,7 +388,7 @@ class Wilson
 
 
 		console.log(
-			`[Wilson] Initialized a ${this.canvasWidth}x${this.canvasHeight} canvas`
+			`[Wilson] Initialized a ${this.#canvasWidth}x${this.#canvasHeight} canvas`
 			+ (this.canvas.id ? ` with ID ${this.canvas.id}` : "")
 		);
 	}
@@ -415,7 +427,7 @@ class Wilson
 			const windowAspectRatio = window.innerWidth / window.innerHeight;
 
 			const width = Math.round(
-				Math.sqrt(this.canvasWidth * this.canvasHeight * windowAspectRatio)
+				Math.sqrt(this.#canvasWidth * this.#canvasHeight * windowAspectRatio)
 			);
 
 			this.resizeCanvas({ width });
@@ -438,28 +450,28 @@ class Wilson
 		requestAnimationFrame(() => this.#onResizeCanvasCallback());
 	}
 
-
+	
 
 	resizeCanvas(dimensions: { width: number } | { height: number })
 	{
 		const aspectRatio = (this.currentlyFullscreen && this.#fullscreenFillScreen)
 			? window.innerWidth / window.innerHeight
-			: this.canvasAspectRatio;
+			: this.#canvasAspectRatio;
 		
 		if ("width" in dimensions)
 		{
-			this.canvasWidth = Math.round(dimensions.width);
-			this.canvasHeight = Math.round(dimensions.width / aspectRatio);
+			this.#canvasWidth = Math.round(dimensions.width);
+			this.#canvasHeight = Math.round(dimensions.width / aspectRatio);
 		}
 
 		else
 		{
-			this.canvasWidth = Math.round(dimensions.height * aspectRatio);
-			this.canvasHeight = Math.round(dimensions.height);
+			this.#canvasWidth = Math.round(dimensions.height * aspectRatio);
+			this.#canvasHeight = Math.round(dimensions.height);
 		}
 
-		this.canvas.setAttribute("width", this.canvasWidth.toString());
-		this.canvas.setAttribute("height", this.canvasHeight.toString());
+		this.canvas.setAttribute("width", this.#canvasWidth.toString());
+		this.canvas.setAttribute("height", this.#canvasHeight.toString());
 	}
 
 
@@ -967,7 +979,7 @@ class Wilson
 		}
 
 		
-		this.#canvasOldWidth = this.canvasWidth;
+		this.#canvasOldWidth = this.#canvasWidth;
 
 		this.#canvasOldWidthStyle = this.canvas.style.width;
 		this.#canvasOldHeightStyle = this.canvas.style.height;
@@ -1013,8 +1025,8 @@ class Wilson
 
 		else
 		{
-			this.canvas.style.width = `min(100vw, calc(100vh * ${this.canvasAspectRatio}))`;
-			this.canvas.style.height = `min(100vh, calc(100vw / ${this.canvasAspectRatio}))`;
+			this.canvas.style.width = `min(100vw, calc(100vh * ${this.#canvasAspectRatio}))`;
+			this.canvas.style.height = `min(100vh, calc(100vw / ${this.#canvasAspectRatio}))`;
 		}
 
 		this.#onResizeWindow();
@@ -1110,9 +1122,9 @@ class Wilson
 	interpolateCanvasToWorld([row, col]: [number, number])
 	{
 		return [
-			(col / this.canvasWidth - .5) * this.#worldWidth
+			(col / this.#canvasWidth - .5) * this.#worldWidth
 				+ this.#worldCenterX,
-			(.5 - row / this.canvasHeight) * this.#worldHeight
+			(.5 - row / this.#canvasHeight) * this.#worldHeight
 				+ this.#worldCenterY];
 	}
 
@@ -1120,9 +1132,9 @@ class Wilson
 	{
 		return [
 			Math.floor((.5 - (y - this.#worldCenterY) / this.#worldHeight)
-				* this.canvasHeight),
+				* this.#canvasHeight),
 			Math.floor(((x - this.#worldCenterX) / this.#worldWidth + .5)
-				* this.canvasWidth)
+				* this.#canvasWidth)
 		];
 	}
 }
@@ -1219,9 +1231,7 @@ const uniformFunctions: Record<UniformType, string> = {
 };
 
 export type WilsonGPUOptions = WilsonOptions
-	& { useWebGL2?: boolean }
-	& (
-	{
+	& ({
 		shader: string,
 		uniforms: UniformInitializers
 	} | {
@@ -1231,7 +1241,7 @@ export type WilsonGPUOptions = WilsonOptions
 
 export class WilsonGPU extends Wilson
 {
-	gl: WebGLRenderingContext | WebGL2RenderingContext | null = null;
+	gl: WebGLRenderingContext | WebGL2RenderingContext;
 
 	#shaderPrograms: {[id: ShaderProgramId]: WebGLProgram} = {};
 
@@ -1243,4 +1253,145 @@ export class WilsonGPU extends Wilson
 			}
 		}
 	} = {};
+
+	constructor(canvas: HTMLCanvasElement, options: WilsonGPUOptions)
+	{
+		super(canvas, options);
+
+		const gl = canvas.getContext("webgl2");
+
+		if (gl)
+		{
+			this.gl = gl;
+		}
+
+		else
+		{
+			const gl = canvas.getContext("webgl");
+
+			if (gl)
+			{
+				this.gl = gl;
+			}
+
+			else
+			{
+				throw new Error("[Wilson] WebGL is not supported on this device.");
+			}
+		}
+
+		if ("drawingBufferColorSpace" in this.gl && this.useP3ColorSpace)
+		{
+			this.gl.drawingBufferColorSpace = "display-p3";
+		}
+	}
+
+	#loadShaderInternal(
+		type: number,
+		source: string
+	) {
+		const shader = this.gl.createShader(type);
+
+		if (!shader)
+		{
+			throw new Error(`[Wilson] Couldn't create shader: ${shader}`);
+		}
+
+		this.gl.shaderSource(shader, source);
+		this.gl.compileShader(shader);
+
+		if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS))
+		{
+			throw new Error(`[Wilson] Couldn't load shader: ${this.gl.getShaderInfoLog(shader)}. Full shader source: ${source}`);
+		}
+
+		return shader;
+	}
+
+	#numShaders = 0;
+
+	loadShader({
+		id = this.#numShaders.toString(),
+		source
+	}: {
+		id: ShaderProgramId,
+		source: string
+	}) {
+		const vertexShaderSource = /* glsl*/`
+			attribute vec3 position;
+			varying vec2 uv;
+
+			void main(void)
+			{
+				gl_Position = vec4(position, 1.0);
+
+				//Interpolate quad coordinates in the fragment shader.
+				uv = position.xy;
+			}
+		`;
+
+		const vertexShader = this.#loadShaderInternal(this.gl.VERTEX_SHADER, vertexShaderSource);
+		const fragShader = this.#loadShaderInternal(this.gl.FRAGMENT_SHADER, source);
+		const shaderProgram = this.gl.createProgram();
+
+		if (!shaderProgram)
+		{
+			throw new Error(`[Wilson] Couldn't create shader program. Full shader source: ${source}`);
+		}
+
+		this.#shaderPrograms[id] = shaderProgram;
+
+		this.gl.attachShader(this.#shaderPrograms[id], vertexShader);
+		this.gl.attachShader(this.#shaderPrograms[id], fragShader);
+		this.gl.linkProgram(this.#shaderPrograms[id]);
+
+		if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS))
+		{
+			throw new Error(`[Wilson] Couldn't link shader program: ${this.gl.getProgramInfoLog(shaderProgram)}. Full shader source: ${source}`);
+		}
+
+		this.useProgram(id);
+
+		const positionBuffer = this.gl.createBuffer();
+
+		if (!positionBuffer)
+		{
+			throw new Error(`[Wilson] Couldn't create position buffer. Full shader source: ${source}`);
+		}
+
+		this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
+
+		const quad = [
+			-1, -1, 0,
+			-1, 1, 0,
+			1, -1, 0,
+			1, 1, 0
+		];
+		this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(quad), this.gl.STATIC_DRAW);
+
+		const positionAttribute = this.gl.getAttribLocation(this.#shaderPrograms[id], "position");
+
+		if (positionAttribute === -1)
+		{
+			throw new Error(`[Wilson] Couldn't get position attribute. Full shader source: ${source}`);
+		}
+
+		this.gl.enableVertexAttribArray(positionAttribute);
+		this.gl.vertexAttribPointer(positionAttribute, 3, this.gl.FLOAT, false, 0, 0);
+		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
+	}
+
+	useProgram(id: ShaderProgramId)
+	{
+		this.gl.useProgram(this.#shaderPrograms[id]);
+	}
+
+
+
+	resizeCanvas(dimensions: { width: number } | { height: number })
+	{
+		super.resizeCanvas(dimensions);
+
+		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
+	}
 }
