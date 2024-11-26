@@ -141,11 +141,6 @@
 	z-index: 50;
 }
 
-.WILSON_fullscreen-container:not(.WILSON_fullscreen) .WILSON_enter-fullscreen-button
-{
-	view-transition-name: WILSON_fullscreen-button;
-}
-
 .WILSON_exit-fullscreen-button
 {
 	position: fixed;
@@ -166,8 +161,6 @@
 .WILSON_fullscreen-container.WILSON_fullscreen .WILSON_exit-fullscreen-button
 {
 	display: block;
-
-	view-transition-name: WILSON_fullscreen-button;
 }
 
 .WILSON_enter-fullscreen-button img, .WILSON_exit-fullscreen-button img

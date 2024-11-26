@@ -222,6 +222,8 @@ class Wilson
 	#fullscreenOldScroll: number = 0;
 	#fullscreenFillScreen: boolean;
 	#fullscreenUseButton: boolean;
+	#fullscreenEnterFullscreenButton: HTMLElement | null = null;
+	#fullscreenExitFullscreenButton: HTMLElement | null = null;
 	#fullscreenEnterFullscreenButtonIconPath?: string;
 	#fullscreenExitFullscreenButtonIconPath?: string;
 
@@ -920,34 +922,34 @@ class Wilson
 	{
 		if (this.#fullscreenUseButton)
 		{
-			const enterFullscreenButton = document.createElement("div");
+			this.#fullscreenEnterFullscreenButton = document.createElement("div");
 
-			enterFullscreenButton.classList.add("WILSON_enter-fullscreen-button");
+			this.#fullscreenEnterFullscreenButton.classList.add("WILSON_enter-fullscreen-button");
 
-			this.#canvasContainer.appendChild(enterFullscreenButton);
+			this.#canvasContainer.appendChild(this.#fullscreenEnterFullscreenButton);
 
 			const img = document.createElement("img");
 			img.src = this.#fullscreenEnterFullscreenButtonIconPath as string;
-			enterFullscreenButton.appendChild(img);
+			this.#fullscreenEnterFullscreenButton.appendChild(img);
 
-			enterFullscreenButton.addEventListener("click", () =>
+			this.#fullscreenEnterFullscreenButton.addEventListener("click", () =>
 			{
 				this.enterFullscreen();
 			});
 
 
 
-			const exitFullscreenButton = document.createElement("div");
+			this.#fullscreenExitFullscreenButton = document.createElement("div");
 
-			exitFullscreenButton.classList.add("WILSON_exit-fullscreen-button");
+			this.#fullscreenExitFullscreenButton.classList.add("WILSON_exit-fullscreen-button");
 
-			this.#canvasContainer.appendChild(exitFullscreenButton);
+			this.#canvasContainer.appendChild(this.#fullscreenExitFullscreenButton);
 
 			const img2 = document.createElement("img");
 			img2.src = this.#fullscreenExitFullscreenButtonIconPath as string;
-			exitFullscreenButton.appendChild(img2);
+			this.#fullscreenExitFullscreenButton.appendChild(img2);
 
-			exitFullscreenButton.addEventListener("click", () =>
+			this.#fullscreenExitFullscreenButton.addEventListener("click", () =>
 			{
 				this.exitFullscreen();
 			});
@@ -1038,6 +1040,32 @@ class Wilson
 		// @ts-ignore
 		if (document.startViewTransition && this.animateFullscreen)
 		{
+			document.body.querySelectorAll<HTMLElement>(
+				".WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button"
+			)
+				.forEach(button => button.style.removeProperty("view-transition-name"));
+			
+			if (this.#fullscreenEnterFullscreenButton)
+			{
+				this.#fullscreenEnterFullscreenButton.style.setProperty(
+					"view-transition-name",
+					"WILSON_fullscreen-button"
+				)
+			}
+
+			if (this.#fullscreenExitFullscreenButton)
+			{
+				this.#fullscreenExitFullscreenButton.style.setProperty(
+					"view-transition-name",
+					"WILSON_fullscreen-button"
+				)
+			}
+
+
+
+			document.body.querySelectorAll<HTMLElement>(".WILSON_applet-container")
+				.forEach(container => container.style.removeProperty("view-transition-name"));
+
 			if (!this.#fullscreenFillScreen)
 			{
 				this.#appletContainer.style.setProperty("view-transition-name", "WILSON_applet-container")
@@ -1269,14 +1297,17 @@ const uniformFunctions: {[key in UniformType]: any} = {
 	) => gl.uniformMatrix4fv(location, false, value),
 };
 
-export type WilsonGPUOptions = WilsonOptions
-	& ({
-		shader: string,
-		uniforms: UniformInitializers
-	} | {
-		shaders: {[id: ShaderProgramId]: string},
-		uniforms: {[id: ShaderProgramId]: UniformInitializers},
-	});
+type SingleShader = {
+	shader: string,
+	uniforms?: UniformInitializers
+};
+
+type MultipleShaders = {
+	shaders: {[id: ShaderProgramId]: string},
+	uniforms?: {[id: ShaderProgramId]: UniformInitializers},
+};
+
+export type WilsonGPUOptions = WilsonOptions & (SingleShader | MultipleShaders);
 
 export class WilsonGPU extends Wilson
 {
@@ -1315,7 +1346,7 @@ export class WilsonGPU extends Wilson
 
 			else
 			{
-				throw new Error("[Wilson] WebGL is not supported on this device.");
+				throw new Error("[Wilson] Failed to get WebGL or WebGL2 context.");
 			}
 		}
 
@@ -1323,6 +1354,38 @@ export class WilsonGPU extends Wilson
 		{
 			this.gl.drawingBufferColorSpace = "display-p3";
 		}
+
+
+
+		if ("shader" in options)
+		{
+			this.loadShader({
+				source: options.shader,
+				uniforms: options.uniforms,
+			});
+		}
+
+		else if ("shaders" in options)
+		{
+			for (const [id, source] of Object.entries(options.shaders))
+			{
+				this.loadShader({
+					id,
+					source,
+					uniforms: options.uniforms?.[id],
+				});
+			}
+		}
+
+		else
+		{
+			throw new Error("[Wilson] Must provide either a single shader or multiple shaders.");
+		}
+	}
+
+	drawFrame()
+	{
+		this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 	}
 
 	#loadShaderInternal(
@@ -1353,11 +1416,11 @@ export class WilsonGPU extends Wilson
 	loadShader({
 		id = this.#numShaders.toString(),
 		source,
-		uniforms
+		uniforms = {}
 	}: {
-		id: ShaderProgramId,
+		id?: ShaderProgramId,
 		source: string,
-		uniforms: UniformInitializers
+		uniforms?: UniformInitializers
 	}) {
 		const vertexShaderSource = /* glsl*/`
 			attribute vec3 position;
