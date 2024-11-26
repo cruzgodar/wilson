@@ -1467,6 +1467,109 @@ export class WilsonGPU extends Wilson
 		this.gl.useProgram(this.#shaderPrograms[id]);
 	}
 
+	
+
+	#framebuffers: {[id: ShaderProgramId]: WebGLFramebuffer} = {};
+	#textures: {[id: ShaderProgramId]: WebGLTexture} = {};
+
+	createFramebufferTexturePair({
+		id,
+		textureType
+	}: {
+		id: ShaderProgramId,
+		textureType: "unsignedByte" | "float"
+	}) {
+		if (this.#framebuffers[id] !== undefined || this.#textures[id] !== undefined)
+		{
+			throw new Error(`[Wilson] Tried to create a framebuffer texture pair for shader program ${id}, but one already exists.`);
+		}
+
+		const framebuffer = this.gl.createFramebuffer();
+
+		if (!framebuffer)
+		{
+			throw new Error(`[Wilson] Couldn't create a framebuffer for shader program ${id}.`);
+		}
+
+		const texture = this.gl.createTexture();
+
+		if (!texture)
+		{
+			throw new Error(`[Wilson] Couldn't create a texture for shader program ${id}.`);
+		}
+
+		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+		this.gl.texImage2D(
+			this.gl.TEXTURE_2D,
+			0,
+			this.gl.RGBA,
+			this.canvasWidth,
+			this.canvasHeight,
+			0,
+			this.gl.RGBA,
+			textureType === "unsignedByte" ? this.gl.UNSIGNED_BYTE : this.gl.FLOAT,
+			null
+		);
+
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+
+		this.gl.disable(this.gl.DEPTH_TEST);
+
+		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+		this.gl.framebufferTexture2D(
+			this.gl.FRAMEBUFFER,
+			this.gl.COLOR_ATTACHMENT0,
+			this.gl.TEXTURE_2D,
+			texture,
+			0
+		);
+
+		this.#framebuffers[id] = framebuffer;
+		this.#textures[id] = texture;
+	}
+
+	useFramebuffer(id: ShaderProgramId | null)
+	{
+		if (id === null)
+		{
+			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+			return;
+		}
+
+		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.#framebuffers[id]);
+	}
+
+	useTexture(id: ShaderProgramId | null)
+	{
+		if (id === null)
+		{
+			this.gl.bindTexture(this.gl.TEXTURE_2D, null);
+			return;
+		}
+
+		this.gl.bindTexture(this.gl.TEXTURE_2D, this.#textures[id]);
+	}
+
+	readPixels()
+	{
+		const pixels = new Uint8Array(this.canvasWidth * this.canvasHeight * 4);
+
+		this.gl.readPixels(
+			0,
+			0,
+			this.canvasWidth,
+			this.canvasHeight,
+			this.gl.RGBA,
+			this.gl.UNSIGNED_BYTE,
+			pixels
+		);
+
+		return pixels;
+	}
+
 
 
 	resizeCanvas(dimensions: { width: number } | { height: number })
