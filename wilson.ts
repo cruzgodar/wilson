@@ -114,6 +114,15 @@ const defaultDraggableCallbacks: DraggableCallBacks = {
 	onrelease: () => {},
 };
 
+type InteractionOptions = {
+	callbacks?: Partial<InteractionCallbacks>,
+} & ({
+	useForPanAndZoom: false
+} | {
+	useForPanAndZoom: true,
+	onPanAndZoom: () => void,
+});
+
 type DraggableOptions = {
 	draggables?: {id: string, x: number, y: number}[],
 	radius?: number,
@@ -147,7 +156,7 @@ export type WilsonOptions = ({ canvasWidth: number } | { canvasHeight: number })
 
 	useP3ColorSpace?: boolean,
 
-	callbacks?: Partial<InteractionCallbacks>,
+	interactionOptions?: InteractionOptions,
 	draggableOptions?: DraggableOptions,
 	fullscreenOptions?: FullscreenOptions,
 };
@@ -181,7 +190,9 @@ class Wilson
 		return this.#useP3ColorSpace;
 	}
 
-	#callbacks: InteractionCallbacks;
+	#interactionCallbacks: InteractionCallbacks;
+	#interactionUseForPanAndZoom: boolean;
+	#interactionOnPanAndZoom: () => void = () => {};
 
 
 
@@ -273,7 +284,12 @@ class Wilson
 
 		this.#useP3ColorSpace = options.useP3ColorSpace ?? true;
 
-		this.#callbacks = { ...defaultInteractionCallbacks, ...options.callbacks };
+		this.#interactionCallbacks = { ...defaultInteractionCallbacks, ...options.interactionOptions?.callbacks };
+		this.#interactionUseForPanAndZoom = options.interactionOptions?.useForPanAndZoom ?? false;
+		if (options.interactionOptions?.useForPanAndZoom)
+		{
+			this.#interactionOnPanAndZoom = options.interactionOptions?.onPanAndZoom ?? (() => {});
+		}
 		
 		this.#draggablesRadius = options.draggableOptions?.radius ?? 12;
 		this.#draggablesStatic = options.draggableOptions?.static ?? false;
@@ -470,100 +486,128 @@ class Wilson
 
 	
 	#currentlyDragging: boolean = false;
-	#lastWorldX: number = 0;
-	#lastWorldY: number = 0;
+	#lastInteractionRow: number = 0;
+	#lastInteractionCol: number = 0;
 
 	#onMousedown(e: MouseEvent)
 	{
+		if (e.target instanceof HTMLElement && e.target.classList.contains('WILSON_draggable'))
+		{
+			return;
+		}
+
+		e.preventDefault();
+		
 		this.#currentlyDragging = true;
 
-		const rect = this.canvas.getBoundingClientRect();
-		const row = e.clientY - rect.top;
-		const col = e.clientX - rect.left;
-
-		const [x, y] = this.interpolateCanvasToWorld([row, col]);
-		this.#lastWorldX = x;
-		this.#lastWorldY = y;
+		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
+		this.#lastInteractionRow = e.clientY;
+		this.#lastInteractionCol = e.clientX;
 		
-		this.#callbacks.mousedown({ x, y, event: e });
+		this.#interactionCallbacks.mousedown({ x, y, event: e });
 	}
 
 	#onMouseup(e: MouseEvent)
 	{
+		if (e.target instanceof HTMLElement && e.target.classList.contains('WILSON_draggable'))
+		{
+			return;
+		}
+
+		e.preventDefault();
+
 		this.#currentlyDragging = false;
 
-		const rect = this.canvas.getBoundingClientRect();
-		const row = e.clientY - rect.top;
-		const col = e.clientX - rect.left;
-
-		const [x, y] = this.interpolateCanvasToWorld([row, col]);
-		this.#lastWorldX = x;
-		this.#lastWorldY = y;
+		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
+		this.#lastInteractionRow = e.clientY;
+		this.#lastInteractionCol = e.clientX;
 		
-		this.#callbacks.mouseup({ x, y, event: e });
+		this.#interactionCallbacks.mouseup({ x, y, event: e });
 	}
 
 	#onMousemove(e: MouseEvent)
 	{
-		const rect = this.canvas.getBoundingClientRect();
-		const row = e.clientY - rect.top;
-		const col = e.clientX - rect.left;
+		e.preventDefault();
 
-		const [x, y] = this.interpolateCanvasToWorld([row, col]);
+		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
+		const [lastX, lastY] = this.#interpolatePageToWorld([
+			this.#lastInteractionRow,
+			this.#lastInteractionCol
+		]);
 
-		const lastX = this.#lastWorldX;
-		const lastY = this.#lastWorldY;
+		const callback = this.#currentlyDragging
+			? this.#interactionCallbacks.mousedrag
+			: this.#interactionCallbacks.mousemove;
 
-		const callback = this.#currentlyDragging ? this.#callbacks.mousedrag : this.#callbacks.mousemove;
+		if (this.#interactionUseForPanAndZoom && this.#currentlyDragging)
+		{
+			this.worldCenterX -= x - lastX;
+			this.worldCenterY -= y - lastY;
+			this.#updateDraggablesLocation();
+			this.#interactionOnPanAndZoom();
+		}
 
 		callback({ x, y, xDelta: x - lastX, yDelta: y - lastY, event: e });
 
-		this.#lastWorldX = x;
-		this.#lastWorldY = y;
+		this.#lastInteractionRow = e.clientY;
+		this.#lastInteractionCol = e.clientX;
 	}
 
 	#onTouchstart(e: TouchEvent)
 	{
+		if (e.target instanceof HTMLElement && e.target.classList.contains('WILSON_draggable'))
+		{
+			return;
+		}
+
+		e.preventDefault();
+
 		this.#currentlyDragging = true;
 
-		const rect = this.canvas.getBoundingClientRect();
-		const row = e.touches[0].clientY - rect.top;
-		const col = e.touches[0].clientX - rect.left;
-
-		const [x, y] = this.interpolateCanvasToWorld([row, col]);
-		this.#lastWorldX = x;
-		this.#lastWorldY = y;
+		const [x, y] = this.#interpolatePageToWorld([e.touches[0].clientY, e.touches[0].clientX]);
+		this.#lastInteractionRow = e.touches[0].clientY;
+		this.#lastInteractionCol = e.touches[0].clientX;
 		
-		this.#callbacks.touchstart({ x, y, event: e });
+		this.#interactionCallbacks.touchstart({ x, y, event: e });
 	}
 
 	#onTouchend(e: TouchEvent)
 	{
+		if (e.target instanceof HTMLElement && e.target.classList.contains('WILSON_draggable'))
+		{
+			return;
+		}
+		
+		e.preventDefault();
+
 		this.#currentlyDragging = false;
 
-		const rect = this.canvas.getBoundingClientRect();
-		const row = e.touches[0].clientY - rect.top;
-		const col = e.touches[0].clientX - rect.left;
-
-		const [x, y] = this.interpolateCanvasToWorld([row, col]);
-		this.#lastWorldX = x;
-		this.#lastWorldY = y;
+		const [x, y] = this.#interpolatePageToWorld([e.touches[0].clientY, e.touches[0].clientX]);
+		this.#lastInteractionRow = e.touches[0].clientY;
+		this.#lastInteractionCol = e.touches[0].clientX;
 		
-		this.#callbacks.touchend({ x, y, event: e });
+		this.#interactionCallbacks.touchend({ x, y, event: e });
 	}
 
 	#onTouchmove(e: TouchEvent)
 	{
-		const rect = this.canvas.getBoundingClientRect();
-		const row = e.touches[0].clientY - rect.top;
-		const col = e.touches[0].clientX - rect.left;
+		e.preventDefault();
 
-		const [x, y] = this.interpolateCanvasToWorld([row, col]);
+		const [x, y] = this.#interpolatePageToWorld([e.touches[0].clientY, e.touches[0].clientX]);
+		const [lastX, lastY] = this.#interpolatePageToWorld([
+			this.#lastInteractionRow,
+			this.#lastInteractionCol
+		]);
 
-		const lastX = this.#lastWorldX;
-		const lastY = this.#lastWorldY;
+		if (this.#interactionUseForPanAndZoom && this.#currentlyDragging)
+		{
+			this.worldCenterX -= x - lastX;
+			this.worldCenterY -= y - lastY;
+			this.#updateDraggablesLocation();
+			this.#interactionOnPanAndZoom();
+		}
 		
-		this.#callbacks.touchmove({
+		this.#interactionCallbacks.touchmove({
 			x,
 			y,
 			xDelta: x - lastX,
@@ -571,15 +615,20 @@ class Wilson
 			event: e
 		});
 
-		this.#lastWorldX = x;
-		this.#lastWorldY = y;
+		this.#lastInteractionRow = e.touches[0].clientY;
+		this.#lastInteractionCol = e.touches[0].clientX;
 	}
 
 	#onWheel(e: WheelEvent)
 	{
-		this.#callbacks.wheel({
-			x: this.#lastWorldX,
-			y: this.#lastWorldY,
+		const [x, y] = this.interpolateCanvasToWorld([
+			this.#lastInteractionRow,
+			this.#lastInteractionCol
+		]);
+
+		this.#interactionCallbacks.wheel({
+			x,
+			y,
 			scrollDelta: e.deltaY,
 			event: e
 		});
@@ -603,13 +652,14 @@ class Wilson
 				{
 					this.#currentlyDragging = false;
 
-					if (this.#callbacks.mouseup)
+					if (this.#interactionCallbacks.mouseup)
 					{
-						this.#callbacks.mouseup({
-							x: this.#lastWorldX,
-							y: this.#lastWorldY,
-							event: e as MouseEvent
-						});
+						const [x, y] = this.interpolateCanvasToWorld([
+							this.#lastInteractionRow,
+							this.#lastInteractionCol
+						]);
+
+						this.#interactionCallbacks.mouseup({ x, y, event: e as MouseEvent });
 					}
 				}
 			});
@@ -977,9 +1027,12 @@ class Wilson
 			(parseFloat(computedStyle.borderTopWidth)
 			+ parseFloat(computedStyle.paddingTop)
 			- this.#draggablesRadius) + "px";
-		
-		const rect = this.#draggablesContainer.getBoundingClientRect();
 
+		this.#updateDraggablesLocation();
+	}
+
+	#updateDraggablesLocation()
+	{
 		for (const id in this.#draggableElements)
 		{
 			const x = this.#draggableElements[id].x;
@@ -1258,7 +1311,27 @@ class Wilson
 		}
 	}
 
+	#interpolatePageToWorld([row, col]: [number, number])
+	{
+		const rect = this.canvas.getBoundingClientRect();
+		const computedStyle = window.getComputedStyle(this.canvas);
+		const extraTop = parseFloat(computedStyle.paddingTop)
+			+ parseFloat(computedStyle.borderTopWidth);
+		const extraBottom = parseFloat(computedStyle.paddingBottom)
+			+ parseFloat(computedStyle.borderBottomWidth);
+		const extraLeft = parseFloat(computedStyle.paddingLeft)
+			+ parseFloat(computedStyle.borderLeftWidth);
+		const extraRight = parseFloat(computedStyle.paddingRight)
+			+ parseFloat(computedStyle.borderRightWidth);
 
+		const canvasPageWidth = rect.width - extraLeft - extraRight;
+		const canvasPageHeight = rect.height - extraTop - extraBottom;
+
+		const canvasRow = (row - rect.top - extraTop) * (this.canvasHeight / canvasPageHeight);
+		const canvasCol = (col - rect.left - extraLeft) * (this.canvasWidth / canvasPageWidth);
+
+		return this.interpolateCanvasToWorld([canvasRow, canvasCol]);
+	}
 
 	interpolateCanvasToWorld([row, col]: [number, number])
 	{

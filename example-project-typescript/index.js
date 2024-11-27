@@ -89,7 +89,11 @@ function initWilson2() {
             c: ["vec2", [0, 0]],
         },
         canvasWidth: resolution,
-        onResizeCanvas,
+        onResizeCanvas: drawFrame,
+        interactionOptions: {
+            useForPanAndZoom: true,
+            onPanAndZoom: drawFrame
+        },
         fullscreenOptions: {
             fillScreen: true,
             useFullscreenButton: true,
@@ -110,8 +114,8 @@ function initWilson2() {
             }
         }
     });
-    onResizeCanvas();
-    function onResizeCanvas() {
+    drawFrame();
+    function drawFrame() {
         wilson.setUniform({
             name: "worldCenter",
             value: [
