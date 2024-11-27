@@ -272,16 +272,21 @@ class Wilson {
         if (document.startViewTransition && this.animateFullscreen) {
             document.body.querySelectorAll(".WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button")
                 .forEach(button => button.style.removeProperty("view-transition-name"));
-            if (__classPrivateFieldGet(this, _Wilson_fullscreenEnterFullscreenButton, "f")) {
-                __classPrivateFieldGet(this, _Wilson_fullscreenEnterFullscreenButton, "f").style.setProperty("view-transition-name", "WILSON_fullscreen-button");
-            }
-            if (__classPrivateFieldGet(this, _Wilson_fullscreenExitFullscreenButton, "f")) {
-                __classPrivateFieldGet(this, _Wilson_fullscreenExitFullscreenButton, "f").style.setProperty("view-transition-name", "WILSON_fullscreen-button");
-            }
             document.body.querySelectorAll(".WILSON_applet-container")
                 .forEach(container => container.style.removeProperty("view-transition-name"));
+            document.body.querySelectorAll(".WILSON_draggable")
+                .forEach(container => container.style.removeProperty("view-transition-name"));
             if (!__classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f")) {
+                if (__classPrivateFieldGet(this, _Wilson_fullscreenEnterFullscreenButton, "f")) {
+                    __classPrivateFieldGet(this, _Wilson_fullscreenEnterFullscreenButton, "f").style.setProperty("view-transition-name", "WILSON_fullscreen-button");
+                }
+                if (__classPrivateFieldGet(this, _Wilson_fullscreenExitFullscreenButton, "f")) {
+                    __classPrivateFieldGet(this, _Wilson_fullscreenExitFullscreenButton, "f").style.setProperty("view-transition-name", "WILSON_fullscreen-button");
+                }
                 __classPrivateFieldGet(this, _Wilson_appletContainer, "f").style.setProperty("view-transition-name", "WILSON_applet-container");
+                for (const [id, data] of Object.entries(__classPrivateFieldGet(this, _Wilson_draggableElements, "f"))) {
+                    data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}`);
+                }
             }
             // @ts-ignore
             document.startViewTransition(() => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_enterFullscreen).call(this));
@@ -322,7 +327,77 @@ class Wilson {
 }
 _Wilson_canvasWidth = new WeakMap(), _Wilson_canvasHeight = new WeakMap(), _Wilson_canvasAspectRatio = new WeakMap(), _Wilson_onResizeCanvasCallback = new WeakMap(), _Wilson_useP3ColorSpace = new WeakMap(), _Wilson_callbacks = new WeakMap(), _Wilson_draggablesRadius = new WeakMap(), _Wilson_draggablesStatic = new WeakMap(), _Wilson_draggableCallbacks = new WeakMap(), _Wilson_draggablesContainerWidth = new WeakMap(), _Wilson_draggablesContainerHeight = new WeakMap(), _Wilson_draggablesContainerRestrictedWidth = new WeakMap(), _Wilson_draggablesContainerRestrictedHeight = new WeakMap(), _Wilson_fullscreenOldScroll = new WeakMap(), _Wilson_fullscreenFillScreen = new WeakMap(), _Wilson_fullscreenUseButton = new WeakMap(), _Wilson_fullscreenEnterFullscreenButton = new WeakMap(), _Wilson_fullscreenExitFullscreenButton = new WeakMap(), _Wilson_fullscreenEnterFullscreenButtonIconPath = new WeakMap(), _Wilson_fullscreenExitFullscreenButtonIconPath = new WeakMap(), _Wilson_appletContainer = new WeakMap(), _Wilson_canvasContainer = new WeakMap(), _Wilson_draggablesContainer = new WeakMap(), _Wilson_fullscreenContainer = new WeakMap(), _Wilson_fullscreenContainerLocation = new WeakMap(), _Wilson_metaThemeColorElement = new WeakMap(), _Wilson_oldMetaThemeColor = new WeakMap(), _Wilson_onResizeWindow = new WeakMap(), _Wilson_handleKeydownEvent = new WeakMap(), _Wilson_currentlyDragging = new WeakMap(), _Wilson_lastWorldX = new WeakMap(), _Wilson_lastWorldY = new WeakMap(), _Wilson_draggableElements = new WeakMap(), _Wilson_draggableDefaultId = new WeakMap(), _Wilson_currentMouseDraggableId = new WeakMap(), _Wilson_documentDraggableMousemoveListener = new WeakMap(), _Wilson_documentDraggableMouseupListener = new WeakMap(), _Wilson_preventGestures = new WeakMap(), _Wilson_canvasOldWidth = new WeakMap(), _Wilson_canvasOldWidthStyle = new WeakMap(), _Wilson_canvasOldHeightStyle = new WeakMap(), _Wilson_oldWorldWidth = new WeakMap(), _Wilson_oldWorldHeight = new WeakMap(), _Wilson_instances = new WeakSet(), _Wilson_onResizeCanvas = function _Wilson_onResizeCanvas() {
     requestAnimationFrame(() => __classPrivateFieldGet(this, _Wilson_onResizeCanvasCallback, "f").call(this));
-}, _Wilson_onMousedown = function _Wilson_onMousedown(e) { }, _Wilson_onMouseup = function _Wilson_onMouseup(e) { }, _Wilson_onMousemove = function _Wilson_onMousemove(e) { }, _Wilson_onTouchstart = function _Wilson_onTouchstart(e) { }, _Wilson_onTouchend = function _Wilson_onTouchend(e) { }, _Wilson_onTouchmove = function _Wilson_onTouchmove(e) { }, _Wilson_onWheel = function _Wilson_onWheel(e) { }, _Wilson_initInteraction = function _Wilson_initInteraction() {
+}, _Wilson_onMousedown = function _Wilson_onMousedown(e) {
+    __classPrivateFieldSet(this, _Wilson_currentlyDragging, true, "f");
+    const rect = this.canvas.getBoundingClientRect();
+    const row = e.clientY - rect.top;
+    const col = e.clientX - rect.left;
+    const [x, y] = this.interpolateCanvasToWorld([row, col]);
+    __classPrivateFieldSet(this, _Wilson_lastWorldX, x, "f");
+    __classPrivateFieldSet(this, _Wilson_lastWorldY, y, "f");
+    __classPrivateFieldGet(this, _Wilson_callbacks, "f").mousedown({ x, y, event: e });
+}, _Wilson_onMouseup = function _Wilson_onMouseup(e) {
+    __classPrivateFieldSet(this, _Wilson_currentlyDragging, false, "f");
+    const rect = this.canvas.getBoundingClientRect();
+    const row = e.clientY - rect.top;
+    const col = e.clientX - rect.left;
+    const [x, y] = this.interpolateCanvasToWorld([row, col]);
+    __classPrivateFieldSet(this, _Wilson_lastWorldX, x, "f");
+    __classPrivateFieldSet(this, _Wilson_lastWorldY, y, "f");
+    __classPrivateFieldGet(this, _Wilson_callbacks, "f").mouseup({ x, y, event: e });
+}, _Wilson_onMousemove = function _Wilson_onMousemove(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const row = e.clientY - rect.top;
+    const col = e.clientX - rect.left;
+    const [x, y] = this.interpolateCanvasToWorld([row, col]);
+    const lastX = __classPrivateFieldGet(this, _Wilson_lastWorldX, "f");
+    const lastY = __classPrivateFieldGet(this, _Wilson_lastWorldY, "f");
+    const callback = __classPrivateFieldGet(this, _Wilson_currentlyDragging, "f") ? __classPrivateFieldGet(this, _Wilson_callbacks, "f").mousedrag : __classPrivateFieldGet(this, _Wilson_callbacks, "f").mousemove;
+    callback({ x, y, xDelta: x - lastX, yDelta: y - lastY, event: e });
+    __classPrivateFieldSet(this, _Wilson_lastWorldX, x, "f");
+    __classPrivateFieldSet(this, _Wilson_lastWorldY, y, "f");
+}, _Wilson_onTouchstart = function _Wilson_onTouchstart(e) {
+    __classPrivateFieldSet(this, _Wilson_currentlyDragging, true, "f");
+    const rect = this.canvas.getBoundingClientRect();
+    const row = e.touches[0].clientY - rect.top;
+    const col = e.touches[0].clientX - rect.left;
+    const [x, y] = this.interpolateCanvasToWorld([row, col]);
+    __classPrivateFieldSet(this, _Wilson_lastWorldX, x, "f");
+    __classPrivateFieldSet(this, _Wilson_lastWorldY, y, "f");
+    __classPrivateFieldGet(this, _Wilson_callbacks, "f").touchstart({ x, y, event: e });
+}, _Wilson_onTouchend = function _Wilson_onTouchend(e) {
+    __classPrivateFieldSet(this, _Wilson_currentlyDragging, false, "f");
+    const rect = this.canvas.getBoundingClientRect();
+    const row = e.touches[0].clientY - rect.top;
+    const col = e.touches[0].clientX - rect.left;
+    const [x, y] = this.interpolateCanvasToWorld([row, col]);
+    __classPrivateFieldSet(this, _Wilson_lastWorldX, x, "f");
+    __classPrivateFieldSet(this, _Wilson_lastWorldY, y, "f");
+    __classPrivateFieldGet(this, _Wilson_callbacks, "f").touchend({ x, y, event: e });
+}, _Wilson_onTouchmove = function _Wilson_onTouchmove(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const row = e.touches[0].clientY - rect.top;
+    const col = e.touches[0].clientX - rect.left;
+    const [x, y] = this.interpolateCanvasToWorld([row, col]);
+    const lastX = __classPrivateFieldGet(this, _Wilson_lastWorldX, "f");
+    const lastY = __classPrivateFieldGet(this, _Wilson_lastWorldY, "f");
+    __classPrivateFieldGet(this, _Wilson_callbacks, "f").touchmove({
+        x,
+        y,
+        xDelta: x - lastX,
+        yDelta: y - lastY,
+        event: e
+    });
+    __classPrivateFieldSet(this, _Wilson_lastWorldX, x, "f");
+    __classPrivateFieldSet(this, _Wilson_lastWorldY, y, "f");
+}, _Wilson_onWheel = function _Wilson_onWheel(e) {
+    __classPrivateFieldGet(this, _Wilson_callbacks, "f").wheel({
+        x: __classPrivateFieldGet(this, _Wilson_lastWorldX, "f"),
+        y: __classPrivateFieldGet(this, _Wilson_lastWorldY, "f"),
+        scrollDelta: e.deltaY,
+        event: e
+    });
+}, _Wilson_initInteraction = function _Wilson_initInteraction() {
     for (const canvas of [this.canvas, __classPrivateFieldGet(this, _Wilson_draggablesContainer, "f")]) {
         canvas.addEventListener("mousedown", (e) => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_onMousedown).call(this, e));
         canvas.addEventListener("mouseup", (e) => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_onMouseup).call(this, e));

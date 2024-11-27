@@ -472,13 +472,118 @@ class Wilson
 	#currentlyDragging: boolean = false;
 	#lastWorldX: number = 0;
 	#lastWorldY: number = 0;
-	#onMousedown(e: MouseEvent) {}
-	#onMouseup(e: MouseEvent) {}
-	#onMousemove(e: MouseEvent) {}
-	#onTouchstart(e: TouchEvent) {}
-	#onTouchend(e: TouchEvent) {}
-	#onTouchmove(e: TouchEvent) {}
-	#onWheel(e: WheelEvent) {}
+
+	#onMousedown(e: MouseEvent)
+	{
+		this.#currentlyDragging = true;
+
+		const rect = this.canvas.getBoundingClientRect();
+		const row = e.clientY - rect.top;
+		const col = e.clientX - rect.left;
+
+		const [x, y] = this.interpolateCanvasToWorld([row, col]);
+		this.#lastWorldX = x;
+		this.#lastWorldY = y;
+		
+		this.#callbacks.mousedown({ x, y, event: e });
+	}
+
+	#onMouseup(e: MouseEvent)
+	{
+		this.#currentlyDragging = false;
+
+		const rect = this.canvas.getBoundingClientRect();
+		const row = e.clientY - rect.top;
+		const col = e.clientX - rect.left;
+
+		const [x, y] = this.interpolateCanvasToWorld([row, col]);
+		this.#lastWorldX = x;
+		this.#lastWorldY = y;
+		
+		this.#callbacks.mouseup({ x, y, event: e });
+	}
+
+	#onMousemove(e: MouseEvent)
+	{
+		const rect = this.canvas.getBoundingClientRect();
+		const row = e.clientY - rect.top;
+		const col = e.clientX - rect.left;
+
+		const [x, y] = this.interpolateCanvasToWorld([row, col]);
+
+		const lastX = this.#lastWorldX;
+		const lastY = this.#lastWorldY;
+
+		const callback = this.#currentlyDragging ? this.#callbacks.mousedrag : this.#callbacks.mousemove;
+
+		callback({ x, y, xDelta: x - lastX, yDelta: y - lastY, event: e });
+
+		this.#lastWorldX = x;
+		this.#lastWorldY = y;
+	}
+
+	#onTouchstart(e: TouchEvent)
+	{
+		this.#currentlyDragging = true;
+
+		const rect = this.canvas.getBoundingClientRect();
+		const row = e.touches[0].clientY - rect.top;
+		const col = e.touches[0].clientX - rect.left;
+
+		const [x, y] = this.interpolateCanvasToWorld([row, col]);
+		this.#lastWorldX = x;
+		this.#lastWorldY = y;
+		
+		this.#callbacks.touchstart({ x, y, event: e });
+	}
+
+	#onTouchend(e: TouchEvent)
+	{
+		this.#currentlyDragging = false;
+
+		const rect = this.canvas.getBoundingClientRect();
+		const row = e.touches[0].clientY - rect.top;
+		const col = e.touches[0].clientX - rect.left;
+
+		const [x, y] = this.interpolateCanvasToWorld([row, col]);
+		this.#lastWorldX = x;
+		this.#lastWorldY = y;
+		
+		this.#callbacks.touchend({ x, y, event: e });
+	}
+
+	#onTouchmove(e: TouchEvent)
+	{
+		const rect = this.canvas.getBoundingClientRect();
+		const row = e.touches[0].clientY - rect.top;
+		const col = e.touches[0].clientX - rect.left;
+
+		const [x, y] = this.interpolateCanvasToWorld([row, col]);
+
+		const lastX = this.#lastWorldX;
+		const lastY = this.#lastWorldY;
+		
+		this.#callbacks.touchmove({
+			x,
+			y,
+			xDelta: x - lastX,
+			yDelta: y - lastY,
+			event: e
+		});
+
+		this.#lastWorldX = x;
+		this.#lastWorldY = y;
+	}
+
+	#onWheel(e: WheelEvent)
+	{
+		this.#callbacks.wheel({
+			x: this.#lastWorldX,
+			y: this.#lastWorldY,
+			scrollDelta: e.deltaY,
+			event: e
+		});
+	}
 
 	#initInteraction()
 	{
@@ -1041,32 +1146,40 @@ class Wilson
 				".WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button"
 			)
 				.forEach(button => button.style.removeProperty("view-transition-name"));
-			
-			if (this.#fullscreenEnterFullscreenButton)
-			{
-				this.#fullscreenEnterFullscreenButton.style.setProperty(
-					"view-transition-name",
-					"WILSON_fullscreen-button"
-				)
-			}
-
-			if (this.#fullscreenExitFullscreenButton)
-			{
-				this.#fullscreenExitFullscreenButton.style.setProperty(
-					"view-transition-name",
-					"WILSON_fullscreen-button"
-				)
-			}
-
-
 
 			document.body.querySelectorAll<HTMLElement>(".WILSON_applet-container")
 				.forEach(container => container.style.removeProperty("view-transition-name"));
 
+			document.body.querySelectorAll<HTMLElement>(".WILSON_draggable")
+				.forEach(container => container.style.removeProperty("view-transition-name"));
+
 			if (!this.#fullscreenFillScreen)
 			{
+				if (this.#fullscreenEnterFullscreenButton)
+				{
+					this.#fullscreenEnterFullscreenButton.style.setProperty(
+						"view-transition-name",
+						"WILSON_fullscreen-button"
+					)
+				}
+
+				if (this.#fullscreenExitFullscreenButton)
+				{
+					this.#fullscreenExitFullscreenButton.style.setProperty(
+						"view-transition-name",
+						"WILSON_fullscreen-button"
+					)
+				}
+				
 				this.#appletContainer.style.setProperty("view-transition-name", "WILSON_applet-container")
+
+				for (const [id, data] of Object.entries(this.#draggableElements))
+				{
+					data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}`);
+				}
 			}
+
+
 
 			// @ts-ignore
 			document.startViewTransition(() => this.#enterFullscreen());
