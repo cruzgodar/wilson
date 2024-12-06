@@ -121,6 +121,8 @@ type InteractionOptions = {
 } | {
 	useForPanAndZoom: true,
 	onPanAndZoom: () => void,
+	panFriction?: number,
+	zoomFriction?: number,
 });
 
 type DraggableOptions = {
@@ -163,6 +165,8 @@ export type WilsonOptions = ({ canvasWidth: number } | { canvasHeight: number })
 
 class Wilson
 {
+	#destroyed: boolean = false;
+
 	canvas: HTMLCanvasElement;
 
 	#canvasWidth: number;
@@ -193,6 +197,25 @@ class Wilson
 	#interactionCallbacks: InteractionCallbacks;
 	#interactionUseForPanAndZoom: boolean;
 	#interactionOnPanAndZoom: () => void = () => {};
+
+	
+
+	#numPreviousVelocities: number = 4;
+
+	#lastPanVelocitiesX: number[] = [];
+	#lastPanVelocitiesY: number[] = [];
+	#lastZoomVelocities: number[] = [];
+
+	#panVelocityX: number = 0;
+	#panVelocityY: number = 0;
+	#zoomVelocity: number = 0;
+
+	#panFriction: number;
+	#zoomFriction: number;
+
+	#panVelocityThreshhold: number = 0.005;
+	#zoomVelocityThreshold: number = 0.001;
+
 
 
 
@@ -286,9 +309,15 @@ class Wilson
 
 		this.#interactionCallbacks = { ...defaultInteractionCallbacks, ...options.interactionOptions?.callbacks };
 		this.#interactionUseForPanAndZoom = options.interactionOptions?.useForPanAndZoom ?? false;
+
+		this.#panFriction = 0.93;
+		this.#zoomFriction = 0.9;
+
 		if (options.interactionOptions?.useForPanAndZoom)
 		{
 			this.#interactionOnPanAndZoom = options.interactionOptions?.onPanAndZoom ?? (() => {});
+			this.#panFriction = options.interactionOptions?.panFriction ?? this.#panFriction;
+			this.#zoomFriction = options.interactionOptions?.zoomFriction ?? this.#zoomFriction;
 		}
 		
 		this.#draggablesRadius = options.draggableOptions?.radius ?? 12;
@@ -399,6 +428,8 @@ class Wilson
 
 	destroy()
 	{
+		this.#destroyed = true;
+
 		window.removeEventListener("resize", this.#onResizeWindow);
 		document.documentElement.removeEventListener("keydown", this.#handleKeydownEvent);
 
@@ -715,7 +746,7 @@ class Wilson
 	}
 	
 	#zoomFixedPoint: [number, number] = [0, 0];
-	#zoomFromWheel(scale: number)
+	#zoomCanvas(scale: number)
 	{
 		const centerProportion = [
 			(this.#zoomFixedPoint[0] - this.worldCenterX) / this.worldWidth,
@@ -748,12 +779,12 @@ class Wilson
 			if (Math.abs(e.deltaY) < 25)
 			{
 				const scale = 1 + e.deltaY * 0.005;
-				this.#zoomFromWheel(scale);
+				this.#zoomCanvas(scale);
 			}
 
 			else
 			{
-				// this.velocity += Math.sign(scrollAmount) * .085;
+				this.#zoomVelocity = Math.sign(e.deltaY) * 10;
 			}
 		}
 
@@ -766,6 +797,35 @@ class Wilson
 
 		this.#lastInteractionRow = e.clientY;
 		this.#lastInteractionCol = e.clientX;
+	}
+	
+	#lastPanAndZoomTimestamp = -1;
+	#updatePanAndZoomVelocity = (timestamp: number) =>
+	{
+		const timeElapsed = timestamp - this.#lastPanAndZoomTimestamp;
+		this.#lastPanAndZoomTimestamp = timestamp;
+
+		if (timeElapsed < 1000)
+		{
+			if (this.#zoomVelocity)
+			{
+				this.#zoomCanvas(1 + this.#zoomVelocity * 0.005);
+				this.#zoomVelocity *= Math.pow(
+					this.#zoomFriction,
+					timeElapsed / (1000 / 60)
+				);
+
+				if (Math.abs(this.#zoomVelocity) < this.#zoomVelocityThreshold)
+				{
+					this.#zoomVelocity = 0;
+				}
+			}
+		}
+
+		if (!this.#destroyed)
+		{
+			requestAnimationFrame(this.#updatePanAndZoomVelocity);
+		}
 	}
 
 	#initInteraction()
@@ -798,7 +858,14 @@ class Wilson
 				}
 			});
 		}
+
+		if (this.#interactionUseForPanAndZoom)
+		{
+			requestAnimationFrame(this.#updatePanAndZoomVelocity);
+		}
 	}
+
+
 
 	#draggableElements: {
 		[id: string]: {
