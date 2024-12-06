@@ -200,7 +200,11 @@ class Wilson
 
 	
 
-	#numPreviousVelocities: number = 4;
+	#numPreviousVelocities: number = 8;
+
+	#lastPanVelocityX = 0;
+	#lastPanVelocityY = 0;
+	#lastZoomVelocity: number = 0;
 
 	#lastPanVelocitiesX: number[] = [];
 	#lastPanVelocitiesY: number[] = [];
@@ -311,13 +315,17 @@ class Wilson
 		this.#interactionUseForPanAndZoom = options.interactionOptions?.useForPanAndZoom ?? false;
 
 		this.#panFriction = 0.93;
-		this.#zoomFriction = 0.9;
+		this.#zoomFriction = 0.85;
 
 		if (options.interactionOptions?.useForPanAndZoom)
 		{
 			this.#interactionOnPanAndZoom = options.interactionOptions?.onPanAndZoom ?? (() => {});
 			this.#panFriction = options.interactionOptions?.panFriction ?? this.#panFriction;
 			this.#zoomFriction = options.interactionOptions?.zoomFriction ?? this.#zoomFriction;
+
+			this.#lastPanVelocitiesX = Array(this.#numPreviousVelocities).fill(0);
+			this.#lastPanVelocitiesY = Array(this.#numPreviousVelocities).fill(0);
+			this.#lastZoomVelocities = Array(this.#numPreviousVelocities).fill(0);
 		}
 		
 		this.#draggablesRadius = options.draggableOptions?.radius ?? 12;
@@ -515,8 +523,56 @@ class Wilson
 	}
 
 
+
+	#zeroVelocities()
+	{
+		this.#panVelocityX = 0;
+		this.#panVelocityY = 0;
+		this.#zoomVelocity = 0;
+
+		this.#lastPanVelocityX = 0;
+		this.#lastPanVelocityY = 0;
+		this.#lastZoomVelocity = 0;
+
+		this.#lastPanVelocitiesX = Array(this.#numPreviousVelocities).fill(0);
+		this.#lastPanVelocitiesY = Array(this.#numPreviousVelocities).fill(0);
+		this.#lastZoomVelocities = Array(this.#numPreviousVelocities).fill(0);
+	}
+
+	#setZoomVelocity()
+	{
+		this.#zoomVelocity = 0;
+
+		for (let i = 0; i < this.#numPreviousVelocities; i++)
+		{
+			this.#zoomVelocity += this.#lastZoomVelocities[i];
+		}
+
+		this.#zoomVelocity /= this.#numPreviousVelocities;
+
+		if (Math.abs(this.#zoomVelocity) < this.#zoomVelocityThreshold)
+		{
+			this.#zoomVelocity = 0;
+		}
+	}
+
+	#setPanVelocity()
+	{
+		this.#panVelocityX = 0;
+		this.#panVelocityY = 0;
+
+		for (let i = 0; i < this.#numPreviousVelocities; i++)
+		{
+			this.#panVelocityX += this.#lastPanVelocitiesX[i];
+			this.#panVelocityY += this.#lastPanVelocitiesY[i];
+		}
+
+		this.#panVelocityX /= this.#numPreviousVelocities;
+		this.#panVelocityY /= this.#numPreviousVelocities;
+	}
 	
 	#currentlyDragging: boolean = false;
+	#currentlyPinching: boolean = false;
 	#lastInteractionRow: number = 0;
 	#lastInteractionCol: number = 0;
 	#lastInteractionRow2: number = 0;
@@ -524,7 +580,7 @@ class Wilson
 
 	#onMousedown(e: MouseEvent)
 	{
-		if (e.target instanceof HTMLElement && e.target.classList.contains('WILSON_draggable'))
+		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
 		{
 			return;
 		}
@@ -532,6 +588,11 @@ class Wilson
 		e.preventDefault();
 		
 		this.#currentlyDragging = true;
+
+		if (this.#interactionUseForPanAndZoom)
+		{
+			this.#zeroVelocities();
+		}
 
 		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
 		this.#lastInteractionRow = e.clientY;
@@ -600,7 +661,7 @@ class Wilson
 		lastTouch1: [number, number],
 		lastTouch2: [number, number]
 	}) {
-		const center = [
+		this.#zoomFixedPoint = [
 			(touch1[0] + touch2[0]) / 2,
 			(touch1[1] + touch2[1]) / 2
 		];
@@ -616,8 +677,8 @@ class Wilson
 		);
 
 		const centerProportion = [
-			(center[0] - this.worldCenterX) / this.worldWidth,
-			(center[1] - this.worldCenterY) / this.worldHeight
+			(this.#zoomFixedPoint[0] - this.worldCenterX) / this.worldWidth,
+			(this.#zoomFixedPoint[1] - this.worldCenterY) / this.worldHeight
 		];
 
 		const scale = lastDistance / distance;
@@ -625,11 +686,15 @@ class Wilson
 		this.worldWidth *= scale;
 		this.worldHeight *= scale;
 
+		this.#lastZoomVelocity = (scale - 1) * 200;
+
+
+
 		const newFixedPointX = centerProportion[0] * this.worldWidth;
 		const newFixedPointY = centerProportion[1] * this.worldHeight;
 
-		this.worldCenterX = center[0] - newFixedPointX;
-		this.worldCenterY = center[1] - newFixedPointY;
+		this.worldCenterX = this.#zoomFixedPoint[0] - newFixedPointX;
+		this.worldCenterY = this.#zoomFixedPoint[1] - newFixedPointY;
 	}
 	
 	#onTouchstart(e: TouchEvent)
@@ -642,6 +707,11 @@ class Wilson
 		e.preventDefault();
 
 		this.#currentlyDragging = true;
+
+		if (this.#interactionUseForPanAndZoom)
+		{
+			this.#zeroVelocities();
+		}
 		
 		const [x, y] = this.#interpolatePageToWorld([e.touches[0].clientY, e.touches[0].clientX]);
 
@@ -650,6 +720,7 @@ class Wilson
 
 		if (e.touches.length > 1)
 		{
+			this.#currentlyPinching = true;
 			this.#lastInteractionRow2 = e.touches[1].clientY;
 			this.#lastInteractionCol2 = e.touches[1].clientX;
 		}
@@ -666,9 +737,16 @@ class Wilson
 
 		e.preventDefault();
 
-		this.#currentlyDragging = false;
+		if (e.touches.length === 0)
+		{
+			this.#currentlyDragging = false;
+		}
 
-		const [x, y] = this.#interpolatePageToWorld([e.touches[0].clientY, e.touches[0].clientX]);
+		const [x, y] = this.#interpolatePageToWorld([
+			e.touches[0].clientY,
+			e.touches[0].clientX
+		]);
+
 		this.#lastInteractionRow = e.touches[0].clientY;
 		this.#lastInteractionCol = e.touches[0].clientX;
 
@@ -676,6 +754,16 @@ class Wilson
 		{
 			this.#lastInteractionRow2 = e.touches[1].clientY;
 			this.#lastInteractionCol2 = e.touches[1].clientX;
+		}
+
+		else
+		{
+			if (this.#currentlyPinching)
+			{
+				this.#setZoomVelocity();
+			}
+
+			this.#currentlyPinching = false;
 		}
 		
 		this.#interactionCallbacks.touchend({ x, y, event: e });
@@ -802,6 +890,10 @@ class Wilson
 	#lastPanAndZoomTimestamp = -1;
 	#updatePanAndZoomVelocity = (timestamp: number) =>
 	{
+		this.#lastZoomVelocities.shift();
+		this.#lastZoomVelocities.push(this.#lastZoomVelocity);
+		this.#lastZoomVelocity = 0;
+
 		const timeElapsed = timestamp - this.#lastPanAndZoomTimestamp;
 		this.#lastPanAndZoomTimestamp = timestamp;
 
