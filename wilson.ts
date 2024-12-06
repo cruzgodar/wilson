@@ -488,6 +488,8 @@ class Wilson
 	#currentlyDragging: boolean = false;
 	#lastInteractionRow: number = 0;
 	#lastInteractionCol: number = 0;
+	#lastInteractionRow2: number = 0;
+	#lastInteractionCol2: number = 0;
 
 	#onMousedown(e: MouseEvent)
 	{
@@ -553,6 +555,80 @@ class Wilson
 		this.#lastInteractionCol = e.clientX;
 	}
 
+
+	
+	// All parameters are in world coordinates.
+	#updateFromPinching({
+		touch1,
+		touch2,
+		lastTouch1,
+		lastTouch2
+	}: {
+		touch1: [number, number],
+		touch2: [number, number],
+		lastTouch1: [number, number],
+		lastTouch2: [number, number]
+	}) {
+		// Project touch1 and touch2 onto the line between lastTouch1 and lastTouch2.
+		const projectOntoLine = (point: [number, number]): [number, number] =>
+		{
+			const a = lastTouch1[0];
+			const b = lastTouch1[1];
+			const c = lastTouch2[0];
+			const d = lastTouch2[1];
+			const f = point[0];
+			const g = point[1];
+
+			return [
+				(-b + d) * (
+					(b * c - a * d) / (a - c) + ((a - c) * f) / (b - d) + g
+				) / (
+					-a + c + ((b - d) * (b - d)) / (-a + c)
+				),
+
+				((a - c) * (d * (a - f) + b * (-c + f)) + (b - d) * (b - d) * g)
+					/ ((a - c) * (a - c) + (b - d) * (b - d))
+			];
+		};
+
+		// touch1 = projectOntoLine(touch1);
+		// touch2 = projectOntoLine(touch2);
+
+		if (
+			isNaN(touch1[0])
+			|| isNaN(touch1[1])
+			|| isNaN(touch2[0])
+			|| isNaN(touch2[1])
+			|| Math.abs(touch1[0]) === Infinity
+			|| Math.abs(touch1[1]) === Infinity
+			|| Math.abs(touch2[0]) === Infinity
+			|| Math.abs(touch2[1]) === Infinity
+		) {
+			return;
+		}
+
+		const oldMidpoint = [
+			(lastTouch1[0] + lastTouch2[0]) / 2,
+			(lastTouch1[1] + lastTouch2[1]) / 2
+		];
+
+		const newMidpoint = [
+			(touch1[0] + touch2[0]) / 2,
+			(touch1[1] + touch2[1]) / 2
+		];
+
+		const scaleX = (lastTouch2[0] - lastTouch1[0]) / (touch2[0] - touch1[0]);
+		const scaleY = (lastTouch2[1] - lastTouch1[1]) / (touch2[1] - touch1[1]);
+		const scale = (scaleX + scaleY) / 2;
+		// const scale = scaleY;
+
+		this.worldCenterX += oldMidpoint[0] - newMidpoint[0];
+		this.worldCenterY += oldMidpoint[1] - newMidpoint[1];
+
+		this.worldWidth *= scale;
+		this.worldHeight *= scale;
+	}
+	
 	#onTouchstart(e: TouchEvent)
 	{
 		if (e.target instanceof HTMLElement && e.target.classList.contains('WILSON_draggable'))
@@ -563,10 +639,17 @@ class Wilson
 		e.preventDefault();
 
 		this.#currentlyDragging = true;
-
+		
 		const [x, y] = this.#interpolatePageToWorld([e.touches[0].clientY, e.touches[0].clientX]);
+
 		this.#lastInteractionRow = e.touches[0].clientY;
 		this.#lastInteractionCol = e.touches[0].clientX;
+
+		if (e.touches.length > 1)
+		{
+			this.#lastInteractionRow2 = e.touches[1].clientY;
+			this.#lastInteractionCol2 = e.touches[1].clientX;
+		}
 		
 		this.#interactionCallbacks.touchstart({ x, y, event: e });
 	}
@@ -577,7 +660,7 @@ class Wilson
 		{
 			return;
 		}
-		
+
 		e.preventDefault();
 
 		this.#currentlyDragging = false;
@@ -585,6 +668,12 @@ class Wilson
 		const [x, y] = this.#interpolatePageToWorld([e.touches[0].clientY, e.touches[0].clientX]);
 		this.#lastInteractionRow = e.touches[0].clientY;
 		this.#lastInteractionCol = e.touches[0].clientX;
+
+		if (e.touches.length > 1)
+		{
+			this.#lastInteractionRow2 = e.touches[1].clientY;
+			this.#lastInteractionCol2 = e.touches[1].clientX;
+		}
 		
 		this.#interactionCallbacks.touchend({ x, y, event: e });
 	}
@@ -592,8 +681,12 @@ class Wilson
 	#onTouchmove(e: TouchEvent)
 	{
 		e.preventDefault();
+		
+		const [x, y] = this.#interpolatePageToWorld([
+			e.touches[0].clientY,
+			e.touches[0].clientX
+		]);
 
-		const [x, y] = this.#interpolatePageToWorld([e.touches[0].clientY, e.touches[0].clientX]);
 		const [lastX, lastY] = this.#interpolatePageToWorld([
 			this.#lastInteractionRow,
 			this.#lastInteractionCol
@@ -601,8 +694,31 @@ class Wilson
 
 		if (this.#interactionUseForPanAndZoom && this.#currentlyDragging)
 		{
-			this.worldCenterX -= x - lastX;
-			this.worldCenterY -= y - lastY;
+			if (e.touches.length > 1)
+			{
+				this.#updateFromPinching({
+					touch1: [x, y],
+					touch2: this.#interpolatePageToWorld([
+						e.touches[1].clientY,
+						e.touches[1].clientX
+					]),
+					lastTouch1: [lastX, lastY],
+					lastTouch2: this.#interpolatePageToWorld([
+						this.#lastInteractionRow2,
+						this.#lastInteractionCol2
+					]),
+				});
+
+				this.#lastInteractionRow2 = e.touches[1].clientY,
+				this.#lastInteractionCol2 = e.touches[1].clientX;
+			}
+			
+			else
+			{
+				this.worldCenterX -= x - lastX;
+				this.worldCenterY -= y - lastY;
+			}
+
 			this.#updateDraggablesLocation();
 			this.#interactionOnPanAndZoom();
 		}
@@ -1311,7 +1427,7 @@ class Wilson
 		}
 	}
 
-	#interpolatePageToWorld([row, col]: [number, number])
+	#interpolatePageToWorld([row, col]: [number, number]): [number, number]
 	{
 		const rect = this.canvas.getBoundingClientRect();
 		const computedStyle = window.getComputedStyle(this.canvas);
@@ -1333,16 +1449,17 @@ class Wilson
 		return this.interpolateCanvasToWorld([canvasRow, canvasCol]);
 	}
 
-	interpolateCanvasToWorld([row, col]: [number, number])
+	interpolateCanvasToWorld([row, col]: [number, number]): [number, number]
 	{
 		return [
 			(col / this.#canvasWidth - .5) * this.worldWidth
 				+ this.worldCenterX,
 			(.5 - row / this.#canvasHeight) * this.worldHeight
-				+ this.worldCenterY];
+				+ this.worldCenterY
+		];
 	}
 
-	interpolateWorldToCanvas([x, y]: [number, number])
+	interpolateWorldToCanvas([x, y]: [number, number]): [number, number]
 	{
 		return [
 			Math.floor((.5 - (y - this.worldCenterY) / this.worldHeight)
