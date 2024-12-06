@@ -713,13 +713,49 @@ class Wilson
 		this.#lastInteractionRow = e.touches[0].clientY;
 		this.#lastInteractionCol = e.touches[0].clientX;
 	}
+	
+	#zoomFixedPoint: [number, number] = [0, 0];
+	#zoomFromWheel(scale: number)
+	{
+		const centerProportion = [
+			(this.#zoomFixedPoint[0] - this.worldCenterX) / this.worldWidth,
+			(this.#zoomFixedPoint[1] - this.worldCenterY) / this.worldHeight
+		];
+
+		this.worldWidth *= scale;
+		this.worldHeight *= scale;
+
+		const newFixedPointX = centerProportion[0] * this.worldWidth;
+		const newFixedPointY = centerProportion[1] * this.worldHeight;
+
+		this.worldCenterX = this.#zoomFixedPoint[0] - newFixedPointX;
+		this.worldCenterY = this.#zoomFixedPoint[1] - newFixedPointY;
+		
+		this.#updateDraggablesLocation();
+		this.#interactionOnPanAndZoom();
+	}
 
 	#onWheel(e: WheelEvent)
 	{
-		const [x, y] = this.interpolateCanvasToWorld([
-			this.#lastInteractionRow,
-			this.#lastInteractionCol
-		]);
+		e.preventDefault();
+
+		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
+
+		if (this.#interactionUseForPanAndZoom)
+		{
+			this.#zoomFixedPoint = [x, y];
+
+			if (Math.abs(e.deltaY) < 25)
+			{
+				const scale = 1 + e.deltaY * 0.005;
+				this.#zoomFromWheel(scale);
+			}
+
+			else
+			{
+				// this.velocity += Math.sign(scrollAmount) * .085;
+			}
+		}
 
 		this.#interactionCallbacks.wheel({
 			x,
@@ -727,6 +763,9 @@ class Wilson
 			scrollDelta: e.deltaY,
 			event: e
 		});
+
+		this.#lastInteractionRow = e.clientY;
+		this.#lastInteractionCol = e.clientX;
 	}
 
 	#initInteraction()
