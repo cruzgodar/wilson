@@ -569,64 +569,36 @@ class Wilson
 		lastTouch1: [number, number],
 		lastTouch2: [number, number]
 	}) {
-		// Project touch1 and touch2 onto the line between lastTouch1 and lastTouch2.
-		const projectOntoLine = (point: [number, number]): [number, number] =>
-		{
-			const a = lastTouch1[0];
-			const b = lastTouch1[1];
-			const c = lastTouch2[0];
-			const d = lastTouch2[1];
-			const f = point[0];
-			const g = point[1];
-
-			return [
-				(-b + d) * (
-					(b * c - a * d) / (a - c) + ((a - c) * f) / (b - d) + g
-				) / (
-					-a + c + ((b - d) * (b - d)) / (-a + c)
-				),
-
-				((a - c) * (d * (a - f) + b * (-c + f)) + (b - d) * (b - d) * g)
-					/ ((a - c) * (a - c) + (b - d) * (b - d))
-			];
-		};
-
-		// touch1 = projectOntoLine(touch1);
-		// touch2 = projectOntoLine(touch2);
-
-		if (
-			isNaN(touch1[0])
-			|| isNaN(touch1[1])
-			|| isNaN(touch2[0])
-			|| isNaN(touch2[1])
-			|| Math.abs(touch1[0]) === Infinity
-			|| Math.abs(touch1[1]) === Infinity
-			|| Math.abs(touch2[0]) === Infinity
-			|| Math.abs(touch2[1]) === Infinity
-		) {
-			return;
-		}
-
-		const oldMidpoint = [
-			(lastTouch1[0] + lastTouch2[0]) / 2,
-			(lastTouch1[1] + lastTouch2[1]) / 2
-		];
-
-		const newMidpoint = [
+		const center = [
 			(touch1[0] + touch2[0]) / 2,
 			(touch1[1] + touch2[1]) / 2
 		];
 
-		const scaleX = (lastTouch2[0] - lastTouch1[0]) / (touch2[0] - touch1[0]);
-		const scaleY = (lastTouch2[1] - lastTouch1[1]) / (touch2[1] - touch1[1]);
-		const scale = (scaleX + scaleY) / 2;
-		// const scale = scaleY;
+		const distance = Math.sqrt(
+			(touch1[0] - touch2[0]) ** 2
+			+ (touch1[1] - touch2[1]) ** 2
+		)
 
-		this.worldCenterX += oldMidpoint[0] - newMidpoint[0];
-		this.worldCenterY += oldMidpoint[1] - newMidpoint[1];
+		const lastDistance = Math.sqrt(
+			(lastTouch1[0] - lastTouch2[0]) ** 2
+			+ (lastTouch1[1] - lastTouch2[1]) ** 2
+		);
+
+		const centerProportion = [
+			(center[0] - this.worldCenterX) / this.worldWidth,
+			(center[1] - this.worldCenterY) / this.worldHeight
+		];
+
+		const scale = lastDistance / distance;
 
 		this.worldWidth *= scale;
 		this.worldHeight *= scale;
+
+		const newFixedPointX = centerProportion[0] * this.worldWidth;
+		const newFixedPointY = centerProportion[1] * this.worldHeight;
+
+		this.worldCenterX = center[0] - newFixedPointX;
+		this.worldCenterY = center[1] - newFixedPointY;
 	}
 	
 	#onTouchstart(e: TouchEvent)
@@ -696,18 +668,25 @@ class Wilson
 		{
 			if (e.touches.length > 1)
 			{
+				const touch2 = this.#interpolatePageToWorld([
+					e.touches[1].clientY,
+					e.touches[1].clientX
+				]);
+
+				const lastTouch2 = this.#interpolatePageToWorld([
+					this.#lastInteractionRow2,
+					this.#lastInteractionCol2
+				]);
+
 				this.#updateFromPinching({
 					touch1: [x, y],
-					touch2: this.#interpolatePageToWorld([
-						e.touches[1].clientY,
-						e.touches[1].clientX
-					]),
+					touch2,
 					lastTouch1: [lastX, lastY],
-					lastTouch2: this.#interpolatePageToWorld([
-						this.#lastInteractionRow2,
-						this.#lastInteractionCol2
-					]),
+					lastTouch2,
 				});
+
+				this.worldCenterX -= (x + touch2[0]) / 2 - (lastX + lastTouch2[0]) / 2;
+				this.worldCenterY -= (y + touch2[1]) / 2 - (lastY + lastTouch2[1]) / 2;;
 
 				this.#lastInteractionRow2 = e.touches[1].clientY,
 				this.#lastInteractionCol2 = e.touches[1].clientX;

@@ -375,48 +375,25 @@ _Wilson_canvasWidth = new WeakMap(), _Wilson_canvasHeight = new WeakMap(), _Wils
     __classPrivateFieldSet(this, _Wilson_lastInteractionRow, e.clientY, "f");
     __classPrivateFieldSet(this, _Wilson_lastInteractionCol, e.clientX, "f");
 }, _Wilson_updateFromPinching = function _Wilson_updateFromPinching({ touch1, touch2, lastTouch1, lastTouch2 }) {
-    // Project touch1 and touch2 onto the line between lastTouch1 and lastTouch2.
-    const projectOntoLine = (point) => {
-        const a = lastTouch1[0];
-        const b = lastTouch1[1];
-        const c = lastTouch2[0];
-        const d = lastTouch2[1];
-        const f = point[0];
-        const g = point[1];
-        return [
-            (-b + d) * ((b * c - a * d) / (a - c) + ((a - c) * f) / (b - d) + g) / (-a + c + ((b - d) * (b - d)) / (-a + c)),
-            ((a - c) * (d * (a - f) + b * (-c + f)) + (b - d) * (b - d) * g)
-                / ((a - c) * (a - c) + (b - d) * (b - d))
-        ];
-    };
-    // touch1 = projectOntoLine(touch1);
-    // touch2 = projectOntoLine(touch2);
-    if (isNaN(touch1[0])
-        || isNaN(touch1[1])
-        || isNaN(touch2[0])
-        || isNaN(touch2[1])
-        || Math.abs(touch1[0]) === Infinity
-        || Math.abs(touch1[1]) === Infinity
-        || Math.abs(touch2[0]) === Infinity
-        || Math.abs(touch2[1]) === Infinity) {
-        return;
-    }
-    const oldMidpoint = [
-        (lastTouch1[0] + lastTouch2[0]) / 2,
-        (lastTouch1[1] + lastTouch2[1]) / 2
-    ];
-    const newMidpoint = [
+    const center = [
         (touch1[0] + touch2[0]) / 2,
         (touch1[1] + touch2[1]) / 2
     ];
-    const scaleX = (lastTouch2[0] - lastTouch1[0]) / (touch2[0] - touch1[0]);
-    const scaleY = (lastTouch2[1] - lastTouch1[1]) / (touch2[1] - touch1[1]);
-    const scale = (scaleX + scaleY) / 2;
-    // const scale = scaleY;
-    this.worldCenterX += oldMidpoint[0] - newMidpoint[0];
-    this.worldCenterY += oldMidpoint[1] - newMidpoint[1];
+    const distance = Math.sqrt((touch1[0] - touch2[0]) ** 2
+        + (touch1[1] - touch2[1]) ** 2);
+    const lastDistance = Math.sqrt((lastTouch1[0] - lastTouch2[0]) ** 2
+        + (lastTouch1[1] - lastTouch2[1]) ** 2);
+    const centerProportion = [
+        (center[0] - this.worldCenterX) / this.worldWidth,
+        (center[1] - this.worldCenterY) / this.worldHeight
+    ];
+    const scale = lastDistance / distance;
     this.worldWidth *= scale;
     this.worldHeight *= scale;
+    const newFixedPointX = centerProportion[0] * this.worldWidth;
+    const newFixedPointY = centerProportion[1] * this.worldHeight;
+    this.worldCenterX = center[0] - newFixedPointX;
+    this.worldCenterY = center[1] - newFixedPointY;
 }, _Wilson_onTouchstart = function _Wilson_onTouchstart(e) {
     if (e.target instanceof HTMLElement && e.target.classList.contains('WILSON_draggable')) {
         return;
@@ -457,18 +434,23 @@ _Wilson_canvasWidth = new WeakMap(), _Wilson_canvasHeight = new WeakMap(), _Wils
     ]);
     if (__classPrivateFieldGet(this, _Wilson_interactionUseForPanAndZoom, "f") && __classPrivateFieldGet(this, _Wilson_currentlyDragging, "f")) {
         if (e.touches.length > 1) {
+            const touch2 = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [
+                e.touches[1].clientY,
+                e.touches[1].clientX
+            ]);
+            const lastTouch2 = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [
+                __classPrivateFieldGet(this, _Wilson_lastInteractionRow2, "f"),
+                __classPrivateFieldGet(this, _Wilson_lastInteractionCol2, "f")
+            ]);
             __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateFromPinching).call(this, {
                 touch1: [x, y],
-                touch2: __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [
-                    e.touches[1].clientY,
-                    e.touches[1].clientX
-                ]),
+                touch2,
                 lastTouch1: [lastX, lastY],
-                lastTouch2: __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [
-                    __classPrivateFieldGet(this, _Wilson_lastInteractionRow2, "f"),
-                    __classPrivateFieldGet(this, _Wilson_lastInteractionCol2, "f")
-                ]),
+                lastTouch2,
             });
+            this.worldCenterX -= (x + touch2[0]) / 2 - (lastX + lastTouch2[0]) / 2;
+            this.worldCenterY -= (y + touch2[1]) / 2 - (lastY + lastTouch2[1]) / 2;
+            ;
             __classPrivateFieldSet(this, _Wilson_lastInteractionRow2, e.touches[1].clientY, "f"),
                 __classPrivateFieldSet(this, _Wilson_lastInteractionCol2, e.touches[1].clientX, "f");
         }
