@@ -200,7 +200,7 @@ class Wilson
 
 	
 
-	#numPreviousVelocities: number = 8;
+	#numPreviousVelocities: number = 5;
 
 	#lastPanVelocityX = 0;
 	#lastPanVelocityY = 0;
@@ -217,7 +217,7 @@ class Wilson
 	#panFriction: number;
 	#zoomFriction: number;
 
-	#panVelocityThreshhold: number = 0.005;
+	#panVelocityThreshold: number = 0.001;
 	#zoomVelocityThreshold: number = 0.001;
 
 
@@ -314,7 +314,7 @@ class Wilson
 		this.#interactionCallbacks = { ...defaultInteractionCallbacks, ...options.interactionOptions?.callbacks };
 		this.#interactionUseForPanAndZoom = options.interactionOptions?.useForPanAndZoom ?? false;
 
-		this.#panFriction = 0.93;
+		this.#panFriction = 0.875;
 		this.#zoomFriction = 0.85;
 
 		if (options.interactionOptions?.useForPanAndZoom)
@@ -569,10 +569,23 @@ class Wilson
 
 		this.#panVelocityX /= this.#numPreviousVelocities;
 		this.#panVelocityY /= this.#numPreviousVelocities;
+
+		const totalPanVelocitySquared = this.#panVelocityX * this.#panVelocityX
+			+ this.#panVelocityY * this.#panVelocityY;
+
+		const threshold = this.#panVelocityThreshold
+			* Math.min(this.worldWidth, this.worldHeight);
+
+		if (totalPanVelocitySquared < threshold * threshold)
+		{
+			this.#panVelocityX = 0;
+			this.#panVelocityY = 0;
+		}
 	}
 	
 	#currentlyDragging: boolean = false;
 	#currentlyPinching: boolean = false;
+	#ignoreTouchendCooldown: number = 0;
 	#lastInteractionRow: number = 0;
 	#lastInteractionCol: number = 0;
 	#lastInteractionRow2: number = 0;
@@ -603,12 +616,17 @@ class Wilson
 
 	#onMouseup(e: MouseEvent)
 	{
-		if (e.target instanceof HTMLElement && e.target.classList.contains('WILSON_draggable'))
+		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
 		{
 			return;
 		}
 
 		e.preventDefault();
+
+		if (this.#interactionUseForPanAndZoom && this.#currentlyDragging)
+		{
+			this.#setPanVelocity();
+		}
 
 		this.#currentlyDragging = false;
 
@@ -637,6 +655,10 @@ class Wilson
 		{
 			this.worldCenterX -= x - lastX;
 			this.worldCenterY -= y - lastY;
+
+			this.#lastPanVelocityX = lastX - x;
+			this.#lastPanVelocityY = lastY - y;
+
 			this.#updateDraggablesLocation();
 			this.#interactionOnPanAndZoom();
 		}
@@ -693,13 +715,20 @@ class Wilson
 		const newFixedPointX = centerProportion[0] * this.worldWidth;
 		const newFixedPointY = centerProportion[1] * this.worldHeight;
 
-		this.worldCenterX = this.#zoomFixedPoint[0] - newFixedPointX;
-		this.worldCenterY = this.#zoomFixedPoint[1] - newFixedPointY;
+		const newWorldCenterX = this.#zoomFixedPoint[0] - newFixedPointX;
+		const newWorldCenterY = this.#zoomFixedPoint[1] - newFixedPointY;
+
+		this.#lastPanVelocityX = newWorldCenterX - this.worldCenterX;
+		this.#lastPanVelocityY = newWorldCenterY - this.worldCenterY;
+
+		this.worldCenterX = newWorldCenterX;
+		this.worldCenterY = newWorldCenterY;
+
 	}
 	
 	#onTouchstart(e: TouchEvent)
 	{
-		if (e.target instanceof HTMLElement && e.target.classList.contains('WILSON_draggable'))
+		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
 		{
 			return;
 		}
@@ -730,12 +759,29 @@ class Wilson
 
 	#onTouchend(e: TouchEvent)
 	{
-		if (e.target instanceof HTMLElement && e.target.classList.contains('WILSON_draggable'))
+		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
 		{
 			return;
 		}
 
 		e.preventDefault();
+
+		if (this.#ignoreTouchendCooldown !== 0)
+		{
+			if (e.touches.length === 0)
+			{
+				this.#currentlyDragging = false;
+			}
+
+			return;
+		}
+
+
+
+		if (this.#interactionUseForPanAndZoom && this.#currentlyDragging)
+		{
+			this.#setPanVelocity();
+		}
 
 		if (e.touches.length === 0)
 		{
@@ -760,6 +806,7 @@ class Wilson
 		{
 			if (this.#currentlyPinching)
 			{
+				this.#ignoreTouchendCooldown = 200;
 				this.#setZoomVelocity();
 			}
 
@@ -772,6 +819,11 @@ class Wilson
 	#onTouchmove(e: TouchEvent)
 	{
 		e.preventDefault();
+
+		if (this.#ignoreTouchendCooldown !== 0)
+		{
+			return;
+		}
 		
 		const [x, y] = this.#interpolatePageToWorld([
 			e.touches[0].clientY,
@@ -804,8 +856,14 @@ class Wilson
 					lastTouch2,
 				});
 
-				this.worldCenterX -= (x + touch2[0]) / 2 - (lastX + lastTouch2[0]) / 2;
-				this.worldCenterY -= (y + touch2[1]) / 2 - (lastY + lastTouch2[1]) / 2;;
+				const xDelta = (x + touch2[0]) / 2 - (lastX + lastTouch2[0]) / 2;
+				const yDelta = (y + touch2[1]) / 2 - (lastY + lastTouch2[1]) / 2;
+
+				this.worldCenterX -= xDelta;
+				this.worldCenterY -= yDelta;
+
+				this.#lastPanVelocityX = -xDelta;
+				this.#lastPanVelocityY = -yDelta;
 
 				this.#lastInteractionRow2 = e.touches[1].clientY,
 				this.#lastInteractionCol2 = e.touches[1].clientX;
@@ -815,6 +873,9 @@ class Wilson
 			{
 				this.worldCenterX -= x - lastX;
 				this.worldCenterY -= y - lastY;
+
+				this.#lastPanVelocityX = lastX - x;
+				this.#lastPanVelocityY = lastY - y;
 			}
 
 			this.#updateDraggablesLocation();
@@ -864,7 +925,7 @@ class Wilson
 		{
 			this.#zoomFixedPoint = [x, y];
 
-			if (Math.abs(e.deltaY) < 25)
+			if (Math.abs(e.deltaY) < 40)
 			{
 				const scale = 1 + e.deltaY * 0.005;
 				this.#zoomCanvas(scale);
@@ -894,11 +955,50 @@ class Wilson
 		this.#lastZoomVelocities.push(this.#lastZoomVelocity);
 		this.#lastZoomVelocity = 0;
 
+		this.#lastPanVelocitiesX.shift();
+		this.#lastPanVelocitiesX.push(this.#lastPanVelocityX);
+		this.#lastPanVelocityX = 0;
+
+		this.#lastPanVelocitiesY.shift();
+		this.#lastPanVelocitiesY.push(this.#lastPanVelocityY);
+		this.#lastPanVelocityY = 0;
+
 		const timeElapsed = timestamp - this.#lastPanAndZoomTimestamp;
 		this.#lastPanAndZoomTimestamp = timestamp;
 
+		this.#ignoreTouchendCooldown = Math.max(0, this.#ignoreTouchendCooldown - timeElapsed);
+
 		if (timeElapsed < 1000)
 		{
+			if (this.#panVelocityX || this.#panVelocityY)
+			{
+				this.worldCenterX += this.#panVelocityX;
+				this.worldCenterY += this.#panVelocityY;
+
+				this.#updateDraggablesLocation();
+				this.#interactionOnPanAndZoom();
+
+				const frictionFactor = Math.pow(
+					this.#panFriction,
+					timeElapsed / (1000 / 60)
+				);
+
+				this.#panVelocityX *= frictionFactor;
+				this.#panVelocityY *= frictionFactor;
+
+				const totalPanVelocitySquared = this.#panVelocityX * this.#panVelocityX
+					+ this.#panVelocityY * this.#panVelocityY;
+
+				const threshold = this.#panVelocityThreshold
+					* Math.min(this.worldWidth, this.worldHeight);
+
+				if (totalPanVelocitySquared < threshold * threshold)
+				{
+					this.#panVelocityX = 0;
+					this.#panVelocityY = 0;
+				}
+			}
+
 			if (this.#zoomVelocity)
 			{
 				this.#zoomCanvas(1 + this.#zoomVelocity * 0.005);
