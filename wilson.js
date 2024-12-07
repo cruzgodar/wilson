@@ -18,7 +18,6 @@ const defaultInteractionCallbacks = {
     touchstart: ({ x, y, event }) => { },
     touchend: ({ x, y, event }) => { },
     touchmove: ({ x, y, xDelta, yDelta, event }) => { },
-    pinch: ({ centerX, centerY, spreadDelta, event }) => { },
     wheel: ({ x, y, scrollDelta, event }) => { },
 };
 const defaultDraggableCallbacks = {
@@ -37,7 +36,7 @@ class Wilson {
         return __classPrivateFieldGet(this, _Wilson_useP3ColorSpace, "f");
     }
     constructor(canvas, options) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13;
         _Wilson_instances.add(this);
         _Wilson_destroyed.set(this, false);
         _Wilson_canvasWidth.set(this, void 0);
@@ -229,19 +228,25 @@ class Wilson {
             __classPrivateFieldSet(this, _Wilson_interactionOnPanAndZoom, (_t = (_s = options.interactionOptions) === null || _s === void 0 ? void 0 : _s.onPanAndZoom) !== null && _t !== void 0 ? _t : (() => { }), "f");
             __classPrivateFieldSet(this, _Wilson_panFriction, (_v = (_u = options.interactionOptions) === null || _u === void 0 ? void 0 : _u.panFriction) !== null && _v !== void 0 ? _v : __classPrivateFieldGet(this, _Wilson_panFriction, "f"), "f");
             __classPrivateFieldSet(this, _Wilson_zoomFriction, (_x = (_w = options.interactionOptions) === null || _w === void 0 ? void 0 : _w.zoomFriction) !== null && _x !== void 0 ? _x : __classPrivateFieldGet(this, _Wilson_zoomFriction, "f"), "f");
+            if (((_y = options.interactionOptions) === null || _y === void 0 ? void 0 : _y.inertia) === false) {
+                __classPrivateFieldSet(this, _Wilson_panFriction, 0, "f");
+                __classPrivateFieldSet(this, _Wilson_zoomFriction, 0, "f");
+                __classPrivateFieldSet(this, _Wilson_panVelocityThreshold, Infinity, "f");
+                __classPrivateFieldSet(this, _Wilson_zoomVelocityThreshold, Infinity, "f");
+            }
             __classPrivateFieldSet(this, _Wilson_lastPanVelocitiesX, Array(__classPrivateFieldGet(this, _Wilson_numPreviousVelocities, "f")).fill(0), "f");
             __classPrivateFieldSet(this, _Wilson_lastPanVelocitiesY, Array(__classPrivateFieldGet(this, _Wilson_numPreviousVelocities, "f")).fill(0), "f");
             __classPrivateFieldSet(this, _Wilson_lastZoomVelocities, Array(__classPrivateFieldGet(this, _Wilson_numPreviousVelocities, "f")).fill(0), "f");
         }
-        __classPrivateFieldSet(this, _Wilson_draggablesRadius, (_z = (_y = options.draggableOptions) === null || _y === void 0 ? void 0 : _y.radius) !== null && _z !== void 0 ? _z : 12, "f");
-        __classPrivateFieldSet(this, _Wilson_draggablesStatic, (_1 = (_0 = options.draggableOptions) === null || _0 === void 0 ? void 0 : _0.static) !== null && _1 !== void 0 ? _1 : false, "f");
-        __classPrivateFieldSet(this, _Wilson_draggableCallbacks, { ...defaultDraggableCallbacks, ...(_2 = options.draggableOptions) === null || _2 === void 0 ? void 0 : _2.callbacks }, "f");
-        __classPrivateFieldSet(this, _Wilson_fullscreenFillScreen, (_4 = (_3 = options.fullscreenOptions) === null || _3 === void 0 ? void 0 : _3.fillScreen) !== null && _4 !== void 0 ? _4 : false, "f");
-        this.animateFullscreen = (_6 = (_5 = options.fullscreenOptions) === null || _5 === void 0 ? void 0 : _5.animate) !== null && _6 !== void 0 ? _6 : true;
-        __classPrivateFieldSet(this, _Wilson_fullscreenUseButton, (_8 = (_7 = options.fullscreenOptions) === null || _7 === void 0 ? void 0 : _7.useFullscreenButton) !== null && _8 !== void 0 ? _8 : false, "f");
-        if ((_9 = options.fullscreenOptions) === null || _9 === void 0 ? void 0 : _9.useFullscreenButton) {
-            __classPrivateFieldSet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, (_10 = options.fullscreenOptions) === null || _10 === void 0 ? void 0 : _10.enterFullscreenButtonIconPath, "f");
-            __classPrivateFieldSet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, (_11 = options.fullscreenOptions) === null || _11 === void 0 ? void 0 : _11.exitFullscreenButtonIconPath, "f");
+        __classPrivateFieldSet(this, _Wilson_draggablesRadius, (_0 = (_z = options.draggableOptions) === null || _z === void 0 ? void 0 : _z.radius) !== null && _0 !== void 0 ? _0 : 12, "f");
+        __classPrivateFieldSet(this, _Wilson_draggablesStatic, (_2 = (_1 = options.draggableOptions) === null || _1 === void 0 ? void 0 : _1.static) !== null && _2 !== void 0 ? _2 : false, "f");
+        __classPrivateFieldSet(this, _Wilson_draggableCallbacks, { ...defaultDraggableCallbacks, ...(_3 = options.draggableOptions) === null || _3 === void 0 ? void 0 : _3.callbacks }, "f");
+        __classPrivateFieldSet(this, _Wilson_fullscreenFillScreen, (_5 = (_4 = options.fullscreenOptions) === null || _4 === void 0 ? void 0 : _4.fillScreen) !== null && _5 !== void 0 ? _5 : false, "f");
+        this.animateFullscreen = (_7 = (_6 = options.fullscreenOptions) === null || _6 === void 0 ? void 0 : _6.animate) !== null && _7 !== void 0 ? _7 : true;
+        __classPrivateFieldSet(this, _Wilson_fullscreenUseButton, (_9 = (_8 = options.fullscreenOptions) === null || _8 === void 0 ? void 0 : _8.useFullscreenButton) !== null && _9 !== void 0 ? _9 : false, "f");
+        if ((_10 = options.fullscreenOptions) === null || _10 === void 0 ? void 0 : _10.useFullscreenButton) {
+            __classPrivateFieldSet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, (_11 = options.fullscreenOptions) === null || _11 === void 0 ? void 0 : _11.enterFullscreenButtonIconPath, "f");
+            __classPrivateFieldSet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, (_12 = options.fullscreenOptions) === null || _12 === void 0 ? void 0 : _12.exitFullscreenButtonIconPath, "f");
         }
         // Initialize the container structure.
         __classPrivateFieldSet(this, _Wilson_appletContainer, document.createElement("div"), "f");
@@ -280,7 +285,7 @@ class Wilson {
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_initFullscreen).call(this);
         window.addEventListener("resize", __classPrivateFieldGet(this, _Wilson_onResizeWindow, "f"));
         document.documentElement.addEventListener("keydown", __classPrivateFieldGet(this, _Wilson_handleKeydownEvent, "f"));
-        if ((_12 = options.draggableOptions) === null || _12 === void 0 ? void 0 : _12.draggables) {
+        if ((_13 = options.draggableOptions) === null || _13 === void 0 ? void 0 : _13.draggables) {
             for (const draggable of options.draggableOptions.draggables) {
                 this.addDraggable(draggable);
             }

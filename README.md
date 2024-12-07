@@ -21,6 +21,8 @@ Add wilson.ts or wilson.js to your project, then import either `WilsonCPU` or `W
 
 Wilson does not allow canvases whose pixel aspect ratio does not match their visual aspect ratio as determined by CSS. For that reason, only one of `canvasWidth` or `canvasHeight` can be specified; the other will be calculated automatically. To resize the canvas manually later, use the `resizeCanvas` method.
 
+In addition to canvas width and height, Wilson has a concept of **world coordinates**, which are used to represent the actual scene being rendered. They are used by the built-in interaction, fullscreen, and draggables methods, and much of the utility Wilson provides is only fully leveraged by using them. The `worldWidth` and `worldHeight` fields can technically both be specified, but it is strongly recommended to use only one of them; the other will be calculated automatically to match the aspect ratio of the canvas.
+
 The `WilsonCPU` class is relatively straightforward: it exposes the `ctx` field, which is a 2D drawing context for the canvas, and also a `drawFrame` method that directly sets the image data to a given Uint8ClampedArray.
 
 
@@ -94,3 +96,66 @@ To draw a frame, call the `drawFrame` method on the `WilsonGPU` instance. To set
 ```
 
 Specifying the `shaders` field of the `options` object instead of the singular `shader` field allows for specifing multiple shaders, which allows for easier switching without having multiple Wilson instances. The `shaders` field is an object whose keys are the IDs of the shader programs, and whose values are strings containing the GLSL code. Similarly, when `shaders` is specified, the `uniforms` field is an object whose keys are the IDs of the shader programs, and whose values are objects with the same structure as the `uniforms` field of a single shader. Regardless of which field is used, the `loadShader` method allows for dynamically loading shaders later.
+
+
+
+## Interactivity
+
+Wilson provides callbacks for mouse and touch events on the canvas, specified in the `interactionOptions` field of the `options` object. These are:
+
+```js
+	mousedown: ({ x, y, event }) => {}
+	mouseup: ({ x, y, event }) => {}
+	mousemove: ({ x, y, xDelta, yDelta, event }) => {}
+	mousedrag: ({ x, y, xDelta, yDelta, event }) => {}
+
+	touchstart: ({ x, y, event }) => {}
+	touchend: ({ x, y, event }) => {}
+	touchmove: ({ x, y, xDelta, yDelta, event }) => {}
+
+	wheel: ({ x, y, scrollDelta, event }) => {}
+```
+
+The only nonstandard name is `mousedrag`, which is called only when the mouse is being dragged (`mousemove` is called only when the mouse is not being dragged). However, the most common use case is to use these events to implement panning and zooming. Wilson handles these automatically, including supporting pinch-to-zoom on touchscreens and inertia for both panning and zooming. To take advantage of these features, set `useForPanAndZoom: true` in the `interactionOptions` field of the `options` object, and also prodive a callback for updating the scene when the world coordinates change:
+
+```js
+	const options = {
+		interactionOptions: {
+			useForPanAndZoom: true,
+			onPanAndZoom: drawFrame // Some function to redraw the scene.
+		},
+	};
+```
+
+
+
+## Draggables
+
+Draggables are a built-in way to add interactive elements directly to the canvas that can be moved independently — including multiple at once on a touchscreen. They are specified in the `draggableOptions` field of the `options` object:
+
+```js
+	const options = {
+		draggableOptions: {
+			draggables: [
+				{ id: "c", x: 0, y: 0 },
+				{ id: "r", x: 1, y: 0 },
+			],
+		},
+	};
+```
+
+Callbacks can be specified for when a draggable is grabbed, dragged, and released, with the following signatures:
+
+```js
+	ongrab: ({ id, x, y, event }) => {}
+	ondrag: ({ id, x, y, xDelta, yDelta, event }) => {}
+	onrelease: ({ id, x, y, event }) => {}
+```
+
+The example project uses a draggable to represent the `c` value for the Julia set and updates the corresponding uniform when the draggable is moved.
+
+
+
+## Fullscreen
+
+Wilson provides a built-in fullscreen mode, which can be used to render a scene in a window as large as possible.

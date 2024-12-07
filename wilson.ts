@@ -49,18 +49,6 @@ type InteractionCallbacks = {
 		event: TouchEvent
 	}) => void,
 
-	pinch: ({
-		centerX,
-		centerY,
-		spreadDelta,
-		event
-	}: {
-		centerX: number,
-		centerY: number,
-		spreadDelta: number,
-		event: TouchEvent
-	}) => void,
-
 	wheel: ({
 		x,
 		y,
@@ -82,7 +70,6 @@ const defaultInteractionCallbacks: InteractionCallbacks = {
 	touchstart: ({ x, y, event }) => {},
 	touchend: ({ x, y, event }) => {},
 	touchmove: ({ x, y, xDelta, yDelta, event }) => {},
-	pinch: ({ centerX, centerY, spreadDelta, event }) => {},
 	wheel: ({ x, y, scrollDelta, event }) => {},
 };
 
@@ -109,9 +96,9 @@ type DraggableCallBacks = {
 }
 
 const defaultDraggableCallbacks: DraggableCallBacks = {
-	ongrab: () => {},
-	ondrag: () => {},
-	onrelease: () => {},
+	ongrab: ({ id, x, y, event }) => {},
+	ondrag: ({ id, x, y, xDelta, yDelta, event }) => {},
+	onrelease: ({ id, x, y, event }) => {},
 };
 
 type InteractionOptions = {
@@ -121,6 +108,7 @@ type InteractionOptions = {
 } | {
 	useForPanAndZoom: true,
 	onPanAndZoom: () => void,
+	inertia?: boolean,
 	panFriction?: number,
 	zoomFriction?: number,
 });
@@ -359,6 +347,14 @@ class Wilson
 			this.#interactionOnPanAndZoom = options.interactionOptions?.onPanAndZoom ?? (() => {});
 			this.#panFriction = options.interactionOptions?.panFriction ?? this.#panFriction;
 			this.#zoomFriction = options.interactionOptions?.zoomFriction ?? this.#zoomFriction;
+
+			if (options.interactionOptions?.inertia === false)
+			{
+				this.#panFriction = 0;
+				this.#zoomFriction = 0;
+				this.#panVelocityThreshold = Infinity;
+				this.#zoomVelocityThreshold = Infinity;
+			}
 
 			this.#lastPanVelocitiesX = Array(this.#numPreviousVelocities).fill(0);
 			this.#lastPanVelocitiesY = Array(this.#numPreviousVelocities).fill(0);
