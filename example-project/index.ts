@@ -3,7 +3,7 @@ import { WilsonCPU, WilsonCPUOptions, WilsonGPU, WilsonGPUOptions } from "/wilso
 function initWilson1()
 {
 	const canvas = document.querySelector("#demo-canvas") as HTMLCanvasElement;
-	const resolution = 500;
+	const resolution = 1000;
 
 	const options: WilsonCPUOptions = {
 		canvasWidth: resolution,
@@ -47,7 +47,7 @@ function initWilson1()
 function initWilson2()
 {
 	const canvas = document.querySelector("#demo-canvas-2") as HTMLCanvasElement;
-	const resolution = 500;
+	const resolution = 1000;
 
 	const shader = /* glsl */`
 		precision highp float;
@@ -108,9 +108,9 @@ function initWilson2()
 		onResizeCanvas: drawFrame,
 
 		minWorldWidth: 0.000001,
-		maxWorldWidth: 10,
+		maxWorldWidth: 5,
 		minWorldHeight: 0.000001,
-		maxWorldHeight: 10,
+		maxWorldHeight: 5,
 
 		minWorldCenterX: -2,
 		maxWorldCenterX: 2,
@@ -132,7 +132,7 @@ function initWilson2()
 
 		draggableOptions: {
 			draggables: [
-				{ id: "c", x: 0, y: 0 }
+				{ id: "c", x: 0, y: 1 }
 			],
 
 			callbacks: {
@@ -149,7 +149,7 @@ function initWilson2()
 
 	const wilson = new WilsonGPU(canvas, options);
 
-
+	wilson.setUniform({ name: "c", value: [0, 1] });
 
 	drawFrame();
 
