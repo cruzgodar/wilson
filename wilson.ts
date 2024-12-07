@@ -147,8 +147,10 @@ type FullscreenOptions = {
 
 
 
-export type WilsonOptions = ({ canvasWidth: number } | { canvasHeight: number })
-& {
+export type WilsonOptions = (
+	{ canvasWidth: number, canvasHeight?: undefined }
+	| { canvasHeight: number, canvasWidth?: undefined }
+) & {
 	worldWidth?: number,
 	worldHeight?: number,
 	worldCenterX?: number,
@@ -194,6 +196,9 @@ class Wilson
 	worldHeight: number;
 	worldCenterX: number;
 	worldCenterY: number;
+
+	#nonFullscreenWorldWidth: number;
+	#nonFullscreenWorldHeight: number;
 
 	minWorldWidth: number;
 	maxWorldWidth: number;
@@ -278,7 +283,7 @@ class Wilson
 		const computedStyle = getComputedStyle(canvas);
 		this.#canvasAspectRatio = parseFloat(computedStyle.width) / parseFloat(computedStyle.height);
 
-		if ("canvasWidth" in options)
+		if (options.canvasWidth !== undefined)
 		{
 			this.#canvasWidth = Math.round(options.canvasWidth);
 			this.#canvasHeight = Math.round(options.canvasWidth / this.#canvasAspectRatio);
@@ -319,6 +324,9 @@ class Wilson
 			this.worldWidth = Math.max(2, 2 * this.#canvasAspectRatio);
 			this.worldHeight = Math.max(2, 2 / this.#canvasAspectRatio);
 		}
+
+		this.#nonFullscreenWorldWidth = this.worldWidth;
+		this.#nonFullscreenWorldHeight = this.worldHeight;
 
 
 
@@ -498,14 +506,23 @@ class Wilson
 			// Resize the canvas to fill the screen but keep the same total number of pixels.
 			const windowAspectRatio = window.innerWidth / window.innerHeight;
 
+			const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
+
+			this.worldWidth = Math.max(
+				this.#nonFullscreenWorldWidth * aspectRatioChange,
+				this.#nonFullscreenWorldWidth
+			);
+
+			this.worldHeight = Math.max(
+				this.#nonFullscreenWorldHeight / aspectRatioChange,
+				this.#nonFullscreenWorldHeight
+			);
+
+
+
 			const width = Math.round(
 				Math.sqrt(this.#canvasWidth * this.#canvasHeight * windowAspectRatio)
 			);
-
-			const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
-
-			this.worldWidth = Math.max(this.#oldWorldWidth * aspectRatioChange, this.#oldWorldWidth);
-			this.worldHeight = Math.max(this.#oldWorldHeight / aspectRatioChange, this.#oldWorldHeight);
 
 			this.resizeCanvas({ width });
 			this.#onResizeCanvas();
@@ -635,6 +652,9 @@ class Wilson
 			this.worldHeight *= this.minWorldWidth / this.worldWidth;
 			this.worldWidth = this.minWorldWidth;
 
+			this.#nonFullscreenWorldHeight *= this.minWorldWidth / this.worldWidth;
+			this.#nonFullscreenWorldWidth *= this.minWorldWidth / this.worldWidth;
+
 			this.#atMinWorldSize = true;
 		}
 
@@ -642,6 +662,9 @@ class Wilson
 		{
 			this.worldHeight *= this.maxWorldWidth / this.worldWidth;
 			this.worldWidth = this.maxWorldWidth;
+
+			this.#nonFullscreenWorldHeight *= this.maxWorldWidth / this.worldWidth;
+			this.#nonFullscreenWorldWidth *= this.maxWorldWidth / this.worldWidth;
 
 			this.#atMaxWorldSize = true;
 		}
@@ -651,6 +674,9 @@ class Wilson
 			this.worldWidth *= this.minWorldHeight / this.worldHeight;
 			this.worldHeight = this.minWorldHeight;
 
+			this.#nonFullscreenWorldHeight *= this.minWorldHeight / this.worldHeight;
+			this.#nonFullscreenWorldWidth *= this.minWorldHeight / this.worldHeight;
+
 			this.#atMinWorldSize = true;
 		}
 
@@ -658,6 +684,9 @@ class Wilson
 		{
 			this.worldWidth *= this.maxWorldHeight / this.worldHeight;
 			this.worldHeight = this.maxWorldHeight;
+
+			this.#nonFullscreenWorldHeight *= this.maxWorldHeight / this.worldHeight;
+			this.#nonFullscreenWorldWidth *= this.maxWorldHeight / this.worldHeight;
 
 			this.#atMaxWorldSize = true;
 		}
@@ -780,6 +809,9 @@ class Wilson
 
 		this.worldWidth *= scale;
 		this.worldHeight *= scale;
+
+		this.#nonFullscreenWorldWidth *= scale;
+		this.#nonFullscreenWorldHeight *= scale;
 
 		this.#lastZoomVelocity = (scale - 1) * 200;
 
@@ -983,6 +1015,9 @@ class Wilson
 		this.worldWidth *= scale;
 		this.worldHeight *= scale;
 
+		this.#nonFullscreenWorldWidth *= scale;
+		this.#nonFullscreenWorldHeight *= scale;
+
 		const newFixedPointX = centerProportion[0] * this.worldWidth;
 		const newFixedPointY = centerProportion[1] * this.worldHeight;
 
@@ -1112,23 +1147,7 @@ class Wilson
 			canvas.addEventListener("touchmove", (e) => this.#onTouchmove(e as TouchEvent));
 			canvas.addEventListener("wheel", (e) => this.#onWheel(e as WheelEvent));
 
-			canvas.addEventListener("mouseleave", (e) =>
-			{
-				if (this.#currentlyDragging)
-				{
-					this.#currentlyDragging = false;
-
-					if (this.#interactionCallbacks.mouseup)
-					{
-						const [x, y] = this.interpolateCanvasToWorld([
-							this.#lastInteractionRow,
-							this.#lastInteractionCol
-						]);
-
-						this.#interactionCallbacks.mouseup({ x, y, event: e as MouseEvent });
-					}
-				}
-			});
+			canvas.addEventListener("mouseleave", (e) => this.#onMouseup(e as MouseEvent));
 		}
 
 		if (this.#interactionUseForPanAndZoom)
@@ -1139,7 +1158,7 @@ class Wilson
 
 
 
-	#draggableElements: {
+	draggableElements: {
 		[id: string]: {
 			element: HTMLDivElement,
 			x: number,
@@ -1214,7 +1233,7 @@ class Wilson
 
 		this.#draggablesContainer.appendChild(element);
 
-		this.#draggableElements[useableId] = {
+		this.draggableElements[useableId] = {
 			element,
 			x,
 			y,
@@ -1226,16 +1245,16 @@ class Wilson
 
 	removeDraggable(id: string)
 	{
-		this.#draggableElements[id].element.remove();
-		delete this.#draggableElements[id];
+		this.draggableElements[id].element.remove();
+		delete this.draggableElements[id];
 	}
 
 	setDraggablePosition({ id, x, y }: { id: string, x: number, y: number })
 	{
-		this.#draggableElements[id].x = x;
-		this.#draggableElements[id].y = y;
+		this.draggableElements[id].x = x;
+		this.draggableElements[id].y = y;
 
-		const element = this.#draggableElements[id].element;
+		const element = this.draggableElements[id].element;
 
 		const uncappedRow = Math.floor(
 			this.#draggablesContainerRestrictedHeight * (
@@ -1272,14 +1291,14 @@ class Wilson
 		e.preventDefault();
 		
 		this.#currentMouseDraggableId = id;
-		this.#draggableElements[id].currentlyDragging = true;
+		this.draggableElements[id].currentlyDragging = true;
 
 		requestAnimationFrame(() =>
 		{
 			this.#draggableCallbacks.ongrab({
 				id,
-				x: this.#draggableElements[id].x,
-				y: this.#draggableElements[id].y,
+				x: this.draggableElements[id].x,
+				y: this.draggableElements[id].y,
 				event: e,
 			});
 		});
@@ -1295,14 +1314,14 @@ class Wilson
 		e.preventDefault();
 
 		this.#currentMouseDraggableId = undefined;
-		this.#draggableElements[id].currentlyDragging = false;
+		this.draggableElements[id].currentlyDragging = false;
 
 		requestAnimationFrame(() =>
 		{
 			this.#draggableCallbacks.onrelease({
 				id,
-				x: this.#draggableElements[id].x,
-				y: this.#draggableElements[id].y,
+				x: this.draggableElements[id].x,
+				y: this.draggableElements[id].y,
 				event: e,
 			});
 		});
@@ -1317,7 +1336,7 @@ class Wilson
 		
 		e.preventDefault();
 
-		if (!this.#draggableElements[id].currentlyDragging)
+		if (!this.draggableElements[id].currentlyDragging)
 		{
 			return;
 		}
@@ -1326,7 +1345,7 @@ class Wilson
 		const row = Math.min(Math.max(this.#draggablesRadius, e.clientY - rect.top), this.#draggablesContainerHeight - this.#draggablesRadius);
 		const col = Math.min(Math.max(this.#draggablesRadius, e.clientX - rect.left), this.#draggablesContainerWidth - this.#draggablesRadius);
 
-		this.#draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+		this.draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
 
 		const x = (
 			(col - this.#draggablesRadius - this.#draggablesContainerRestrictedWidth / 2)
@@ -1344,13 +1363,13 @@ class Wilson
 				id,
 				x,
 				y,
-				xDelta: x - this.#draggableElements[id].x,
-				yDelta: y - this.#draggableElements[id].y,
+				xDelta: x - this.draggableElements[id].x,
+				yDelta: y - this.draggableElements[id].y,
 				event: e,
 			});
 
-			this.#draggableElements[id].x = x;
-			this.#draggableElements[id].y = y;
+			this.draggableElements[id].x = x;
+			this.draggableElements[id].y = y;
 		});
 	}
 
@@ -1363,14 +1382,14 @@ class Wilson
 		
 		e.preventDefault();
 
-		this.#draggableElements[id].currentlyDragging = true;
+		this.draggableElements[id].currentlyDragging = true;
 		
 		requestAnimationFrame(() =>
 		{
 			this.#draggableCallbacks.ongrab({
 				id,
-				x: this.#draggableElements[id].x,
-				y: this.#draggableElements[id].y,
+				x: this.draggableElements[id].x,
+				y: this.draggableElements[id].y,
 				event: e,
 			});
 		});
@@ -1385,15 +1404,15 @@ class Wilson
 		
 		e.preventDefault();
 
-		this.#draggableElements[id].currentlyDragging = false;
+		this.draggableElements[id].currentlyDragging = false;
 
 
 		requestAnimationFrame(() =>
 		{
 			this.#draggableCallbacks.onrelease({
 				id,
-				x: this.#draggableElements[id].x,
-				y: this.#draggableElements[id].y,
+				x: this.draggableElements[id].x,
+				y: this.draggableElements[id].y,
 				event: e,
 			});
 		});
@@ -1408,7 +1427,7 @@ class Wilson
 		
 		e.preventDefault();
 
-		if (!this.#draggableElements[id].currentlyDragging)
+		if (!this.draggableElements[id].currentlyDragging)
 		{
 			return;
 		}
@@ -1437,8 +1456,8 @@ class Wilson
 
 		const distancesFromDraggableCenter = worldCoordinates.map(coordinate =>
 		{
-			return (coordinate[0] - this.#draggableElements[id].x) ** 2
-				+ (coordinate[1] - this.#draggableElements[id].y) ** 2;
+			return (coordinate[0] - this.draggableElements[id].x) ** 2
+				+ (coordinate[1] - this.draggableElements[id].y) ** 2;
 		});
 
 		let minIndex = 0;
@@ -1455,7 +1474,7 @@ class Wilson
 
 		const [x, y, row, col] = worldCoordinates[minIndex];
 
-		this.#draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+		this.draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
 
 
 
@@ -1465,13 +1484,13 @@ class Wilson
 				id,
 				x,
 				y,
-				xDelta: x - this.#draggableElements[id].x,
-				yDelta: y - this.#draggableElements[id].y,
+				xDelta: x - this.draggableElements[id].x,
+				yDelta: y - this.draggableElements[id].y,
 				event: e,
 			});
 
-			this.#draggableElements[id].x = x;
-			this.#draggableElements[id].y = y;
+			this.draggableElements[id].x = x;
+			this.draggableElements[id].y = y;
 		});
 	}
 
@@ -1506,11 +1525,11 @@ class Wilson
 
 	#updateDraggablesLocation()
 	{
-		for (const id in this.#draggableElements)
+		for (const id in this.draggableElements)
 		{
-			const x = this.#draggableElements[id].x;
-			const y = this.#draggableElements[id].y;
-			const element = this.#draggableElements[id].element;
+			const x = this.draggableElements[id].x;
+			const y = this.draggableElements[id].y;
+			const element = this.draggableElements[id].element;
 
 			const uncappedRow = Math.floor(
 				this.#draggablesContainerRestrictedHeight * (
@@ -1591,9 +1610,6 @@ class Wilson
 	#canvasOldWidthStyle: string = "";
 	#canvasOldHeightStyle: string = "";
 
-	#oldWorldWidth: number = 0;
-	#oldWorldHeight: number = 0;
-
 	#enterFullscreen()
 	{
 		this.currentlyFullscreen = true;
@@ -1610,9 +1626,6 @@ class Wilson
 
 		this.#canvasOldWidthStyle = this.canvas.style.width;
 		this.#canvasOldHeightStyle = this.canvas.style.height;
-
-		this.#oldWorldWidth = this.worldWidth;
-		this.#oldWorldHeight = this.worldHeight;
 
 
 
@@ -1651,6 +1664,15 @@ class Wilson
 			this.canvas.style.height = "100%";
 
 			window.scroll(0, 0);
+
+			const windowAspectRatio = window.innerWidth / window.innerHeight;
+
+			const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
+
+			this.worldWidth = Math.max(this.worldWidth * aspectRatioChange, this.worldWidth);
+			this.worldHeight = Math.max(this.worldHeight / aspectRatioChange, this.worldHeight);
+			
+			this.#clampWorldCoordinates();
 		}
 
 		else
@@ -1699,7 +1721,7 @@ class Wilson
 				
 				this.#appletContainer.style.setProperty("view-transition-name", "WILSON_applet-container")
 
-				for (const [id, data] of Object.entries(this.#draggableElements))
+				for (const [id, data] of Object.entries(this.draggableElements))
 				{
 					data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}`);
 				}
@@ -1722,6 +1744,15 @@ class Wilson
 	#exitFullscreen()
 	{
 		this.currentlyFullscreen = false;
+
+		if (this.#fullscreenFillScreen)
+		{
+			this.worldWidth = this.#nonFullscreenWorldWidth;
+			this.worldHeight = this.#nonFullscreenWorldHeight;
+			
+			this.#clampWorldCoordinates();
+		}
+
 
 		if (this.#metaThemeColorElement)
 		{
@@ -1753,9 +1784,6 @@ class Wilson
 
 		this.canvas.style.width = this.#canvasOldWidthStyle;
 		this.canvas.style.height = this.#canvasOldHeightStyle;
-
-		this.worldWidth = this.#oldWorldWidth;
-		this.worldHeight = this.#oldWorldHeight;
 
 		this.#onResizeWindow();
 		this.#onResizeCanvas();

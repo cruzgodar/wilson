@@ -2,7 +2,7 @@ import { WilsonCPU, WilsonGPU } from "/wilson.js";
 function initWilson1() {
     const canvas = document.querySelector("#demo-canvas");
     const resolution = 500;
-    const wilson = new WilsonCPU(canvas, {
+    const options = {
         canvasWidth: resolution,
         onResizeCanvas: drawFrame,
         fullscreenOptions: {
@@ -11,19 +11,15 @@ function initWilson1() {
             enterFullscreenButtonIconPath: "/enter-fullscreen.png",
             exitFullscreenButtonIconPath: "/exit-fullscreen.png",
         },
-    });
+    };
+    const wilson = new WilsonCPU(canvas, options);
     wilson.addDraggable({ id: "center", x: 0, y: 0 });
-    wilson.addDraggable({ id: "right", x: 1, y: 0 });
-    wilson.addDraggable({ id: "left", x: -1, y: 0 });
-    wilson.addDraggable({ id: "top", x: 0, y: 1 });
-    wilson.addDraggable({ id: "bottom", x: 0, y: -1 });
+    wilson.addDraggable({ id: "radius", x: 1, y: 0 });
     drawFrame();
     function drawFrame() {
-        wilson.ctx.fillStyle = "color(display-p3 1 0 0)";
-        wilson.ctx.fillRect(0, 0, wilson.canvasWidth, wilson.canvasHeight);
         wilson.ctx.fillStyle = "color(display-p3 0 0 0)";
-        wilson.ctx.fillRect(1, 1, wilson.canvasWidth - 2, wilson.canvasHeight - 2);
-        // Draw a circle in the middle of the screen.
+        wilson.ctx.fillRect(0, 0, wilson.canvasWidth, wilson.canvasHeight);
+        // Draw a circle at the r
         wilson.ctx.fillStyle = "color(display-p3 1 0 0)";
         const centerX = wilson.canvasWidth / 2;
         const centerY = wilson.canvasHeight / 2;
@@ -81,7 +77,7 @@ function initWilson2() {
 			gl_FragColor = vec4(brightness / 10.0 * color, 1.0);
 		}
 	`;
-    const wilson = new WilsonGPU(canvas, {
+    const options = {
         shader,
         uniforms: {
             worldCenter: ["vec2", [0, 0]],
@@ -121,7 +117,8 @@ function initWilson2() {
                 }
             }
         }
-    });
+    };
+    const wilson = new WilsonGPU(canvas, options);
     drawFrame();
     function drawFrame() {
         wilson.setUniform({
