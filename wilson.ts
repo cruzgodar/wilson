@@ -647,47 +647,35 @@ class Wilson
 		this.#atMaxWorldSize = false;
 		this.#atMinWorldSize = false;
 
+		const applyFactor = (factor: number) =>
+		{
+			this.worldHeight *= factor;
+			this.worldWidth *= factor;
+			this.#nonFullscreenWorldHeight *= factor;
+			this.#nonFullscreenWorldWidth *= factor;
+		};
+
 		if (this.worldWidth < this.minWorldWidth)
 		{
-			this.worldHeight *= this.minWorldWidth / this.worldWidth;
-			this.worldWidth = this.minWorldWidth;
-
-			this.#nonFullscreenWorldHeight *= this.minWorldWidth / this.worldWidth;
-			this.#nonFullscreenWorldWidth *= this.minWorldWidth / this.worldWidth;
-
+			applyFactor(this.minWorldWidth / this.worldWidth);
 			this.#atMinWorldSize = true;
 		}
 
 		else if (this.worldWidth > this.maxWorldWidth)
 		{
-			this.worldHeight *= this.maxWorldWidth / this.worldWidth;
-			this.worldWidth = this.maxWorldWidth;
-
-			this.#nonFullscreenWorldHeight *= this.maxWorldWidth / this.worldWidth;
-			this.#nonFullscreenWorldWidth *= this.maxWorldWidth / this.worldWidth;
-
+			applyFactor(this.maxWorldWidth / this.worldWidth);
 			this.#atMaxWorldSize = true;
 		}
 
 		if (this.worldHeight < this.minWorldHeight)
 		{
-			this.worldWidth *= this.minWorldHeight / this.worldHeight;
-			this.worldHeight = this.minWorldHeight;
-
-			this.#nonFullscreenWorldHeight *= this.minWorldHeight / this.worldHeight;
-			this.#nonFullscreenWorldWidth *= this.minWorldHeight / this.worldHeight;
-
+			applyFactor(this.minWorldHeight / this.worldHeight);
 			this.#atMinWorldSize = true;
 		}
 
 		else if (this.worldHeight > this.maxWorldHeight)
 		{
-			this.worldWidth *= this.maxWorldHeight / this.worldHeight;
-			this.worldHeight = this.maxWorldHeight;
-
-			this.#nonFullscreenWorldHeight *= this.maxWorldHeight / this.worldHeight;
-			this.#nonFullscreenWorldWidth *= this.maxWorldHeight / this.worldHeight;
-
+			applyFactor(this.maxWorldHeight / this.worldHeight);
 			this.#atMaxWorldSize = true;
 		}
 	}

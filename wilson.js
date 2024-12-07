@@ -459,32 +459,26 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     this.worldCenterY = Math.min(Math.max(this.worldCenterY, this.minWorldCenterY), this.maxWorldCenterY);
     __classPrivateFieldSet(this, _Wilson_atMaxWorldSize, false, "f");
     __classPrivateFieldSet(this, _Wilson_atMinWorldSize, false, "f");
+    const applyFactor = (factor) => {
+        this.worldHeight *= factor;
+        this.worldWidth *= factor;
+        __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldHeight, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f") * factor, "f");
+        __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldWidth, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f") * factor, "f");
+    };
     if (this.worldWidth < this.minWorldWidth) {
-        this.worldHeight *= this.minWorldWidth / this.worldWidth;
-        this.worldWidth = this.minWorldWidth;
-        __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldHeight, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f") * (this.minWorldWidth / this.worldWidth), "f");
-        __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldWidth, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f") * (this.minWorldWidth / this.worldWidth), "f");
+        applyFactor(this.minWorldWidth / this.worldWidth);
         __classPrivateFieldSet(this, _Wilson_atMinWorldSize, true, "f");
     }
     else if (this.worldWidth > this.maxWorldWidth) {
-        this.worldHeight *= this.maxWorldWidth / this.worldWidth;
-        this.worldWidth = this.maxWorldWidth;
-        __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldHeight, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f") * (this.maxWorldWidth / this.worldWidth), "f");
-        __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldWidth, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f") * (this.maxWorldWidth / this.worldWidth), "f");
+        applyFactor(this.maxWorldWidth / this.worldWidth);
         __classPrivateFieldSet(this, _Wilson_atMaxWorldSize, true, "f");
     }
     if (this.worldHeight < this.minWorldHeight) {
-        this.worldWidth *= this.minWorldHeight / this.worldHeight;
-        this.worldHeight = this.minWorldHeight;
-        __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldHeight, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f") * (this.minWorldHeight / this.worldHeight), "f");
-        __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldWidth, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f") * (this.minWorldHeight / this.worldHeight), "f");
+        applyFactor(this.minWorldHeight / this.worldHeight);
         __classPrivateFieldSet(this, _Wilson_atMinWorldSize, true, "f");
     }
     else if (this.worldHeight > this.maxWorldHeight) {
-        this.worldWidth *= this.maxWorldHeight / this.worldHeight;
-        this.worldHeight = this.maxWorldHeight;
-        __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldHeight, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f") * (this.maxWorldHeight / this.worldHeight), "f");
-        __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldWidth, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f") * (this.maxWorldHeight / this.worldHeight), "f");
+        applyFactor(this.maxWorldHeight / this.worldHeight);
         __classPrivateFieldSet(this, _Wilson_atMaxWorldSize, true, "f");
     }
 }, _Wilson_onMousedown = function _Wilson_onMousedown(e) {
