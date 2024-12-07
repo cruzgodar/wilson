@@ -101,20 +101,20 @@ const defaultDraggableCallbacks: DraggableCallBacks = {
 	onrelease: ({ id, x, y, event }) => {},
 };
 
-type InteractionOptions = {
-	callbacks?: Partial<InteractionCallbacks>,
-} & ({
-	useForPanAndZoom: false
+type InteractionOptions = ({
+	useForPanAndZoom?: false
 } | {
-	useForPanAndZoom: true,
-	onPanAndZoom: () => void,
+	useForPanAndZoom?: true,
+	onPanAndZoom?: () => void,
 	inertia?: boolean,
 	panFriction?: number,
 	zoomFriction?: number,
-});
+}) & {
+	callbacks?: Partial<InteractionCallbacks>,
+};
 
 type DraggableOptions = {
-	draggables?: {id: string, x: number, y: number}[],
+	draggables?: {[id: string]: [number, number]},
 	radius?: number,
 	static?: boolean,
 	callbacks?: Partial<DraggableCallBacks>,
@@ -125,17 +125,17 @@ type FullscreenOptions = {
 	animate?: boolean,
 } & (
 	{
-		useFullscreenButton: true,
+		useFullscreenButton?: true,
 		enterFullscreenButtonIconPath: string,
 		exitFullscreenButtonIconPath: string,
 	} | {
-		useFullscreenButton: false,
+		useFullscreenButton?: false,
 	}
 );
 
 
 
-export type WilsonOptions = (
+type WilsonOptions = (
 	{ canvasWidth: number, canvasHeight?: undefined }
 	| { canvasHeight: number, canvasWidth?: undefined }
 ) & {
@@ -460,9 +460,13 @@ class Wilson
 
 		if (options.draggableOptions?.draggables)
 		{
-			for (const draggable of options.draggableOptions.draggables)
+			for (const [id, location] of Object.entries(options.draggableOptions.draggables))
 			{
-				this.addDraggable(draggable);
+				this.addDraggable({
+					id,
+					x: location[0],
+					y: location[1],
+				});
 			}
 		}
 
@@ -1918,15 +1922,7 @@ export class WilsonCPU extends Wilson
 
 type ShaderProgramId = string;
 type UniformType = "int" | "float" | "vec2" | "vec3" | "vec4" | "mat2" | "mat3" | "mat4";
-type UniformInitializer = ["int", number]
-	| ["float", number]
-	| ["vec2", [number, number]]
-	| ["vec3", [number, number, number]]
-	| ["vec4", [number, number, number, number]]
-	| ["mat2", [number, number, number, number]]
-	| ["mat3", [number, number, number, number, number, number, number, number, number]]
-	| ["mat4", [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number]];
-type UniformInitializers = {[name: string]: UniformInitializer};
+type UniformInitializers = {[name: string]: number | number[]};
 
 const uniformFunctions: {[key in UniformType]: any} = {
 	int: (
@@ -2172,7 +2168,7 @@ export class WilsonGPU extends Wilson
 		// Initialize the uniforms.
 		this.#uniforms[id] = {};
 
-		for (const [name, data] of Object.entries(uniforms))
+		for (const [name, value] of Object.entries(uniforms))
 		{
 			const location = this.gl.getUniformLocation(this.#shaderPrograms[id], name);
 
@@ -2181,9 +2177,21 @@ export class WilsonGPU extends Wilson
 				throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Full shader source: ${source}`);
 			}
 
-			const [type, value] = data;
+			// Match strings like "uniform int foo;" to "int".
+			const match = source.match(new RegExp(`uniform\\s+(\\S+?)\\s+${name}\\s*;`));
+			if (!match)
+			{
+				throw new Error(`[Wilson] Couldn't find uniform ${name} in shader source: ${source}`);
+			}
+			
+			const type = match[1].trim();
 
-			this.#uniforms[id][name] = { location, type };
+			if (!(type in uniformFunctions))
+			{
+				throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader source: ${source}`);
+			}
+
+			this.#uniforms[id][name] = { location, type: type as UniformType };
 			this.setUniform({ name, value });
 		}
 	}

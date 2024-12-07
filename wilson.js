@@ -287,8 +287,12 @@ class Wilson {
         window.addEventListener("resize", __classPrivateFieldGet(this, _Wilson_onResizeWindow, "f"));
         document.documentElement.addEventListener("keydown", __classPrivateFieldGet(this, _Wilson_handleKeydownEvent, "f"));
         if ((_14 = options.draggableOptions) === null || _14 === void 0 ? void 0 : _14.draggables) {
-            for (const draggable of options.draggableOptions.draggables) {
-                this.addDraggable(draggable);
+            for (const [id, location] of Object.entries(options.draggableOptions.draggables)) {
+                this.addDraggable({
+                    id,
+                    x: location[0],
+                    y: location[1],
+                });
             }
         }
         console.log(`[Wilson] Initialized a ${__classPrivateFieldGet(this, _Wilson_canvasWidth, "f")}x${__classPrivateFieldGet(this, _Wilson_canvasHeight, "f")} canvas`
@@ -1136,13 +1140,21 @@ export class WilsonGPU extends Wilson {
         this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
         // Initialize the uniforms.
         __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[id] = {};
-        for (const [name, data] of Object.entries(uniforms)) {
+        for (const [name, value] of Object.entries(uniforms)) {
             const location = this.gl.getUniformLocation(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], name);
             if (location === null) {
                 throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Full shader source: ${source}`);
             }
-            const [type, value] = data;
-            __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[id][name] = { location, type };
+            // Match strings like "uniform int foo;" to "int".
+            const match = source.match(new RegExp(`uniform\\s+(\\S+?)\\s+${name}\\s*;`));
+            if (!match) {
+                throw new Error(`[Wilson] Couldn't find uniform ${name} in shader source: ${source}`);
+            }
+            const type = match[1].trim();
+            if (!(type in uniformFunctions)) {
+                throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader source: ${source}`);
+            }
+            __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[id][name] = { location, type: type };
             this.setUniform({ name, value });
         }
     }

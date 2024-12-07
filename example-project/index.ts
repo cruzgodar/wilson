@@ -9,6 +9,13 @@ function initWilson1()
 		canvasWidth: resolution,
 		onResizeCanvas: drawFrame,
 
+		draggableOptions: {
+			draggables: {
+				"center": [0, 0],
+				"radius": [1, 0],
+			},
+		},
+
 		fullscreenOptions: {
 			fillScreen: false,
 			useFullscreenButton: true,
@@ -18,9 +25,6 @@ function initWilson1()
 	};
 
 	const wilson = new WilsonCPU(canvas, options);
-
-	wilson.addDraggable({ id: "center", x: 0, y: 0 });
-	wilson.addDraggable({ id: "radius", x: 1, y: 0 });
 
 	drawFrame();
 
@@ -93,9 +97,9 @@ function initWilson2()
 		shader,
 
 		uniforms: {
-			worldCenter: ["vec2", [0, 0]],
-			worldSize: ["vec2", [2, 2]],
-			c: ["vec2",[0, 1]],
+			worldCenter: [0, 0],
+			worldSize: [2, 2],
+			c: [0, 1],
 		},
 
 		canvasWidth: resolution,
@@ -103,15 +107,15 @@ function initWilson2()
 
 		worldHeight: 3,
 
-		minWorldWidth: 0.000001,
-		maxWorldWidth: 5,
-		minWorldHeight: 0.000001,
-		maxWorldHeight: 5,
+		minWorldWidth: 0.000003,
+		maxWorldWidth: 6,
+		minWorldHeight: 0.000003,
+		maxWorldHeight: 6,
 
-		minWorldCenterX: -2,
-		maxWorldCenterX: 2,
-		minWorldCenterY: -2,
-		maxWorldCenterY: 2,
+		minWorldCenterX: -1.5,
+		maxWorldCenterX: 1.5,
+		minWorldCenterY: -1.5,
+		maxWorldCenterY: 1.5,
 
 
 		interactionOptions: {
@@ -127,9 +131,9 @@ function initWilson2()
 		},
 
 		draggableOptions: {
-			draggables: [
-				{ id: "c", x: 0, y: 1 }
-			],
+			draggables: {
+				"c": [0, 1]
+			},
 
 			callbacks: {
 				ondrag: ({ id, x, y }) => {
