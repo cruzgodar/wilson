@@ -158,4 +158,20 @@ The example project uses a draggable to represent the `c` value for the Julia se
 
 ## Fullscreen
 
-Wilson provides a built-in fullscreen mode, which can be used to render a scene in a window as large as possible.
+Wilson provides a built-in fullscreen mode, which can be used to render a scene in a window as large as possible. To use it, set the `fullscreenOptions` object in the options:
+
+```js
+	const options = {
+		onResizeCanvas: drawFrame,
+
+		fullscreenOptions: {
+			useFullscreenButton: true,
+			enterFullscreenButtonIconPath: "/path/to/enter-fullscreen.png",
+			exitFullscreenButtonIconPath: "/path/to/exit-fullscreen.png",
+		},
+	};
+```
+
+Wilson provides a built-in button to enter and exit fullscreen mode that works with the [Page Transition API](https://developer.mozilla.org/en-US/docs/Web/API/View_Transitions_API). Without it, you can still enter and exit fullscreen manually by calling the `enterFullscreen` and `exitFullscreen` methods. Wilson will call the `onResizeCanvas` callback when entering and exiting fullscreen, so you can update your applet to fit the new size.
+
+By default, opening a canvas in fullscreen will preserve its aspect ratio, effectively just centering it, making it as large as possible, and providing a black background. However, many applets are independent of aspect ratio, and so Wilson allows for fullscreen applets to truly fill the entire screen. To do this, set the `fillScreen` field to `true` in the `fullscreenOptions` object. In this mode, the canvas will be resized to match the aspect ratio of the window, in a manner so that the total number of pixels rendered is preserved (to avoid narrow aspect ratios producing a very large canvas). The world width and height will also be updated to match the new aspect ratio, but always so that neither is smaller than the non-fullscreen world width and height (so that opening fullscreen never displays less content).

@@ -157,6 +157,8 @@ export type WilsonOptions = (
 
 	useP3ColorSpace?: boolean,
 
+	reduceMotion?: boolean,
+
 	interactionOptions?: InteractionOptions,
 	draggableOptions?: DraggableOptions,
 	fullscreenOptions?: FullscreenOptions,
@@ -204,6 +206,8 @@ class Wilson
 	{
 		return this.#useP3ColorSpace;
 	}
+
+	reduceMotion: boolean;
 
 	#interactionCallbacks: InteractionCallbacks;
 	#interactionUseForPanAndZoom: boolean;
@@ -335,6 +339,9 @@ class Wilson
 		this.#onResizeCanvasCallback = options?.onResizeCanvas ?? (() => {});
 
 		this.#useP3ColorSpace = options.useP3ColorSpace ?? true;
+
+		this.reduceMotion = options.reduceMotion
+			?? matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 		this.#interactionCallbacks = { ...defaultInteractionCallbacks, ...options.interactionOptions?.callbacks };
 		this.#interactionUseForPanAndZoom = options.interactionOptions?.useForPanAndZoom ?? false;
@@ -1687,7 +1694,7 @@ class Wilson
 			document.body.querySelectorAll<HTMLElement>(".WILSON_draggable")
 				.forEach(container => container.style.removeProperty("view-transition-name"));
 
-			if (!this.#fullscreenFillScreen)
+			if (!this.#fullscreenFillScreen && !this.reduceMotion)
 			{
 				if (this.#fullscreenEnterFullscreenButton)
 				{
@@ -1783,7 +1790,7 @@ class Wilson
 		// @ts-ignore
 		if (document.startViewTransition && this.animateFullscreen)
 		{
-			if (!this.#fullscreenFillScreen)
+			if (!this.#fullscreenFillScreen && !this.reduceMotion)
 			{
 				this.#appletContainer.style.setProperty("view-transition-name", "WILSON_applet-container")
 			}
