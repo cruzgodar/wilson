@@ -39,11 +39,7 @@ function initWilson2() {
 		
 		uniform vec2 worldCenter;
 		uniform vec2 worldSize;
-
-		// uniform float brightnessScale;
 		uniform vec2 c;
-		
-		
 		
 		void main(void)
 		{
@@ -59,8 +55,6 @@ function initWilson2() {
 			);
 			
 			float brightness = exp(-length(z));
-			
-			
 			
 			for (int iteration = 0; iteration < 200; iteration++)
 			{	
@@ -82,10 +76,11 @@ function initWilson2() {
         uniforms: {
             worldCenter: ["vec2", [0, 0]],
             worldSize: ["vec2", [2, 2]],
-            c: ["vec2", [0, 0]],
+            c: ["vec2", [0, 1]],
         },
         canvasWidth: resolution,
         onResizeCanvas: drawFrame,
+        worldHeight: 3,
         minWorldWidth: 0.000001,
         maxWorldWidth: 5,
         minWorldHeight: 0.000001,
@@ -119,7 +114,6 @@ function initWilson2() {
         }
     };
     const wilson = new WilsonGPU(canvas, options);
-    wilson.setUniform({ name: "c", value: [0, 1] });
     drawFrame();
     function drawFrame() {
         wilson.setUniform({

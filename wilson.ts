@@ -546,13 +546,15 @@ class Wilson
 
 	
 
-	resizeCanvas(dimensions: { width: number } | { height: number })
-	{
+	resizeCanvas(
+		dimensions: { width: number, height?: undefined }
+		| { height: number, width?: undefined }
+	) {
 		const aspectRatio = (this.currentlyFullscreen && this.#fullscreenFillScreen)
 			? window.innerWidth / window.innerHeight
 			: this.#canvasAspectRatio;
 		
-		if ("width" in dimensions)
+		if (dimensions.width !== undefined)
 		{
 			this.#canvasWidth = Math.round(dimensions.width);
 			this.#canvasHeight = Math.round(dimensions.width / aspectRatio);
@@ -2208,14 +2210,14 @@ export class WilsonGPU extends Wilson
 
 	
 
-	#framebuffers: {[id: ShaderProgramId]: WebGLFramebuffer} = {};
-	#textures: {[id: ShaderProgramId]: WebGLTexture} = {};
+	#framebuffers: {[id: string]: WebGLFramebuffer} = {};
+	#textures: {[id: string]: WebGLTexture} = {};
 
 	createFramebufferTexturePair({
 		id,
 		textureType
 	}: {
-		id: ShaderProgramId,
+		id: string,
 		textureType: "unsignedByte" | "float"
 	}) {
 		if (this.#framebuffers[id] !== undefined || this.#textures[id] !== undefined)
@@ -2270,7 +2272,7 @@ export class WilsonGPU extends Wilson
 		this.#textures[id] = texture;
 	}
 
-	useFramebuffer(id: ShaderProgramId | null)
+	useFramebuffer(id: string | null)
 	{
 		if (id === null)
 		{
@@ -2281,7 +2283,7 @@ export class WilsonGPU extends Wilson
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.#framebuffers[id]);
 	}
 
-	useTexture(id: ShaderProgramId | null)
+	useTexture(id: string | null)
 	{
 		if (id === null)
 		{
@@ -2311,8 +2313,10 @@ export class WilsonGPU extends Wilson
 
 
 
-	resizeCanvas(dimensions: { width: number } | { height: number })
-	{
+	resizeCanvas(
+		dimensions: { width: number, height?: undefined }
+		| { height: number, width?: undefined }
+	) {
 		super.resizeCanvas(dimensions);
 
 		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);

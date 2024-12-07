@@ -305,7 +305,7 @@ class Wilson {
         const aspectRatio = (this.currentlyFullscreen && __classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f"))
             ? window.innerWidth / window.innerHeight
             : __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f");
-        if ("width" in dimensions) {
+        if (dimensions.width !== undefined) {
             __classPrivateFieldSet(this, _Wilson_canvasWidth, Math.round(dimensions.width), "f");
             __classPrivateFieldSet(this, _Wilson_canvasHeight, Math.round(dimensions.width / aspectRatio), "f");
         }
