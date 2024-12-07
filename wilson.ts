@@ -248,7 +248,12 @@ class Wilson
 	#draggablesContainerRestrictedHeight: number = 0;
 
 	
-	currentlyFullscreen: boolean = false;
+	#currentlyFullscreen: boolean = false;
+	get currentlyFullscreen()
+	{
+		return this.#currentlyFullscreen;
+	}
+
 	animateFullscreen: boolean;
 	#fullscreenOldScroll: number = 0;
 	#fullscreenFillScreen: boolean;
@@ -508,7 +513,7 @@ class Wilson
 
 	#onResizeWindow = () =>
 	{
-		if (this.currentlyFullscreen && this.#fullscreenFillScreen)
+		if (this.#currentlyFullscreen && this.#fullscreenFillScreen)
 		{
 			// Resize the canvas to fill the screen but keep the same total number of pixels.
 			const windowAspectRatio = window.innerWidth / window.innerHeight;
@@ -540,8 +545,10 @@ class Wilson
 
 	#handleKeydownEvent = (e: KeyboardEvent) =>
 	{
-		if (e.key === "Escape" && this.currentlyFullscreen)
+		if (e.key === "Escape" && this.#currentlyFullscreen)
 		{
+			e.preventDefault();
+			e.stopPropagation();
 			this.exitFullscreen();
 		}
 	}
@@ -557,7 +564,7 @@ class Wilson
 		dimensions: { width: number, height?: undefined }
 		| { height: number, width?: undefined }
 	) {
-		const aspectRatio = (this.currentlyFullscreen && this.#fullscreenFillScreen)
+		const aspectRatio = (this.#currentlyFullscreen && this.#fullscreenFillScreen)
 			? window.innerWidth / window.innerHeight
 			: this.#canvasAspectRatio;
 		
@@ -1155,7 +1162,7 @@ class Wilson
 
 
 
-	draggableElements: {
+	#draggableElements: {
 		[id: string]: {
 			element: HTMLDivElement,
 			x: number,
@@ -1163,6 +1170,11 @@ class Wilson
 			currentlyDragging: boolean,
 		}
 	} = {};
+	get draggableElements()
+	{
+		return this.#draggableElements;
+	}
+
 	#draggableDefaultId: number = 0;
 	#currentMouseDraggableId?: string;
 
@@ -1188,7 +1200,7 @@ class Wilson
 		document.documentElement.addEventListener("mouseup", this.#documentDraggableMouseupListener);
 	}
 
-	addDraggable({ x, y, id }: { x: number, y: number, id: string })
+	addDraggable({ id, x, y }: { id: string, x: number, y: number })
 	{
 		//First convert to page coordinates.
 		const uncappedRow = Math.floor(
@@ -1230,7 +1242,7 @@ class Wilson
 
 		this.#draggablesContainer.appendChild(element);
 
-		this.draggableElements[useableId] = {
+		this.#draggableElements[useableId] = {
 			element,
 			x,
 			y,
@@ -1242,16 +1254,16 @@ class Wilson
 
 	removeDraggable(id: string)
 	{
-		this.draggableElements[id].element.remove();
-		delete this.draggableElements[id];
+		this.#draggableElements[id].element.remove();
+		delete this.#draggableElements[id];
 	}
 
 	setDraggablePosition({ id, x, y }: { id: string, x: number, y: number })
 	{
-		this.draggableElements[id].x = x;
-		this.draggableElements[id].y = y;
+		this.#draggableElements[id].x = x;
+		this.#draggableElements[id].y = y;
 
-		const element = this.draggableElements[id].element;
+		const element = this.#draggableElements[id].element;
 
 		const uncappedRow = Math.floor(
 			this.#draggablesContainerRestrictedHeight * (
@@ -1288,14 +1300,14 @@ class Wilson
 		e.preventDefault();
 		
 		this.#currentMouseDraggableId = id;
-		this.draggableElements[id].currentlyDragging = true;
+		this.#draggableElements[id].currentlyDragging = true;
 
 		requestAnimationFrame(() =>
 		{
 			this.#draggableCallbacks.ongrab({
 				id,
-				x: this.draggableElements[id].x,
-				y: this.draggableElements[id].y,
+				x: this.#draggableElements[id].x,
+				y: this.#draggableElements[id].y,
 				event: e,
 			});
 		});
@@ -1311,14 +1323,14 @@ class Wilson
 		e.preventDefault();
 
 		this.#currentMouseDraggableId = undefined;
-		this.draggableElements[id].currentlyDragging = false;
+		this.#draggableElements[id].currentlyDragging = false;
 
 		requestAnimationFrame(() =>
 		{
 			this.#draggableCallbacks.onrelease({
 				id,
-				x: this.draggableElements[id].x,
-				y: this.draggableElements[id].y,
+				x: this.#draggableElements[id].x,
+				y: this.#draggableElements[id].y,
 				event: e,
 			});
 		});
@@ -1333,7 +1345,7 @@ class Wilson
 		
 		e.preventDefault();
 
-		if (!this.draggableElements[id].currentlyDragging)
+		if (!this.#draggableElements[id].currentlyDragging)
 		{
 			return;
 		}
@@ -1342,7 +1354,7 @@ class Wilson
 		const row = Math.min(Math.max(this.#draggablesRadius, e.clientY - rect.top), this.#draggablesContainerHeight - this.#draggablesRadius);
 		const col = Math.min(Math.max(this.#draggablesRadius, e.clientX - rect.left), this.#draggablesContainerWidth - this.#draggablesRadius);
 
-		this.draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+		this.#draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
 
 		const x = (
 			(col - this.#draggablesRadius - this.#draggablesContainerRestrictedWidth / 2)
@@ -1360,13 +1372,13 @@ class Wilson
 				id,
 				x,
 				y,
-				xDelta: x - this.draggableElements[id].x,
-				yDelta: y - this.draggableElements[id].y,
+				xDelta: x - this.#draggableElements[id].x,
+				yDelta: y - this.#draggableElements[id].y,
 				event: e,
 			});
 
-			this.draggableElements[id].x = x;
-			this.draggableElements[id].y = y;
+			this.#draggableElements[id].x = x;
+			this.#draggableElements[id].y = y;
 		});
 	}
 
@@ -1379,14 +1391,14 @@ class Wilson
 		
 		e.preventDefault();
 
-		this.draggableElements[id].currentlyDragging = true;
+		this.#draggableElements[id].currentlyDragging = true;
 		
 		requestAnimationFrame(() =>
 		{
 			this.#draggableCallbacks.ongrab({
 				id,
-				x: this.draggableElements[id].x,
-				y: this.draggableElements[id].y,
+				x: this.#draggableElements[id].x,
+				y: this.#draggableElements[id].y,
 				event: e,
 			});
 		});
@@ -1401,15 +1413,15 @@ class Wilson
 		
 		e.preventDefault();
 
-		this.draggableElements[id].currentlyDragging = false;
+		this.#draggableElements[id].currentlyDragging = false;
 
 
 		requestAnimationFrame(() =>
 		{
 			this.#draggableCallbacks.onrelease({
 				id,
-				x: this.draggableElements[id].x,
-				y: this.draggableElements[id].y,
+				x: this.#draggableElements[id].x,
+				y: this.#draggableElements[id].y,
 				event: e,
 			});
 		});
@@ -1424,7 +1436,7 @@ class Wilson
 		
 		e.preventDefault();
 
-		if (!this.draggableElements[id].currentlyDragging)
+		if (!this.#draggableElements[id].currentlyDragging)
 		{
 			return;
 		}
@@ -1453,8 +1465,8 @@ class Wilson
 
 		const distancesFromDraggableCenter = worldCoordinates.map(coordinate =>
 		{
-			return (coordinate[0] - this.draggableElements[id].x) ** 2
-				+ (coordinate[1] - this.draggableElements[id].y) ** 2;
+			return (coordinate[0] - this.#draggableElements[id].x) ** 2
+				+ (coordinate[1] - this.#draggableElements[id].y) ** 2;
 		});
 
 		let minIndex = 0;
@@ -1471,7 +1483,7 @@ class Wilson
 
 		const [x, y, row, col] = worldCoordinates[minIndex];
 
-		this.draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+		this.#draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
 
 
 
@@ -1481,13 +1493,13 @@ class Wilson
 				id,
 				x,
 				y,
-				xDelta: x - this.draggableElements[id].x,
-				yDelta: y - this.draggableElements[id].y,
+				xDelta: x - this.#draggableElements[id].x,
+				yDelta: y - this.#draggableElements[id].y,
 				event: e,
 			});
 
-			this.draggableElements[id].x = x;
-			this.draggableElements[id].y = y;
+			this.#draggableElements[id].x = x;
+			this.#draggableElements[id].y = y;
 		});
 	}
 
@@ -1522,11 +1534,11 @@ class Wilson
 
 	#updateDraggablesLocation()
 	{
-		for (const id in this.draggableElements)
+		for (const id in this.#draggableElements)
 		{
-			const x = this.draggableElements[id].x;
-			const y = this.draggableElements[id].y;
-			const element = this.draggableElements[id].element;
+			const x = this.#draggableElements[id].x;
+			const y = this.#draggableElements[id].y;
+			const element = this.#draggableElements[id].element;
 
 			const uncappedRow = Math.floor(
 				this.#draggablesContainerRestrictedHeight * (
@@ -1609,7 +1621,7 @@ class Wilson
 
 	#enterFullscreen()
 	{
-		this.currentlyFullscreen = true;
+		this.#currentlyFullscreen = true;
 
 		this.#fullscreenOldScroll = window.scrollY;
 
@@ -1718,7 +1730,7 @@ class Wilson
 				
 				this.#appletContainer.style.setProperty("view-transition-name", "WILSON_applet-container")
 
-				for (const [id, data] of Object.entries(this.draggableElements))
+				for (const [id, data] of Object.entries(this.#draggableElements))
 				{
 					data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}`);
 				}
@@ -1740,7 +1752,7 @@ class Wilson
 
 	#exitFullscreen()
 	{
-		this.currentlyFullscreen = false;
+		this.#currentlyFullscreen = false;
 
 		if (this.#fullscreenFillScreen)
 		{
@@ -1892,8 +1904,6 @@ export class WilsonCPU extends Wilson
 			0
 		);
 	}
-
-
 
 	downloadFrame(filename: string)
 	{
@@ -2233,21 +2243,21 @@ export class WilsonGPU extends Wilson
 	}) {
 		if (this.#framebuffers[id] !== undefined || this.#textures[id] !== undefined)
 		{
-			throw new Error(`[Wilson] Tried to create a framebuffer texture pair for shader program ${id}, but one already exists.`);
+			throw new Error(`[Wilson] Tried to create a framebuffer texture pair with id ${id}, but one already exists.`);
 		}
 
 		const framebuffer = this.gl.createFramebuffer();
 
 		if (!framebuffer)
 		{
-			throw new Error(`[Wilson] Couldn't create a framebuffer for shader program ${id}.`);
+			throw new Error(`[Wilson] Couldn't create a framebuffer with id ${id}.`);
 		}
 
 		const texture = this.gl.createTexture();
 
 		if (!texture)
 		{
-			throw new Error(`[Wilson] Couldn't create a texture for shader program ${id}.`);
+			throw new Error(`[Wilson] Couldn't create a texture with id ${id}.`);
 		}
 
 		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
@@ -2307,7 +2317,7 @@ export class WilsonGPU extends Wilson
 
 	readPixels()
 	{
-		const pixels = new Uint8Array(this.canvasWidth * this.canvasHeight * 4);
+		const pixels = new Uint8ClampedArray(this.canvasWidth * this.canvasHeight * 4);
 
 		this.gl.readPixels(
 			0,
@@ -2331,5 +2341,37 @@ export class WilsonGPU extends Wilson
 		super.resizeCanvas(dimensions);
 
 		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
+	}
+
+	downloadFrame({
+		filename,
+		drawNewFrame = true
+	}: {
+		filename: string,
+		drawNewFrame?: boolean
+	}) {
+		if (drawNewFrame)
+		{
+			this.drawFrame();
+		}
+
+		this.canvas.toBlob((blob) =>
+		{
+			if (!blob)
+			{
+				console.error(`[Wilson] Could not create a blob from a canvas with ID ${this.canvas.id}`);
+				return;
+			}
+
+			const link = document.createElement("a");
+
+			link.download = filename;
+
+			link.href = window.URL.createObjectURL(blob);
+
+			link.click();
+
+			link.remove();
+		});
 	}
 }

@@ -81,9 +81,7 @@ const options = {
 		worldCenter: [0, 0],
 		worldSize: [2, 2],
 		c: [0, 1],
-	},
-
-	...
+	}
 };
 ```
 
@@ -220,3 +218,50 @@ The above guide, along with the example project, are a great way to get started 
 	- `useFullscreenButton`: a boolean for whether to use a button to enter and exit fullscreen. Defaults to `false`.
 	- `enterFullscreenButtonIconPath`: a string for the path to the enter fullscreen button image. Required (and only allowed) if `useFullscreenButton` is `true`.
 	- `exitFullscreenButtonIconPath`: a string for the path to the exit fullscreen button image. Required (and only allowed) if `useFullscreenButton` is `true`.
+
+### General Fields and Methods
+
+- `canvas`: the canvas element.
+- `canvasWidth`, `canvasHeight`: the width and height of the canvas, in pixels. Readonly.
+- `worldWidth`, `worldHeight`, `worldCenterX`, `worldCenterY`: the current world coordinates. It is recommended not to change these directly, particularly when using the built-in panning and zooming.
+- `minWorldWidth`, `maxWorldWidth`, `minWorldHeight`, `maxWorldHeight`, `minWorldCenterX`, `maxWorldCenterX`, `minWorldCenterY`, `maxWorldCenterY`: bounds on the world coordinates. May be changed dynamically, although the possible subsequent clamping of the coordinates may be undesirable.
+- `reduceMotion`: a boolean for whether reduced motion animations are enabled. Can be changed dynamically.
+- `currentlyFullscreen`: a boolean for whether the canvas is currently in fullscreen mode. Readonly.
+- `animateFullscreen`: a boolean for whether the fullscreen transition is animated. Can be changed dynamically.
+- `draggableElements`: a readonly object containing the current draggables, of the form
+```ts
+{
+	[id: string]: {
+		element: HTMLDivElement,
+		x: number,
+		y: number,
+		currentlyDragging: boolean,
+	}
+}
+```
+- `resizeCanvas({ width?: number, height?: number })`: resizes the canvas to the given dimensions. Exactly one of `width` and `height` must be specified.
+- `addDraggable({ id: string, x: number, y: number })`: adds a draggable at the given world coordinates.
+- `removeDraggable(id: string)`: removes the draggable with the given ID.
+- `setDraggablePosition({ id: string, x: number, y: number })`: sets the world coordinates of the draggable with the given ID.
+- `enterFullscreen()`: enters fullscreen mode.
+- `exitFullscreen()`: exits fullscreen mode.
+- `interpolateCanvasToWorld([row: number, col: number]): [number, number]`: converts a point in canvas coordinates to world coordinates.
+- `interpolateWorldToCanvas([x: number, y: number]): [number, number]`: converts a point in world coordinates to canvas coordinates.
+- `destroy()`: destroys the Wilson instace, removes all event listeners, and returns the canvas div structure to its original state.
+
+### WilsonCPU Fields and Methods
+- `ctx`: the 2D canvas context; only available on `WilsonCPU` instances.
+- `drawFrame(image: Uint8ClampedArray)`: draws the current frame to the canvas.
+- `downloadFrame(filename: string)`: downloads the current frame as a png file.
+
+### WilsonGPU Fields and Methods
+- `gl`: the WebGL or WebGL2 context.
+- `drawFrame()`: draws a frame with the current shader program.instances.
+- `downloadFrame({ filename: string, drawNewFrame?: boolean })`: downloads the current frame as a png file. For this to work properly, a new frame must be drawn immediately before downloading. Setting drawNewFrame to `false` will skip this step; only use this if you are manually drawing a frame directly before calling this method.
+- `loadShader({ id?: string, source: string, uniforms?: {[name: string]: number | number[]} })`: loads a new shader program and sets it as the current one. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders.
+- `setUniform({ name: string, value: number | number[], shaderId?: string })`: sets a uniform. If no shader ID is specified, it defaults to the current shader program.
+- `useProgram(id: string)`: sets the current shader program.
+- `createFramebufferTexturePair({ id: string, textureType: "unsignedByte" | "float" })`: creates a framebuffer texture pair with a given ID and type. The size of the texture is the same as the canvas.
+- `useFramebuffer(id: string | null)`: sets the current framebuffer.
+- `useTexture(id: string | null)`: sets the current texture.
+- `readPixels()`: reads the current frame as a Uint8ClampedArray.
