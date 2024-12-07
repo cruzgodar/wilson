@@ -90,6 +90,14 @@ function initWilson2() {
         },
         canvasWidth: resolution,
         onResizeCanvas: drawFrame,
+        minWorldWidth: 0.000001,
+        maxWorldWidth: 10,
+        minWorldHeight: 0.000001,
+        maxWorldHeight: 10,
+        minWorldCenterX: -2,
+        maxWorldCenterX: 2,
+        minWorldCenterY: -2,
+        maxWorldCenterY: 2,
         interactionOptions: {
             useForPanAndZoom: true,
             onPanAndZoom: drawFrame

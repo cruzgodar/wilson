@@ -9,7 +9,7 @@ var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
     return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
 };
-var _Wilson_instances, _Wilson_destroyed, _Wilson_canvasWidth, _Wilson_canvasHeight, _Wilson_canvasAspectRatio, _Wilson_onResizeCanvasCallback, _Wilson_useP3ColorSpace, _Wilson_interactionCallbacks, _Wilson_interactionUseForPanAndZoom, _Wilson_interactionOnPanAndZoom, _Wilson_numPreviousVelocities, _Wilson_lastPanVelocityX, _Wilson_lastPanVelocityY, _Wilson_lastZoomVelocity, _Wilson_lastPanVelocitiesX, _Wilson_lastPanVelocitiesY, _Wilson_lastZoomVelocities, _Wilson_panVelocityX, _Wilson_panVelocityY, _Wilson_zoomVelocity, _Wilson_panFriction, _Wilson_zoomFriction, _Wilson_panVelocityThreshold, _Wilson_zoomVelocityThreshold, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_fullscreenOldScroll, _Wilson_fullscreenFillScreen, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButton, _Wilson_fullscreenExitFullscreenButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_onResizeCanvas, _Wilson_zeroVelocities, _Wilson_setZoomVelocity, _Wilson_setPanVelocity, _Wilson_currentlyDragging, _Wilson_currentlyPinching, _Wilson_ignoreTouchendCooldown, _Wilson_lastInteractionRow, _Wilson_lastInteractionCol, _Wilson_lastInteractionRow2, _Wilson_lastInteractionCol2, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMousemove, _Wilson_updateFromPinching, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_zoomFixedPoint, _Wilson_zoomCanvas, _Wilson_onWheel, _Wilson_lastPanAndZoomTimestamp, _Wilson_updatePanAndZoomVelocity, _Wilson_initInteraction, _Wilson_draggableElements, _Wilson_draggableDefaultId, _Wilson_currentMouseDraggableId, _Wilson_documentDraggableMousemoveListener, _Wilson_documentDraggableMouseupListener, _Wilson_initDraggables, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_updateDraggablesLocation, _Wilson_initFullscreen, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_oldWorldWidth, _Wilson_oldWorldHeight, _Wilson_enterFullscreen, _Wilson_exitFullscreen, _Wilson_interpolatePageToWorld, _WilsonGPU_instances, _WilsonGPU_shaderPrograms, _WilsonGPU_uniforms, _WilsonGPU_loadShaderInternal, _WilsonGPU_numShaders, _WilsonGPU_currentShaderId, _WilsonGPU_framebuffers, _WilsonGPU_textures;
+var _Wilson_instances, _Wilson_destroyed, _Wilson_canvasWidth, _Wilson_canvasHeight, _Wilson_canvasAspectRatio, _Wilson_onResizeCanvasCallback, _Wilson_useP3ColorSpace, _Wilson_interactionCallbacks, _Wilson_interactionUseForPanAndZoom, _Wilson_interactionOnPanAndZoom, _Wilson_numPreviousVelocities, _Wilson_lastPanVelocityX, _Wilson_lastPanVelocityY, _Wilson_lastZoomVelocity, _Wilson_lastPanVelocitiesX, _Wilson_lastPanVelocitiesY, _Wilson_lastZoomVelocities, _Wilson_panVelocityX, _Wilson_panVelocityY, _Wilson_zoomVelocity, _Wilson_panFriction, _Wilson_zoomFriction, _Wilson_panVelocityThreshold, _Wilson_zoomVelocityThreshold, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_fullscreenOldScroll, _Wilson_fullscreenFillScreen, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButton, _Wilson_fullscreenExitFullscreenButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_onResizeCanvas, _Wilson_zeroVelocities, _Wilson_setZoomVelocity, _Wilson_setPanVelocity, _Wilson_currentlyDragging, _Wilson_currentlyPinching, _Wilson_ignoreTouchendCooldown, _Wilson_atMaxWorldSize, _Wilson_atMinWorldSize, _Wilson_lastInteractionRow, _Wilson_lastInteractionCol, _Wilson_lastInteractionRow2, _Wilson_lastInteractionCol2, _Wilson_clampWorldCoordinates, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMousemove, _Wilson_updateFromPinching, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_zoomFixedPoint, _Wilson_zoomCanvas, _Wilson_onWheel, _Wilson_lastPanAndZoomTimestamp, _Wilson_updatePanAndZoomVelocity, _Wilson_initInteraction, _Wilson_draggableElements, _Wilson_draggableDefaultId, _Wilson_currentMouseDraggableId, _Wilson_documentDraggableMousemoveListener, _Wilson_documentDraggableMouseupListener, _Wilson_initDraggables, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_updateDraggablesLocation, _Wilson_initFullscreen, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_oldWorldWidth, _Wilson_oldWorldHeight, _Wilson_enterFullscreen, _Wilson_exitFullscreen, _Wilson_interpolatePageToWorld, _WilsonGPU_instances, _WilsonGPU_shaderPrograms, _WilsonGPU_uniforms, _WilsonGPU_loadShaderInternal, _WilsonGPU_numShaders, _WilsonGPU_currentShaderId, _WilsonGPU_framebuffers, _WilsonGPU_textures;
 const defaultInteractionCallbacks = {
     mousedown: ({ x, y, event }) => { },
     mouseup: ({ x, y, event }) => { },
@@ -37,7 +37,7 @@ class Wilson {
         return __classPrivateFieldGet(this, _Wilson_useP3ColorSpace, "f");
     }
     constructor(canvas, options) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12;
         _Wilson_instances.add(this);
         _Wilson_destroyed.set(this, false);
         _Wilson_canvasWidth.set(this, void 0);
@@ -105,6 +105,8 @@ class Wilson {
         _Wilson_currentlyDragging.set(this, false);
         _Wilson_currentlyPinching.set(this, false);
         _Wilson_ignoreTouchendCooldown.set(this, 0);
+        _Wilson_atMaxWorldSize.set(this, false);
+        _Wilson_atMinWorldSize.set(this, false);
         _Wilson_lastInteractionRow.set(this, 0);
         _Wilson_lastInteractionCol.set(this, 0);
         _Wilson_lastInteractionRow2.set(this, 0);
@@ -128,6 +130,7 @@ class Wilson {
                 if (__classPrivateFieldGet(this, _Wilson_panVelocityX, "f") || __classPrivateFieldGet(this, _Wilson_panVelocityY, "f")) {
                     this.worldCenterX += __classPrivateFieldGet(this, _Wilson_panVelocityX, "f");
                     this.worldCenterY += __classPrivateFieldGet(this, _Wilson_panVelocityY, "f");
+                    __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_clampWorldCoordinates).call(this);
                     __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesLocation).call(this);
                     __classPrivateFieldGet(this, _Wilson_interactionOnPanAndZoom, "f").call(this);
                     const frictionFactor = Math.pow(__classPrivateFieldGet(this, _Wilson_panFriction, "f"), timeElapsed / (1000 / 60));
@@ -206,29 +209,37 @@ class Wilson {
         }
         this.worldCenterX = (_a = options.worldCenterX) !== null && _a !== void 0 ? _a : 0;
         this.worldCenterY = (_b = options.worldCenterY) !== null && _b !== void 0 ? _b : 0;
-        __classPrivateFieldSet(this, _Wilson_onResizeCanvasCallback, (_c = options === null || options === void 0 ? void 0 : options.onResizeCanvas) !== null && _c !== void 0 ? _c : (() => { }), "f");
-        __classPrivateFieldSet(this, _Wilson_useP3ColorSpace, (_d = options.useP3ColorSpace) !== null && _d !== void 0 ? _d : true, "f");
-        __classPrivateFieldSet(this, _Wilson_interactionCallbacks, { ...defaultInteractionCallbacks, ...(_e = options.interactionOptions) === null || _e === void 0 ? void 0 : _e.callbacks }, "f");
-        __classPrivateFieldSet(this, _Wilson_interactionUseForPanAndZoom, (_g = (_f = options.interactionOptions) === null || _f === void 0 ? void 0 : _f.useForPanAndZoom) !== null && _g !== void 0 ? _g : false, "f");
+        this.minWorldWidth = (_c = options.minWorldWidth) !== null && _c !== void 0 ? _c : 0;
+        this.maxWorldWidth = (_d = options.maxWorldWidth) !== null && _d !== void 0 ? _d : Infinity;
+        this.minWorldHeight = (_e = options.minWorldHeight) !== null && _e !== void 0 ? _e : 0;
+        this.maxWorldHeight = (_f = options.maxWorldHeight) !== null && _f !== void 0 ? _f : Infinity;
+        this.minWorldCenterX = (_g = options.minWorldCenterX) !== null && _g !== void 0 ? _g : -Infinity;
+        this.maxWorldCenterX = (_h = options.maxWorldCenterX) !== null && _h !== void 0 ? _h : Infinity;
+        this.minWorldCenterY = (_j = options.minWorldCenterY) !== null && _j !== void 0 ? _j : -Infinity;
+        this.maxWorldCenterY = (_k = options.maxWorldCenterY) !== null && _k !== void 0 ? _k : Infinity;
+        __classPrivateFieldSet(this, _Wilson_onResizeCanvasCallback, (_l = options === null || options === void 0 ? void 0 : options.onResizeCanvas) !== null && _l !== void 0 ? _l : (() => { }), "f");
+        __classPrivateFieldSet(this, _Wilson_useP3ColorSpace, (_m = options.useP3ColorSpace) !== null && _m !== void 0 ? _m : true, "f");
+        __classPrivateFieldSet(this, _Wilson_interactionCallbacks, { ...defaultInteractionCallbacks, ...(_o = options.interactionOptions) === null || _o === void 0 ? void 0 : _o.callbacks }, "f");
+        __classPrivateFieldSet(this, _Wilson_interactionUseForPanAndZoom, (_q = (_p = options.interactionOptions) === null || _p === void 0 ? void 0 : _p.useForPanAndZoom) !== null && _q !== void 0 ? _q : false, "f");
         __classPrivateFieldSet(this, _Wilson_panFriction, 0.875, "f");
         __classPrivateFieldSet(this, _Wilson_zoomFriction, 0.85, "f");
-        if ((_h = options.interactionOptions) === null || _h === void 0 ? void 0 : _h.useForPanAndZoom) {
-            __classPrivateFieldSet(this, _Wilson_interactionOnPanAndZoom, (_k = (_j = options.interactionOptions) === null || _j === void 0 ? void 0 : _j.onPanAndZoom) !== null && _k !== void 0 ? _k : (() => { }), "f");
-            __classPrivateFieldSet(this, _Wilson_panFriction, (_m = (_l = options.interactionOptions) === null || _l === void 0 ? void 0 : _l.panFriction) !== null && _m !== void 0 ? _m : __classPrivateFieldGet(this, _Wilson_panFriction, "f"), "f");
-            __classPrivateFieldSet(this, _Wilson_zoomFriction, (_p = (_o = options.interactionOptions) === null || _o === void 0 ? void 0 : _o.zoomFriction) !== null && _p !== void 0 ? _p : __classPrivateFieldGet(this, _Wilson_zoomFriction, "f"), "f");
+        if ((_r = options.interactionOptions) === null || _r === void 0 ? void 0 : _r.useForPanAndZoom) {
+            __classPrivateFieldSet(this, _Wilson_interactionOnPanAndZoom, (_t = (_s = options.interactionOptions) === null || _s === void 0 ? void 0 : _s.onPanAndZoom) !== null && _t !== void 0 ? _t : (() => { }), "f");
+            __classPrivateFieldSet(this, _Wilson_panFriction, (_v = (_u = options.interactionOptions) === null || _u === void 0 ? void 0 : _u.panFriction) !== null && _v !== void 0 ? _v : __classPrivateFieldGet(this, _Wilson_panFriction, "f"), "f");
+            __classPrivateFieldSet(this, _Wilson_zoomFriction, (_x = (_w = options.interactionOptions) === null || _w === void 0 ? void 0 : _w.zoomFriction) !== null && _x !== void 0 ? _x : __classPrivateFieldGet(this, _Wilson_zoomFriction, "f"), "f");
             __classPrivateFieldSet(this, _Wilson_lastPanVelocitiesX, Array(__classPrivateFieldGet(this, _Wilson_numPreviousVelocities, "f")).fill(0), "f");
             __classPrivateFieldSet(this, _Wilson_lastPanVelocitiesY, Array(__classPrivateFieldGet(this, _Wilson_numPreviousVelocities, "f")).fill(0), "f");
             __classPrivateFieldSet(this, _Wilson_lastZoomVelocities, Array(__classPrivateFieldGet(this, _Wilson_numPreviousVelocities, "f")).fill(0), "f");
         }
-        __classPrivateFieldSet(this, _Wilson_draggablesRadius, (_r = (_q = options.draggableOptions) === null || _q === void 0 ? void 0 : _q.radius) !== null && _r !== void 0 ? _r : 12, "f");
-        __classPrivateFieldSet(this, _Wilson_draggablesStatic, (_t = (_s = options.draggableOptions) === null || _s === void 0 ? void 0 : _s.static) !== null && _t !== void 0 ? _t : false, "f");
-        __classPrivateFieldSet(this, _Wilson_draggableCallbacks, { ...defaultDraggableCallbacks, ...(_u = options.draggableOptions) === null || _u === void 0 ? void 0 : _u.callbacks }, "f");
-        __classPrivateFieldSet(this, _Wilson_fullscreenFillScreen, (_w = (_v = options.fullscreenOptions) === null || _v === void 0 ? void 0 : _v.fillScreen) !== null && _w !== void 0 ? _w : false, "f");
-        this.animateFullscreen = (_y = (_x = options.fullscreenOptions) === null || _x === void 0 ? void 0 : _x.animate) !== null && _y !== void 0 ? _y : true;
-        __classPrivateFieldSet(this, _Wilson_fullscreenUseButton, (_0 = (_z = options.fullscreenOptions) === null || _z === void 0 ? void 0 : _z.useFullscreenButton) !== null && _0 !== void 0 ? _0 : false, "f");
-        if ((_1 = options.fullscreenOptions) === null || _1 === void 0 ? void 0 : _1.useFullscreenButton) {
-            __classPrivateFieldSet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, (_2 = options.fullscreenOptions) === null || _2 === void 0 ? void 0 : _2.enterFullscreenButtonIconPath, "f");
-            __classPrivateFieldSet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, (_3 = options.fullscreenOptions) === null || _3 === void 0 ? void 0 : _3.exitFullscreenButtonIconPath, "f");
+        __classPrivateFieldSet(this, _Wilson_draggablesRadius, (_z = (_y = options.draggableOptions) === null || _y === void 0 ? void 0 : _y.radius) !== null && _z !== void 0 ? _z : 12, "f");
+        __classPrivateFieldSet(this, _Wilson_draggablesStatic, (_1 = (_0 = options.draggableOptions) === null || _0 === void 0 ? void 0 : _0.static) !== null && _1 !== void 0 ? _1 : false, "f");
+        __classPrivateFieldSet(this, _Wilson_draggableCallbacks, { ...defaultDraggableCallbacks, ...(_2 = options.draggableOptions) === null || _2 === void 0 ? void 0 : _2.callbacks }, "f");
+        __classPrivateFieldSet(this, _Wilson_fullscreenFillScreen, (_4 = (_3 = options.fullscreenOptions) === null || _3 === void 0 ? void 0 : _3.fillScreen) !== null && _4 !== void 0 ? _4 : false, "f");
+        this.animateFullscreen = (_6 = (_5 = options.fullscreenOptions) === null || _5 === void 0 ? void 0 : _5.animate) !== null && _6 !== void 0 ? _6 : true;
+        __classPrivateFieldSet(this, _Wilson_fullscreenUseButton, (_8 = (_7 = options.fullscreenOptions) === null || _7 === void 0 ? void 0 : _7.useFullscreenButton) !== null && _8 !== void 0 ? _8 : false, "f");
+        if ((_9 = options.fullscreenOptions) === null || _9 === void 0 ? void 0 : _9.useFullscreenButton) {
+            __classPrivateFieldSet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, (_10 = options.fullscreenOptions) === null || _10 === void 0 ? void 0 : _10.enterFullscreenButtonIconPath, "f");
+            __classPrivateFieldSet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, (_11 = options.fullscreenOptions) === null || _11 === void 0 ? void 0 : _11.exitFullscreenButtonIconPath, "f");
         }
         // Initialize the container structure.
         __classPrivateFieldSet(this, _Wilson_appletContainer, document.createElement("div"), "f");
@@ -267,7 +278,7 @@ class Wilson {
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_initFullscreen).call(this);
         window.addEventListener("resize", __classPrivateFieldGet(this, _Wilson_onResizeWindow, "f"));
         document.documentElement.addEventListener("keydown", __classPrivateFieldGet(this, _Wilson_handleKeydownEvent, "f"));
-        if ((_4 = options.draggableOptions) === null || _4 === void 0 ? void 0 : _4.draggables) {
+        if ((_12 = options.draggableOptions) === null || _12 === void 0 ? void 0 : _12.draggables) {
             for (const draggable of options.draggableOptions.draggables) {
                 this.addDraggable(draggable);
             }
@@ -403,7 +414,7 @@ class Wilson {
         ];
     }
 }
-_Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_canvasHeight = new WeakMap(), _Wilson_canvasAspectRatio = new WeakMap(), _Wilson_onResizeCanvasCallback = new WeakMap(), _Wilson_useP3ColorSpace = new WeakMap(), _Wilson_interactionCallbacks = new WeakMap(), _Wilson_interactionUseForPanAndZoom = new WeakMap(), _Wilson_interactionOnPanAndZoom = new WeakMap(), _Wilson_numPreviousVelocities = new WeakMap(), _Wilson_lastPanVelocityX = new WeakMap(), _Wilson_lastPanVelocityY = new WeakMap(), _Wilson_lastZoomVelocity = new WeakMap(), _Wilson_lastPanVelocitiesX = new WeakMap(), _Wilson_lastPanVelocitiesY = new WeakMap(), _Wilson_lastZoomVelocities = new WeakMap(), _Wilson_panVelocityX = new WeakMap(), _Wilson_panVelocityY = new WeakMap(), _Wilson_zoomVelocity = new WeakMap(), _Wilson_panFriction = new WeakMap(), _Wilson_zoomFriction = new WeakMap(), _Wilson_panVelocityThreshold = new WeakMap(), _Wilson_zoomVelocityThreshold = new WeakMap(), _Wilson_draggablesRadius = new WeakMap(), _Wilson_draggablesStatic = new WeakMap(), _Wilson_draggableCallbacks = new WeakMap(), _Wilson_draggablesContainerWidth = new WeakMap(), _Wilson_draggablesContainerHeight = new WeakMap(), _Wilson_draggablesContainerRestrictedWidth = new WeakMap(), _Wilson_draggablesContainerRestrictedHeight = new WeakMap(), _Wilson_fullscreenOldScroll = new WeakMap(), _Wilson_fullscreenFillScreen = new WeakMap(), _Wilson_fullscreenUseButton = new WeakMap(), _Wilson_fullscreenEnterFullscreenButton = new WeakMap(), _Wilson_fullscreenExitFullscreenButton = new WeakMap(), _Wilson_fullscreenEnterFullscreenButtonIconPath = new WeakMap(), _Wilson_fullscreenExitFullscreenButtonIconPath = new WeakMap(), _Wilson_appletContainer = new WeakMap(), _Wilson_canvasContainer = new WeakMap(), _Wilson_draggablesContainer = new WeakMap(), _Wilson_fullscreenContainer = new WeakMap(), _Wilson_fullscreenContainerLocation = new WeakMap(), _Wilson_metaThemeColorElement = new WeakMap(), _Wilson_oldMetaThemeColor = new WeakMap(), _Wilson_onResizeWindow = new WeakMap(), _Wilson_handleKeydownEvent = new WeakMap(), _Wilson_currentlyDragging = new WeakMap(), _Wilson_currentlyPinching = new WeakMap(), _Wilson_ignoreTouchendCooldown = new WeakMap(), _Wilson_lastInteractionRow = new WeakMap(), _Wilson_lastInteractionCol = new WeakMap(), _Wilson_lastInteractionRow2 = new WeakMap(), _Wilson_lastInteractionCol2 = new WeakMap(), _Wilson_zoomFixedPoint = new WeakMap(), _Wilson_lastPanAndZoomTimestamp = new WeakMap(), _Wilson_updatePanAndZoomVelocity = new WeakMap(), _Wilson_draggableElements = new WeakMap(), _Wilson_draggableDefaultId = new WeakMap(), _Wilson_currentMouseDraggableId = new WeakMap(), _Wilson_documentDraggableMousemoveListener = new WeakMap(), _Wilson_documentDraggableMouseupListener = new WeakMap(), _Wilson_preventGestures = new WeakMap(), _Wilson_canvasOldWidth = new WeakMap(), _Wilson_canvasOldWidthStyle = new WeakMap(), _Wilson_canvasOldHeightStyle = new WeakMap(), _Wilson_oldWorldWidth = new WeakMap(), _Wilson_oldWorldHeight = new WeakMap(), _Wilson_instances = new WeakSet(), _Wilson_onResizeCanvas = function _Wilson_onResizeCanvas() {
+_Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_canvasHeight = new WeakMap(), _Wilson_canvasAspectRatio = new WeakMap(), _Wilson_onResizeCanvasCallback = new WeakMap(), _Wilson_useP3ColorSpace = new WeakMap(), _Wilson_interactionCallbacks = new WeakMap(), _Wilson_interactionUseForPanAndZoom = new WeakMap(), _Wilson_interactionOnPanAndZoom = new WeakMap(), _Wilson_numPreviousVelocities = new WeakMap(), _Wilson_lastPanVelocityX = new WeakMap(), _Wilson_lastPanVelocityY = new WeakMap(), _Wilson_lastZoomVelocity = new WeakMap(), _Wilson_lastPanVelocitiesX = new WeakMap(), _Wilson_lastPanVelocitiesY = new WeakMap(), _Wilson_lastZoomVelocities = new WeakMap(), _Wilson_panVelocityX = new WeakMap(), _Wilson_panVelocityY = new WeakMap(), _Wilson_zoomVelocity = new WeakMap(), _Wilson_panFriction = new WeakMap(), _Wilson_zoomFriction = new WeakMap(), _Wilson_panVelocityThreshold = new WeakMap(), _Wilson_zoomVelocityThreshold = new WeakMap(), _Wilson_draggablesRadius = new WeakMap(), _Wilson_draggablesStatic = new WeakMap(), _Wilson_draggableCallbacks = new WeakMap(), _Wilson_draggablesContainerWidth = new WeakMap(), _Wilson_draggablesContainerHeight = new WeakMap(), _Wilson_draggablesContainerRestrictedWidth = new WeakMap(), _Wilson_draggablesContainerRestrictedHeight = new WeakMap(), _Wilson_fullscreenOldScroll = new WeakMap(), _Wilson_fullscreenFillScreen = new WeakMap(), _Wilson_fullscreenUseButton = new WeakMap(), _Wilson_fullscreenEnterFullscreenButton = new WeakMap(), _Wilson_fullscreenExitFullscreenButton = new WeakMap(), _Wilson_fullscreenEnterFullscreenButtonIconPath = new WeakMap(), _Wilson_fullscreenExitFullscreenButtonIconPath = new WeakMap(), _Wilson_appletContainer = new WeakMap(), _Wilson_canvasContainer = new WeakMap(), _Wilson_draggablesContainer = new WeakMap(), _Wilson_fullscreenContainer = new WeakMap(), _Wilson_fullscreenContainerLocation = new WeakMap(), _Wilson_metaThemeColorElement = new WeakMap(), _Wilson_oldMetaThemeColor = new WeakMap(), _Wilson_onResizeWindow = new WeakMap(), _Wilson_handleKeydownEvent = new WeakMap(), _Wilson_currentlyDragging = new WeakMap(), _Wilson_currentlyPinching = new WeakMap(), _Wilson_ignoreTouchendCooldown = new WeakMap(), _Wilson_atMaxWorldSize = new WeakMap(), _Wilson_atMinWorldSize = new WeakMap(), _Wilson_lastInteractionRow = new WeakMap(), _Wilson_lastInteractionCol = new WeakMap(), _Wilson_lastInteractionRow2 = new WeakMap(), _Wilson_lastInteractionCol2 = new WeakMap(), _Wilson_zoomFixedPoint = new WeakMap(), _Wilson_lastPanAndZoomTimestamp = new WeakMap(), _Wilson_updatePanAndZoomVelocity = new WeakMap(), _Wilson_draggableElements = new WeakMap(), _Wilson_draggableDefaultId = new WeakMap(), _Wilson_currentMouseDraggableId = new WeakMap(), _Wilson_documentDraggableMousemoveListener = new WeakMap(), _Wilson_documentDraggableMouseupListener = new WeakMap(), _Wilson_preventGestures = new WeakMap(), _Wilson_canvasOldWidth = new WeakMap(), _Wilson_canvasOldWidthStyle = new WeakMap(), _Wilson_canvasOldHeightStyle = new WeakMap(), _Wilson_oldWorldWidth = new WeakMap(), _Wilson_oldWorldHeight = new WeakMap(), _Wilson_instances = new WeakSet(), _Wilson_onResizeCanvas = function _Wilson_onResizeCanvas() {
     requestAnimationFrame(() => __classPrivateFieldGet(this, _Wilson_onResizeCanvasCallback, "f").call(this));
 }, _Wilson_zeroVelocities = function _Wilson_zeroVelocities() {
     __classPrivateFieldSet(this, _Wilson_panVelocityX, 0, "f");
@@ -440,6 +451,31 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     if (totalPanVelocitySquared < threshold * threshold) {
         __classPrivateFieldSet(this, _Wilson_panVelocityX, 0, "f");
         __classPrivateFieldSet(this, _Wilson_panVelocityY, 0, "f");
+    }
+}, _Wilson_clampWorldCoordinates = function _Wilson_clampWorldCoordinates() {
+    this.worldCenterX = Math.min(Math.max(this.worldCenterX, this.minWorldCenterX), this.maxWorldCenterX);
+    this.worldCenterY = Math.min(Math.max(this.worldCenterY, this.minWorldCenterY), this.maxWorldCenterY);
+    __classPrivateFieldSet(this, _Wilson_atMaxWorldSize, false, "f");
+    __classPrivateFieldSet(this, _Wilson_atMinWorldSize, false, "f");
+    if (this.worldWidth < this.minWorldWidth) {
+        this.worldHeight *= this.minWorldWidth / this.worldWidth;
+        this.worldWidth = this.minWorldWidth;
+        __classPrivateFieldSet(this, _Wilson_atMinWorldSize, true, "f");
+    }
+    else if (this.worldWidth > this.maxWorldWidth) {
+        this.worldHeight *= this.maxWorldWidth / this.worldWidth;
+        this.worldWidth = this.maxWorldWidth;
+        __classPrivateFieldSet(this, _Wilson_atMaxWorldSize, true, "f");
+    }
+    if (this.worldHeight < this.minWorldHeight) {
+        this.worldWidth *= this.minWorldHeight / this.worldHeight;
+        this.worldHeight = this.minWorldHeight;
+        __classPrivateFieldSet(this, _Wilson_atMinWorldSize, true, "f");
+    }
+    else if (this.worldHeight > this.maxWorldHeight) {
+        this.worldWidth *= this.maxWorldHeight / this.worldHeight;
+        this.worldHeight = this.maxWorldHeight;
+        __classPrivateFieldSet(this, _Wilson_atMaxWorldSize, true, "f");
     }
 }, _Wilson_onMousedown = function _Wilson_onMousedown(e) {
     if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable")) {
@@ -482,6 +518,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         this.worldCenterY -= y - lastY;
         __classPrivateFieldSet(this, _Wilson_lastPanVelocityX, lastX - x, "f");
         __classPrivateFieldSet(this, _Wilson_lastPanVelocityY, lastY - y, "f");
+        __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_clampWorldCoordinates).call(this);
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesLocation).call(this);
         __classPrivateFieldGet(this, _Wilson_interactionOnPanAndZoom, "f").call(this);
     }
@@ -610,6 +647,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
             __classPrivateFieldSet(this, _Wilson_lastPanVelocityX, lastX - x, "f");
             __classPrivateFieldSet(this, _Wilson_lastPanVelocityY, lastY - y, "f");
         }
+        __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_clampWorldCoordinates).call(this);
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesLocation).call(this);
         __classPrivateFieldGet(this, _Wilson_interactionOnPanAndZoom, "f").call(this);
     }
@@ -623,6 +661,9 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     __classPrivateFieldSet(this, _Wilson_lastInteractionRow, e.touches[0].clientY, "f");
     __classPrivateFieldSet(this, _Wilson_lastInteractionCol, e.touches[0].clientX, "f");
 }, _Wilson_zoomCanvas = function _Wilson_zoomCanvas(scale) {
+    if (scale > 1 && __classPrivateFieldGet(this, _Wilson_atMaxWorldSize, "f") || scale < 1 && __classPrivateFieldGet(this, _Wilson_atMinWorldSize, "f")) {
+        return;
+    }
     const centerProportion = [
         (__classPrivateFieldGet(this, _Wilson_zoomFixedPoint, "f")[0] - this.worldCenterX) / this.worldWidth,
         (__classPrivateFieldGet(this, _Wilson_zoomFixedPoint, "f")[1] - this.worldCenterY) / this.worldHeight
@@ -633,6 +674,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     const newFixedPointY = centerProportion[1] * this.worldHeight;
     this.worldCenterX = __classPrivateFieldGet(this, _Wilson_zoomFixedPoint, "f")[0] - newFixedPointX;
     this.worldCenterY = __classPrivateFieldGet(this, _Wilson_zoomFixedPoint, "f")[1] - newFixedPointY;
+    __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_clampWorldCoordinates).call(this);
     __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesLocation).call(this);
     __classPrivateFieldGet(this, _Wilson_interactionOnPanAndZoom, "f").call(this);
 }, _Wilson_onWheel = function _Wilson_onWheel(e) {
@@ -640,12 +682,12 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     const [x, y] = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [e.clientY, e.clientX]);
     if (__classPrivateFieldGet(this, _Wilson_interactionUseForPanAndZoom, "f")) {
         __classPrivateFieldSet(this, _Wilson_zoomFixedPoint, [x, y], "f");
-        if (Math.abs(e.deltaY) < 40) {
+        if (Math.abs(e.deltaY) < 50) {
             const scale = 1 + e.deltaY * 0.005;
             __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_zoomCanvas).call(this, scale);
         }
         else {
-            __classPrivateFieldSet(this, _Wilson_zoomVelocity, Math.sign(e.deltaY) * 10, "f");
+            __classPrivateFieldSet(this, _Wilson_zoomVelocity, e.deltaY / 4, "f");
         }
     }
     __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").wheel({

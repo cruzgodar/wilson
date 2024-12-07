@@ -154,6 +154,15 @@ export type WilsonOptions = ({ canvasWidth: number } | { canvasHeight: number })
 	worldCenterX?: number,
 	worldCenterY?: number,
 
+	minWorldWidth?: number,
+	maxWorldWidth?: number,
+	minWorldHeight?: number,
+	maxWorldHeight?: number,
+	minWorldCenterX?: number,
+	maxWorldCenterX?: number,
+	minWorldCenterY?: number,
+	maxWorldCenterY?: number,
+
 	onResizeCanvas?: () => void,
 
 	useP3ColorSpace?: boolean,
@@ -185,6 +194,15 @@ class Wilson
 	worldHeight: number;
 	worldCenterX: number;
 	worldCenterY: number;
+
+	minWorldWidth: number;
+	maxWorldWidth: number;
+	minWorldHeight: number;
+	maxWorldHeight: number;
+	minWorldCenterX: number;
+	maxWorldCenterX: number;
+	minWorldCenterY: number;
+	maxWorldCenterY: number;
 
 	#onResizeCanvasCallback: () => void;
 
@@ -306,6 +324,17 @@ class Wilson
 
 		this.worldCenterX = options.worldCenterX ?? 0;
 		this.worldCenterY = options.worldCenterY ?? 0;
+
+		this.minWorldWidth = options.minWorldWidth ?? 0;
+		this.maxWorldWidth = options.maxWorldWidth ?? Infinity;
+		this.minWorldHeight = options.minWorldHeight ?? 0;
+		this.maxWorldHeight = options.maxWorldHeight ?? Infinity;
+		this.minWorldCenterX = options.minWorldCenterX ?? -Infinity;
+		this.maxWorldCenterX = options.maxWorldCenterX ?? Infinity;
+		this.minWorldCenterY = options.minWorldCenterY ?? -Infinity;
+		this.maxWorldCenterY = options.maxWorldCenterY ?? Infinity;
+
+
 
 		this.#onResizeCanvasCallback = options?.onResizeCanvas ?? (() => {});
 
@@ -586,10 +615,53 @@ class Wilson
 	#currentlyDragging: boolean = false;
 	#currentlyPinching: boolean = false;
 	#ignoreTouchendCooldown: number = 0;
+	#atMaxWorldSize: boolean = false;
+	#atMinWorldSize: boolean = false;
 	#lastInteractionRow: number = 0;
 	#lastInteractionCol: number = 0;
 	#lastInteractionRow2: number = 0;
 	#lastInteractionCol2: number = 0;
+
+	#clampWorldCoordinates()
+	{
+		this.worldCenterX = Math.min(Math.max(this.worldCenterX, this.minWorldCenterX), this.maxWorldCenterX);
+		this.worldCenterY = Math.min(Math.max(this.worldCenterY, this.minWorldCenterY), this.maxWorldCenterY);
+		
+		this.#atMaxWorldSize = false;
+		this.#atMinWorldSize = false;
+
+		if (this.worldWidth < this.minWorldWidth)
+		{
+			this.worldHeight *= this.minWorldWidth / this.worldWidth;
+			this.worldWidth = this.minWorldWidth;
+
+			this.#atMinWorldSize = true;
+		}
+
+		else if (this.worldWidth > this.maxWorldWidth)
+		{
+			this.worldHeight *= this.maxWorldWidth / this.worldWidth;
+			this.worldWidth = this.maxWorldWidth;
+
+			this.#atMaxWorldSize = true;
+		}
+
+		if (this.worldHeight < this.minWorldHeight)
+		{
+			this.worldWidth *= this.minWorldHeight / this.worldHeight;
+			this.worldHeight = this.minWorldHeight;
+
+			this.#atMinWorldSize = true;
+		}
+
+		else if (this.worldHeight > this.maxWorldHeight)
+		{
+			this.worldWidth *= this.maxWorldHeight / this.worldHeight;
+			this.worldHeight = this.maxWorldHeight;
+
+			this.#atMaxWorldSize = true;
+		}
+	}
 
 	#onMousedown(e: MouseEvent)
 	{
@@ -659,6 +731,7 @@ class Wilson
 			this.#lastPanVelocityX = lastX - x;
 			this.#lastPanVelocityY = lastY - y;
 
+			this.#clampWorldCoordinates();
 			this.#updateDraggablesLocation();
 			this.#interactionOnPanAndZoom();
 		}
@@ -723,7 +796,6 @@ class Wilson
 
 		this.worldCenterX = newWorldCenterX;
 		this.worldCenterY = newWorldCenterY;
-
 	}
 	
 	#onTouchstart(e: TouchEvent)
@@ -878,6 +950,7 @@ class Wilson
 				this.#lastPanVelocityY = lastY - y;
 			}
 
+			this.#clampWorldCoordinates();
 			this.#updateDraggablesLocation();
 			this.#interactionOnPanAndZoom();
 		}
@@ -897,6 +970,11 @@ class Wilson
 	#zoomFixedPoint: [number, number] = [0, 0];
 	#zoomCanvas(scale: number)
 	{
+		if (scale > 1 && this.#atMaxWorldSize || scale < 1 && this.#atMinWorldSize)
+		{
+			return;
+		}
+
 		const centerProportion = [
 			(this.#zoomFixedPoint[0] - this.worldCenterX) / this.worldWidth,
 			(this.#zoomFixedPoint[1] - this.worldCenterY) / this.worldHeight
@@ -911,6 +989,7 @@ class Wilson
 		this.worldCenterX = this.#zoomFixedPoint[0] - newFixedPointX;
 		this.worldCenterY = this.#zoomFixedPoint[1] - newFixedPointY;
 		
+		this.#clampWorldCoordinates();
 		this.#updateDraggablesLocation();
 		this.#interactionOnPanAndZoom();
 	}
@@ -925,7 +1004,7 @@ class Wilson
 		{
 			this.#zoomFixedPoint = [x, y];
 
-			if (Math.abs(e.deltaY) < 40)
+			if (Math.abs(e.deltaY) < 50)
 			{
 				const scale = 1 + e.deltaY * 0.005;
 				this.#zoomCanvas(scale);
@@ -933,7 +1012,7 @@ class Wilson
 
 			else
 			{
-				this.#zoomVelocity = Math.sign(e.deltaY) * 10;
+				this.#zoomVelocity = e.deltaY / 4;
 			}
 		}
 
@@ -975,6 +1054,7 @@ class Wilson
 				this.worldCenterX += this.#panVelocityX;
 				this.worldCenterY += this.#panVelocityY;
 
+				this.#clampWorldCoordinates();
 				this.#updateDraggablesLocation();
 				this.#interactionOnPanAndZoom();
 
