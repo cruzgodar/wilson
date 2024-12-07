@@ -1,0 +1,21 @@
+html
+{
+	font-family: "Rubik", sans-serif;
+	-webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+	background-color: rgb(24, 24, 24);
+}
+
+body
+{
+	-webkit-text-size-adjust: 100%;
+}
+
+#demo-canvas, #demo-canvas-2
+{
+	width: 75vmin;
+	height: calc(75vmin * 9 / 16);
+
+	border: 2px solid rgb(64, 64, 64);
+	padding: 2px;
+	border-radius: 16px;
+}
