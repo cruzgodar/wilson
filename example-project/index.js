@@ -10,6 +10,9 @@ function initWilson1() {
                 "center": [0, 0],
                 "radius": [1, 0],
             },
+            callbacks: {
+                ondrag: drawFrame
+            }
         },
         fullscreenOptions: {
             fillScreen: false,
@@ -23,13 +26,23 @@ function initWilson1() {
     function drawFrame() {
         wilson.ctx.fillStyle = "color(display-p3 0 0 0)";
         wilson.ctx.fillRect(0, 0, wilson.canvasWidth, wilson.canvasHeight);
-        // Draw a circle at the r
+        // Draw 3/4 of a circle.
         wilson.ctx.fillStyle = "color(display-p3 1 0 0)";
-        const centerX = wilson.canvasWidth / 2;
-        const centerY = wilson.canvasHeight / 2;
-        const radius = Math.min(wilson.canvasWidth / 3, wilson.canvasHeight / 3);
+        const [centerRow, centerCol] = wilson.interpolateWorldToCanvas([
+            wilson.draggableElements.center.x,
+            wilson.draggableElements.center.y
+        ]);
+        const [radiusRow, radiusCol] = wilson.interpolateWorldToCanvas([
+            wilson.draggableElements.radius.x,
+            wilson.draggableElements.radius.y
+        ]);
+        const startingAngle = Math.atan2(radiusRow - centerRow, radiusCol - centerCol);
+        const radius = Math.sqrt((radiusCol - centerCol) ** 2 + (radiusRow - centerRow) ** 2);
         wilson.ctx.beginPath();
-        wilson.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        wilson.ctx.moveTo(centerCol, centerRow);
+        wilson.ctx.arc(centerCol, centerRow, radius, startingAngle, startingAngle + 1.5 * Math.PI);
+        wilson.ctx.lineTo(centerCol, centerRow);
+        wilson.ctx.lineTo(radiusCol, radiusRow);
         wilson.ctx.fill();
     }
 }
