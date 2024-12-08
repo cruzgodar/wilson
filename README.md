@@ -6,7 +6,7 @@ Wilson is a TypeScript and JavaScript library for creating interactive web apple
 
 ## Getting Started
 
-Add wilson.ts or wilson.js to your project, then import either `WilsonCPU` or `WilsonGPU` from it. If your project uses TypeScript, you can also import either `WilsonCPUOptions` or `WilsonGPUOptions`. Add a canvas to your HTML and pass it to the constructor to register it:
+Add `wilson.ts` or `wilson.js` to your project, load `wilson.css`, then import either `WilsonCPU` or `WilsonGPU`. If your project uses TypeScript, you can also import either `WilsonCPUOptions` or `WilsonGPUOptions`. Add a canvas to your HTML and pass it to the constructor to register it:
 ```js
 import { WilsonCPU } from "/path/to/wilson.js";
 
