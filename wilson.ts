@@ -898,13 +898,21 @@ class Wilson
 			this.#currentlyDragging = false;
 		}
 
-		const [x, y] = this.#interpolatePageToWorld([
-			e.touches[0].clientY,
-			e.touches[0].clientX
-		]);
+		const [x, y] = e.touches.length === 0
+			? this.#interpolatePageToWorld([
+				this.#lastInteractionRow,
+				this.#lastInteractionCol
+			])
+			: this.#interpolatePageToWorld([
+				e.touches[0].clientY,
+				e.touches[0].clientX
+			]);
 
-		this.#lastInteractionRow = e.touches[0].clientY;
-		this.#lastInteractionCol = e.touches[0].clientX;
+		if (e.touches.length !== 0)
+		{
+			this.#lastInteractionRow = e.touches[0].clientY;
+			this.#lastInteractionCol = e.touches[0].clientX;
+		}
 
 		if (e.touches.length > 1)
 		{
@@ -916,7 +924,7 @@ class Wilson
 		{
 			if (this.#currentlyPinching)
 			{
-				this.#ignoreTouchendCooldown = 200;
+				this.#ignoreTouchendCooldown = 100;
 				this.#setZoomVelocity();
 			}
 

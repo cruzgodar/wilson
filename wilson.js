@@ -609,19 +609,26 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     if (e.touches.length === 0) {
         __classPrivateFieldSet(this, _Wilson_currentlyDragging, false, "f");
     }
-    const [x, y] = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [
-        e.touches[0].clientY,
-        e.touches[0].clientX
-    ]);
-    __classPrivateFieldSet(this, _Wilson_lastInteractionRow, e.touches[0].clientY, "f");
-    __classPrivateFieldSet(this, _Wilson_lastInteractionCol, e.touches[0].clientX, "f");
+    const [x, y] = e.touches.length === 0
+        ? __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [
+            __classPrivateFieldGet(this, _Wilson_lastInteractionRow, "f"),
+            __classPrivateFieldGet(this, _Wilson_lastInteractionCol, "f")
+        ])
+        : __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [
+            e.touches[0].clientY,
+            e.touches[0].clientX
+        ]);
+    if (e.touches.length !== 0) {
+        __classPrivateFieldSet(this, _Wilson_lastInteractionRow, e.touches[0].clientY, "f");
+        __classPrivateFieldSet(this, _Wilson_lastInteractionCol, e.touches[0].clientX, "f");
+    }
     if (e.touches.length > 1) {
         __classPrivateFieldSet(this, _Wilson_lastInteractionRow2, e.touches[1].clientY, "f");
         __classPrivateFieldSet(this, _Wilson_lastInteractionCol2, e.touches[1].clientX, "f");
     }
     else {
         if (__classPrivateFieldGet(this, _Wilson_currentlyPinching, "f")) {
-            __classPrivateFieldSet(this, _Wilson_ignoreTouchendCooldown, 200, "f");
+            __classPrivateFieldSet(this, _Wilson_ignoreTouchendCooldown, 100, "f");
             __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_setZoomVelocity).call(this);
         }
         __classPrivateFieldSet(this, _Wilson_currentlyPinching, false, "f");
