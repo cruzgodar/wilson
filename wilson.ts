@@ -2148,7 +2148,7 @@ export class WilsonGPU extends Wilson
 			throw new Error(`[Wilson] Couldn't link shader program: ${this.gl.getProgramInfoLog(shaderProgram)}. Full shader source: ${source}`);
 		}
 
-		this.useProgram(id);
+		this.useShader(id);
 		this.#currentShaderId = id;
 
 		const positionBuffer = this.gl.createBuffer();
@@ -2221,16 +2221,16 @@ export class WilsonGPU extends Wilson
 		value: number | number[],
 		shaderId?: ShaderProgramId
 	}) {
-		this.useProgram(shaderId);
+		this.useShader(shaderId);
 
 		const { location, type } = this.#uniforms[shaderId][name];
 		const uniformFunction = uniformFunctions[type];
 		uniformFunction(this.gl, location, value);
 
-		this.useProgram(this.#currentShaderId);
+		this.useShader(this.#currentShaderId);
 	}
 
-	useProgram(id: ShaderProgramId)
+	useShader(id: ShaderProgramId)
 	{
 		this.gl.useProgram(this.#shaderPrograms[id]);
 	}

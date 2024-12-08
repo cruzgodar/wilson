@@ -1125,7 +1125,7 @@ export class WilsonGPU extends Wilson {
         if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS)) {
             throw new Error(`[Wilson] Couldn't link shader program: ${this.gl.getProgramInfoLog(shaderProgram)}. Full shader source: ${source}`);
         }
-        this.useProgram(id);
+        this.useShader(id);
         __classPrivateFieldSet(this, _WilsonGPU_currentShaderId, id, "f");
         const positionBuffer = this.gl.createBuffer();
         if (!positionBuffer) {
@@ -1167,13 +1167,13 @@ export class WilsonGPU extends Wilson {
         }
     }
     setUniform({ name, value, shaderId = __classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f") }) {
-        this.useProgram(shaderId);
+        this.useShader(shaderId);
         const { location, type } = __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[shaderId][name];
         const uniformFunction = uniformFunctions[type];
         uniformFunction(this.gl, location, value);
-        this.useProgram(__classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f"));
+        this.useShader(__classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f"));
     }
-    useProgram(id) {
+    useShader(id) {
         this.gl.useProgram(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id]);
     }
     createFramebufferTexturePair({ id, textureType }) {
