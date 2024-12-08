@@ -1051,7 +1051,13 @@ class Wilson
 
 			else
 			{
-				this.#zoomVelocity = e.deltaY / 4;
+				this.#zoomVelocity = Math.min(
+					Math.max(
+						this.#zoomVelocity + Math.sign(e.deltaY) * 15,
+						-30
+					),
+					30
+				);
 			}
 		}
 

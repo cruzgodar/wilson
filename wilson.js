@@ -713,7 +713,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
             __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_zoomCanvas).call(this, scale);
         }
         else {
-            __classPrivateFieldSet(this, _Wilson_zoomVelocity, e.deltaY / 4, "f");
+            __classPrivateFieldSet(this, _Wilson_zoomVelocity, Math.min(Math.max(__classPrivateFieldGet(this, _Wilson_zoomVelocity, "f") + Math.sign(e.deltaY) * 15, -30), 30), "f");
         }
     }
     __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").wheel({
