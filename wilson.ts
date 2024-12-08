@@ -210,7 +210,7 @@ class Wilson
 	reduceMotion: boolean;
 
 	#interactionCallbacks: InteractionCallbacks;
-	#interactionUseForPanAndZoom: boolean;
+	useInteractionForPanAndZoom: boolean;
 	#interactionOnPanAndZoom: () => void = () => {};
 
 	
@@ -349,7 +349,7 @@ class Wilson
 			?? matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 		this.#interactionCallbacks = { ...defaultInteractionCallbacks, ...options.interactionOptions?.callbacks };
-		this.#interactionUseForPanAndZoom = options.interactionOptions?.useForPanAndZoom ?? false;
+		this.useInteractionForPanAndZoom = options.interactionOptions?.useForPanAndZoom ?? false;
 
 		this.#panFriction = 0.875;
 		this.#zoomFriction = 0.85;
@@ -582,6 +582,8 @@ class Wilson
 
 		this.canvas.setAttribute("width", this.#canvasWidth.toString());
 		this.canvas.setAttribute("height", this.#canvasHeight.toString());
+
+		this.#onResizeCanvas();
 	}
 
 
@@ -707,7 +709,7 @@ class Wilson
 		
 		this.#currentlyDragging = true;
 
-		if (this.#interactionUseForPanAndZoom)
+		if (this.useInteractionForPanAndZoom)
 		{
 			this.#zeroVelocities();
 		}
@@ -728,7 +730,7 @@ class Wilson
 
 		e.preventDefault();
 
-		if (this.#interactionUseForPanAndZoom && this.#currentlyDragging)
+		if (this.useInteractionForPanAndZoom && this.#currentlyDragging)
 		{
 			this.#setPanVelocity();
 		}
@@ -756,7 +758,7 @@ class Wilson
 			? this.#interactionCallbacks.mousedrag
 			: this.#interactionCallbacks.mousemove;
 
-		if (this.#interactionUseForPanAndZoom && this.#currentlyDragging)
+		if (this.useInteractionForPanAndZoom && this.#currentlyDragging)
 		{
 			this.worldCenterX -= x - lastX;
 			this.worldCenterY -= y - lastY;
@@ -845,7 +847,7 @@ class Wilson
 
 		this.#currentlyDragging = true;
 
-		if (this.#interactionUseForPanAndZoom)
+		if (this.useInteractionForPanAndZoom)
 		{
 			this.#zeroVelocities();
 		}
@@ -886,7 +888,7 @@ class Wilson
 
 
 
-		if (this.#interactionUseForPanAndZoom && this.#currentlyDragging)
+		if (this.useInteractionForPanAndZoom && this.#currentlyDragging)
 		{
 			this.#setPanVelocity();
 		}
@@ -943,7 +945,7 @@ class Wilson
 			this.#lastInteractionCol
 		]);
 
-		if (this.#interactionUseForPanAndZoom && this.#currentlyDragging)
+		if (this.useInteractionForPanAndZoom && this.#currentlyDragging)
 		{
 			if (e.touches.length > 1)
 			{
@@ -1039,7 +1041,7 @@ class Wilson
 
 		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
 
-		if (this.#interactionUseForPanAndZoom)
+		if (this.useInteractionForPanAndZoom)
 		{
 			this.#zoomFixedPoint = [x, y];
 
@@ -1160,7 +1162,7 @@ class Wilson
 			canvas.addEventListener("mouseleave", (e) => this.#onMouseup(e as MouseEvent));
 		}
 
-		if (this.#interactionUseForPanAndZoom)
+		if (this.useInteractionForPanAndZoom)
 		{
 			requestAnimationFrame(this.#updatePanAndZoomVelocity);
 		}
@@ -2232,6 +2234,7 @@ export class WilsonGPU extends Wilson
 
 	useShader(id: ShaderProgramId)
 	{
+		this.#currentShaderId = id;
 		this.gl.useProgram(this.#shaderPrograms[id]);
 	}
 
@@ -2349,13 +2352,10 @@ export class WilsonGPU extends Wilson
 		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
 	}
 
-	downloadFrame({
-		filename,
-		drawNewFrame = true
-	}: {
+	downloadFrame(
 		filename: string,
-		drawNewFrame?: boolean
-	}) {
+		drawNewFrame: boolean = true
+	) {
 		if (drawNewFrame)
 		{
 			this.drawFrame();

@@ -113,6 +113,7 @@
 	border: none !important;
 	border-radius: 0 !important;
 	padding: 0 !important;
+	aspect-ratio: unset !important;
 }
 
 

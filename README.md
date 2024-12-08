@@ -226,6 +226,7 @@ The above guide, along with the example project, are a great way to get started 
 - `worldWidth`, `worldHeight`, `worldCenterX`, `worldCenterY`: the current world coordinates. It is recommended not to change these directly, particularly when using the built-in panning and zooming.
 - `minWorldWidth`, `maxWorldWidth`, `minWorldHeight`, `maxWorldHeight`, `minWorldCenterX`, `maxWorldCenterX`, `minWorldCenterY`, `maxWorldCenterY`: bounds on the world coordinates. May be changed dynamically, although the possible subsequent clamping of the coordinates may be undesirable.
 - `reduceMotion`: a boolean for whether reduced motion animations are enabled. Can be changed dynamically.
+- `useInteractionForPanAndZoom`: a boolean for whether to use pan and zoom interactions. Can be changed dynamically.
 - `currentlyFullscreen`: a boolean for whether the canvas is currently in fullscreen mode. Readonly.
 - `animateFullscreen`: a boolean for whether the fullscreen transition is animated. Can be changed dynamically.
 - `draggableElements`: a readonly object containing the current draggables, of the form
@@ -257,7 +258,7 @@ The above guide, along with the example project, are a great way to get started 
 ### WilsonGPU Fields and Methods
 - `gl`: the WebGL or WebGL2 context.
 - `drawFrame()`: draws a frame with the current shader program.instances.
-- `downloadFrame({ filename: string, drawNewFrame?: boolean })`: downloads the current frame as a png file. For this to work properly, a new frame must be drawn immediately before downloading. Setting drawNewFrame to `false` will skip this step; only use this if you are manually drawing a frame directly before calling this method.
+- `downloadFrame(filename: string, drawNewFrame?: boolean)`: downloads the current frame as a png file. For this to work properly, a new frame must be drawn immediately before downloading. Setting drawNewFrame to `false` will skip this step; only use this if you are manually drawing a frame directly before calling this method.
 - `loadShader({ id?: string, source: string, uniforms?: {[name: string]: number | number[]} })`: loads a new shader program and sets it as the current one. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders.
 - `setUniform({ name: string, value: number | number[], shaderId?: string })`: sets a uniform. If no shader ID is specified, it defaults to the current shader program.
 - `useShader(id: string)`: sets the current shader program.
