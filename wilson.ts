@@ -604,16 +604,39 @@ class Wilson
 		this.#lastZoomVelocities = Array(this.#numPreviousVelocities).fill(0);
 	}
 
+	#setLastZoomVelocity(lastZoomVelocity: number)
+	{
+		if (Math.abs(lastZoomVelocity) > Math.abs(this.#lastZoomVelocity))
+		{
+			this.#lastZoomVelocity = lastZoomVelocity;
+		}
+	}
+
+	#setLastPanVelocity(lastPanVelocityX: number, lastPanVelocityY: number)
+	{
+		if (Math.abs(lastPanVelocityX) > Math.abs(this.#lastPanVelocityX))
+		{
+			this.#lastPanVelocityX = lastPanVelocityX;
+		}
+
+		if (Math.abs(lastPanVelocityY) > Math.abs(this.#lastPanVelocityY))
+		{
+			this.#lastPanVelocityY = lastPanVelocityY;
+		}
+	}
+
 	#setZoomVelocity()
 	{
 		this.#zoomVelocity = 0;
 
 		for (let i = 0; i < this.#numPreviousVelocities; i++)
 		{
-			this.#zoomVelocity += this.#lastZoomVelocities[i];
+			this.#zoomVelocity += Math.sign(this.#lastZoomVelocities[i])
+				* this.#lastZoomVelocities[i] ** 2;
 		}
 
-		this.#zoomVelocity /= this.#numPreviousVelocities;
+		this.#zoomVelocity = Math.sign(this.#zoomVelocity)
+			* Math.sqrt(Math.abs(this.#zoomVelocity) / this.#numPreviousVelocities);
 
 		if (Math.abs(this.#zoomVelocity) < this.#zoomVelocityThreshold)
 		{
@@ -764,8 +787,7 @@ class Wilson
 			this.worldCenterX -= x - lastX;
 			this.worldCenterY -= y - lastY;
 
-			this.#lastPanVelocityX = lastX - x;
-			this.#lastPanVelocityY = lastY - y;
+			this.#setLastPanVelocity(lastX - x, lastY - y);
 			
 			this.#needPanAndZoomUpdate = true;
 		}
@@ -818,7 +840,7 @@ class Wilson
 		this.#nonFullscreenWorldWidth *= scale;
 		this.#nonFullscreenWorldHeight *= scale;
 
-		this.#lastZoomVelocity = (scale - 1) * 200;
+		this.#setLastZoomVelocity((scale - 1) * 200);
 
 
 
@@ -828,8 +850,10 @@ class Wilson
 		const newWorldCenterX = this.#zoomFixedPoint[0] - newFixedPointX;
 		const newWorldCenterY = this.#zoomFixedPoint[1] - newFixedPointY;
 
-		this.#lastPanVelocityX = newWorldCenterX - this.worldCenterX;
-		this.#lastPanVelocityY = newWorldCenterY - this.worldCenterY;
+		// this.#setLastPanVelocity(
+		// 	newWorldCenterX - this.worldCenterX,
+		// 	newWorldCenterY - this.worldCenterY
+		// );
 
 		this.worldCenterX = newWorldCenterX;
 		this.worldCenterY = newWorldCenterY;
@@ -875,7 +899,7 @@ class Wilson
 
 		e.preventDefault();
 
-		if (e.touches.length < 2 && this.#ignoreTouchendCooldown !== 0)
+		if (this.#ignoreTouchendCooldown !== 0)
 		{
 			if (e.touches.length === 0)
 			{
@@ -887,7 +911,7 @@ class Wilson
 
 
 
-		if (this.useInteractionForPanAndZoom && this.#currentlyDragging)
+		if (this.useInteractionForPanAndZoom && this.#currentlyDragging && this.#ignoreTouchendCooldown === 0)
 		{
 			this.#setPanVelocity();
 		}
@@ -923,7 +947,7 @@ class Wilson
 		{
 			if (this.#currentlyPinching)
 			{
-				this.#ignoreTouchendCooldown = 100;
+				this.#ignoreTouchendCooldown = 350;
 				this.#setZoomVelocity();
 			}
 
@@ -979,8 +1003,7 @@ class Wilson
 				this.worldCenterX -= xDelta;
 				this.worldCenterY -= yDelta;
 
-				this.#lastPanVelocityX = -xDelta;
-				this.#lastPanVelocityY = -yDelta;
+				this.#setLastPanVelocity(-xDelta, -yDelta);
 
 				this.#lastInteractionRow2 = e.touches[1].clientY,
 				this.#lastInteractionCol2 = e.touches[1].clientX;
@@ -991,8 +1014,7 @@ class Wilson
 				this.worldCenterX -= x - lastX;
 				this.worldCenterY -= y - lastY;
 
-				this.#lastPanVelocityX = lastX - x;
-				this.#lastPanVelocityY = lastY - y;
+				this.#setLastPanVelocity(lastX - x, lastY - y);
 			}
 
 			this.#needPanAndZoomUpdate = true;
@@ -1097,11 +1119,27 @@ class Wilson
 		this.#ignoreTouchendCooldown = Math.max(0, this.#ignoreTouchendCooldown - timeElapsed);
 		this.#lastPanAndZoomTimestamp = timestamp;
 
-		if (timeElapsed > 10000)
+		if (timeElapsed === 0 || timeElapsed > 10000)
 		{
 			if (!this.#destroyed)
 			{
 				requestAnimationFrame(this.#updatePanAndZoomVelocity);
+			}
+
+			return;
+		}
+
+		if (this.#zoomVelocity)
+		{
+			this.#zoomCanvas(1 + this.#zoomVelocity * 0.005);
+			this.#zoomVelocity *= Math.pow(
+				this.#zoomFriction,
+				timeElapsed / (1000 / 60)
+			);
+
+			if (Math.abs(this.#zoomVelocity) < this.#zoomVelocityThreshold)
+			{
+				this.#zoomVelocity = 0;
 			}
 		}
 
@@ -1130,17 +1168,6 @@ class Wilson
 			{
 				this.#panVelocityX = 0;
 				this.#panVelocityY = 0;
-			}
-		}
-
-		if (this.#zoomVelocity)
-		{
-			this.#zoomCanvas(1 + this.#zoomVelocity * 0.005);
-			this.#zoomVelocity *= this.#zoomFriction;
-
-			if (Math.abs(this.#zoomVelocity) < this.#zoomVelocityThreshold)
-			{
-				this.#zoomVelocity = 0;
 			}
 		}
 
