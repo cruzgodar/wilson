@@ -211,6 +211,7 @@ class Wilson
 
 	#interactionCallbacks: InteractionCallbacks;
 	useInteractionForPanAndZoom: boolean;
+	#needPanAndZoomUpdate: boolean = false;
 	#interactionOnPanAndZoom: () => void = () => {};
 
 	
@@ -765,10 +766,8 @@ class Wilson
 
 			this.#lastPanVelocityX = lastX - x;
 			this.#lastPanVelocityY = lastY - y;
-
-			this.#clampWorldCoordinates();
-			this.#updateDraggablesLocation();
-			this.#interactionOnPanAndZoom();
+			
+			this.#needPanAndZoomUpdate = true;
 		}
 
 		callback({ x, y, xDelta: x - lastX, yDelta: y - lastY, event: e });
@@ -876,7 +875,7 @@ class Wilson
 
 		e.preventDefault();
 
-		if (this.#ignoreTouchendCooldown !== 0)
+		if (e.touches.length < 2 && this.#ignoreTouchendCooldown !== 0)
 		{
 			if (e.touches.length === 0)
 			{
@@ -996,9 +995,7 @@ class Wilson
 				this.#lastPanVelocityY = lastY - y;
 			}
 
-			this.#clampWorldCoordinates();
-			this.#updateDraggablesLocation();
-			this.#interactionOnPanAndZoom();
+			this.#needPanAndZoomUpdate = true;
 		}
 		
 		this.#interactionCallbacks.touchmove({
@@ -1038,9 +1035,7 @@ class Wilson
 		this.worldCenterX = this.#zoomFixedPoint[0] - newFixedPointX;
 		this.worldCenterY = this.#zoomFixedPoint[1] - newFixedPointY;
 		
-		this.#clampWorldCoordinates();
-		this.#updateDraggablesLocation();
-		this.#interactionOnPanAndZoom();
+		this.#needPanAndZoomUpdate = true;
 	}
 
 	#onWheel(e: WheelEvent)
@@ -1098,55 +1093,64 @@ class Wilson
 		this.#lastPanVelocityY = 0;
 
 		const timeElapsed = timestamp - this.#lastPanAndZoomTimestamp;
-		this.#lastPanAndZoomTimestamp = timestamp;
 
 		this.#ignoreTouchendCooldown = Math.max(0, this.#ignoreTouchendCooldown - timeElapsed);
+		this.#lastPanAndZoomTimestamp = timestamp;
 
-		if (timeElapsed < 1000)
+		if (timeElapsed > 10000)
 		{
-			if (this.#panVelocityX || this.#panVelocityY)
+			if (!this.#destroyed)
 			{
-				this.worldCenterX += this.#panVelocityX;
-				this.worldCenterY += this.#panVelocityY;
-
-				this.#clampWorldCoordinates();
-				this.#updateDraggablesLocation();
-				this.#interactionOnPanAndZoom();
-
-				const frictionFactor = Math.pow(
-					this.#panFriction,
-					timeElapsed / (1000 / 60)
-				);
-
-				this.#panVelocityX *= frictionFactor;
-				this.#panVelocityY *= frictionFactor;
-
-				const totalPanVelocitySquared = this.#panVelocityX * this.#panVelocityX
-					+ this.#panVelocityY * this.#panVelocityY;
-
-				const threshold = this.#panVelocityThreshold
-					* Math.min(this.worldWidth, this.worldHeight);
-
-				if (totalPanVelocitySquared < threshold * threshold)
-				{
-					this.#panVelocityX = 0;
-					this.#panVelocityY = 0;
-				}
+				requestAnimationFrame(this.#updatePanAndZoomVelocity);
 			}
+		}
 
-			if (this.#zoomVelocity)
+		if (this.#panVelocityX || this.#panVelocityY)
+		{
+			this.worldCenterX += this.#panVelocityX;
+			this.worldCenterY += this.#panVelocityY;
+
+			this.#needPanAndZoomUpdate = true;
+
+			const frictionFactor = Math.pow(
+				this.#panFriction,
+				timeElapsed / (1000 / 60)
+			);
+
+			this.#panVelocityX *= frictionFactor;
+			this.#panVelocityY *= frictionFactor;
+
+			const totalPanVelocitySquared = this.#panVelocityX * this.#panVelocityX
+				+ this.#panVelocityY * this.#panVelocityY;
+
+			const threshold = this.#panVelocityThreshold
+				* Math.min(this.worldWidth, this.worldHeight);
+
+			if (totalPanVelocitySquared < threshold * threshold)
 			{
-				this.#zoomCanvas(1 + this.#zoomVelocity * 0.005);
-				this.#zoomVelocity *= Math.pow(
-					this.#zoomFriction,
-					timeElapsed / (1000 / 60)
-				);
-
-				if (Math.abs(this.#zoomVelocity) < this.#zoomVelocityThreshold)
-				{
-					this.#zoomVelocity = 0;
-				}
+				this.#panVelocityX = 0;
+				this.#panVelocityY = 0;
 			}
+		}
+
+		if (this.#zoomVelocity)
+		{
+			this.#zoomCanvas(1 + this.#zoomVelocity * 0.005);
+			this.#zoomVelocity *= this.#zoomFriction;
+
+			if (Math.abs(this.#zoomVelocity) < this.#zoomVelocityThreshold)
+			{
+				this.#zoomVelocity = 0;
+			}
+		}
+
+		if (this.#needPanAndZoomUpdate)
+		{
+			this.#clampWorldCoordinates();
+			this.#updateDraggablesLocation();
+			this.#interactionOnPanAndZoom();
+
+			this.#needPanAndZoomUpdate = false;
 		}
 
 		if (!this.#destroyed)
