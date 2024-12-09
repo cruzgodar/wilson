@@ -267,7 +267,7 @@ The above guide, along with the example project, are a great way to get started 
 - `drawFrame()`: draws a frame with the current shader program.instances.
 - `downloadFrame(filename: string, drawNewFrame?: boolean)`: downloads the current frame as a png file. For this to work properly, a new frame must be drawn immediately before downloading. Setting drawNewFrame to `false` will skip this step; only use this if you are manually drawing a frame directly before calling this method.
 - `loadShader({ id?: string, source: string, uniforms?: {[name: string]: number | number[]} })`: loads a new shader program and sets it as the current one. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders.
-- `setUniform({ name: string, value: number | number[], shaderId?: string })`: sets a uniform. If no shader ID is specified, it defaults to the current shader program.
+- `setUniform({ name: string, value: number | number[], shader?: string })`: sets a uniform for the shader program with the given ID. If no shader ID is specified, it defaults to the current shader program's.
 - `useShader(id: string)`: sets the current shader program.
 - `createFramebufferTexturePair({ id: string, textureType: "unsignedByte" | "float" })`: creates a framebuffer texture pair with a given ID and type. The size of the texture is the same as the canvas.
 - `useFramebuffer(id: string | null)`: sets the current framebuffer.

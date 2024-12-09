@@ -2353,15 +2353,15 @@ export class WilsonGPU extends Wilson
 	setUniform({
 		name,
 		value,
-		shaderId = this.#currentShaderId
+		shader: shader = this.#currentShaderId
 	}: {
 		name: string,
 		value: number | number[],
-		shaderId?: ShaderProgramId
+		shader?: ShaderProgramId
 	}) {
-		this.useShader(shaderId);
+		this.useShader(shader);
 
-		const { location, type } = this.#uniforms[shaderId][name];
+		const { location, type } = this.#uniforms[shader][name];
 		const uniformFunction = uniformFunctions[type];
 		uniformFunction(this.gl, location, value);
 

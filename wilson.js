@@ -1250,9 +1250,9 @@ export class WilsonGPU extends Wilson {
             this.setUniform({ name, value });
         }
     }
-    setUniform({ name, value, shaderId = __classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f") }) {
-        this.useShader(shaderId);
-        const { location, type } = __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[shaderId][name];
+    setUniform({ name, value, shader: shader = __classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f") }) {
+        this.useShader(shader);
+        const { location, type } = __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[shader][name];
         const uniformFunction = uniformFunctions[type];
         uniformFunction(this.gl, location, value);
         this.useShader(__classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f"));
