@@ -228,14 +228,14 @@ The above guide, along with the example project, are a great way to get started 
 ### General Fields and Methods
 
 - `canvas`: the canvas element.
-- `canvasWidth`, `canvasHeight`: the width and height of the canvas, in pixels. Readonly.
-- `worldWidth`, `worldHeight`, `worldCenterX`, `worldCenterY`: the current world coordinates. It is recommended not to change these directly, particularly when using the built-in panning and zooming.
+- `canvasWidth`, `canvasHeight`: the width and height of the canvas, in pixels. Readonly; to change the canvas size, use `resizeCanvas`.
+- `worldWidth`, `worldHeight`, `worldCenterX`, `worldCenterY`: the current world coordinates. Readonly; to change the world size or center, use `resizeWorld`.
 - `minWorldWidth`, `maxWorldWidth`, `minWorldHeight`, `maxWorldHeight`, `minWorldCenterX`, `maxWorldCenterX`, `minWorldCenterY`, `maxWorldCenterY`: bounds on the world coordinates. May be changed dynamically, although the possible subsequent clamping of the coordinates may be undesirable.
 - `reduceMotion`: a boolean for whether reduced motion animations are enabled. Can be changed dynamically.
 - `useInteractionForPanAndZoom`: a boolean for whether to use pan and zoom interactions. Can be changed dynamically.
 - `currentlyFullscreen`: a boolean for whether the canvas is currently in fullscreen mode. Readonly.
 - `animateFullscreen`: a boolean for whether the fullscreen transition is animated. Can be changed dynamically.
-- `draggableElements`: a readonly object containing the current draggables, of the form
+- `draggables`: a readonly object containing the current draggables, of the form
 ```ts
 {
 	[id: string]: {
@@ -247,6 +247,7 @@ The above guide, along with the example project, are a great way to get started 
 }
 ```
 - `resizeCanvas({ width?: number, height?: number })`: resizes the canvas to the given dimensions. Exactly one of `width` and `height` must be specified.
+- `resizeWorld({ width?: number, height?: number, centerX?: number, centerY?: number })`: sets the world width, height, and center. If one of `width` and `height` is unspecified, the other will be calculated automatically to match the aspect ratio; it is possible, though not recommended, to specify both.
 - `addDraggable({ id: string, x: number, y: number })`: adds a draggable at the given world coordinates.
 - `removeDraggable(id: string)`: removes the draggable with the given ID.
 - `setDraggablePosition({ id: string, x: number, y: number })`: sets the world coordinates of the draggable with the given ID.

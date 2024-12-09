@@ -175,6 +175,7 @@ class Wilson
 	{
 		return this.#canvasWidth;
 	}
+
 	#canvasHeight: number;
 	get canvasHeight()
 	{
@@ -182,10 +183,29 @@ class Wilson
 	}
 	#canvasAspectRatio: number;
 
-	worldWidth: number;
-	worldHeight: number;
-	worldCenterX: number;
-	worldCenterY: number;
+	#worldWidth: number;
+	get worldWidth()
+	{
+		return this.#worldWidth;
+	}
+
+	#worldHeight: number;
+	get worldHeight()
+	{
+		return this.#worldHeight;
+	}
+
+	#worldCenterX: number;
+	get worldCenterX()
+	{
+		return this.#worldCenterX;
+	}
+	
+	#worldCenterY: number;
+	get worldCenterY()
+	{
+		return this.#worldCenterY;
+	}
 
 	#nonFullscreenWorldWidth: number;
 	#nonFullscreenWorldHeight: number;
@@ -301,35 +321,35 @@ class Wilson
 		
 		if (options.worldWidth !== undefined && options.worldHeight !== undefined)
 		{
-			this.worldWidth = options.worldWidth;
-			this.worldHeight = options.worldHeight;
+			this.#worldWidth = options.worldWidth;
+			this.#worldHeight = options.worldHeight;
 		}
 		
 		else if (options.worldHeight !== undefined)
 		{
-			this.worldHeight = options.worldHeight;
-			this.worldWidth = this.worldHeight * this.#canvasAspectRatio;
+			this.#worldHeight = options.worldHeight;
+			this.#worldWidth = this.#worldHeight * this.#canvasAspectRatio;
 		}
 
 		else if (options.worldWidth !== undefined)
 		{
-			this.worldWidth = options.worldWidth;
-			this.worldHeight = this.worldWidth / this.#canvasAspectRatio;
+			this.#worldWidth = options.worldWidth;
+			this.#worldHeight = this.#worldWidth / this.#canvasAspectRatio;
 		}
 
 		else
 		{
-			this.worldWidth = Math.max(2, 2 * this.#canvasAspectRatio);
-			this.worldHeight = Math.max(2, 2 / this.#canvasAspectRatio);
+			this.#worldWidth = Math.max(2, 2 * this.#canvasAspectRatio);
+			this.#worldHeight = Math.max(2, 2 / this.#canvasAspectRatio);
 		}
 
-		this.#nonFullscreenWorldWidth = this.worldWidth;
-		this.#nonFullscreenWorldHeight = this.worldHeight;
+		this.#nonFullscreenWorldWidth = this.#worldWidth;
+		this.#nonFullscreenWorldHeight = this.#worldHeight;
 
 
 
-		this.worldCenterX = options.worldCenterX ?? 0;
-		this.worldCenterY = options.worldCenterY ?? 0;
+		this.#worldCenterX = options.worldCenterX ?? 0;
+		this.#worldCenterY = options.worldCenterY ?? 0;
 
 		this.minWorldWidth = options.minWorldWidth ?? 0;
 		this.maxWorldWidth = options.maxWorldWidth ?? Infinity;
@@ -521,12 +541,12 @@ class Wilson
 
 			const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
 
-			this.worldWidth = Math.max(
+			this.#worldWidth = Math.max(
 				this.#nonFullscreenWorldWidth * aspectRatioChange,
 				this.#nonFullscreenWorldWidth
 			);
 
-			this.worldHeight = Math.max(
+			this.#worldHeight = Math.max(
 				this.#nonFullscreenWorldHeight / aspectRatioChange,
 				this.#nonFullscreenWorldHeight
 			);
@@ -585,6 +605,57 @@ class Wilson
 		this.canvas.setAttribute("height", this.#canvasHeight.toString());
 
 		this.#onResizeCanvas();
+	}
+
+	resizeWorld({
+		width,
+		height,
+		centerX,
+		centerY
+	}: {
+		width?: number,
+		height?: number,
+		centerX?: number,
+		centerY?: number
+	}) {
+		const aspectRatio = (this.#currentlyFullscreen && this.#fullscreenFillScreen)
+			? window.innerWidth / window.innerHeight
+			: this.#canvasAspectRatio;
+		
+		if (width !== undefined && height !== undefined)
+		{
+			this.#worldWidth = width;
+			this.#worldHeight = height;
+
+			this.#nonFullscreenWorldWidth = width;
+			this.#nonFullscreenWorldHeight = height;
+		}
+
+		else if (width !== undefined)
+		{
+			this.#worldWidth = width;
+			this.#worldHeight = width / aspectRatio;
+			this.#nonFullscreenWorldWidth = width;
+			this.#nonFullscreenWorldHeight = width / this.#canvasAspectRatio;
+		}
+
+		else if (height !== undefined)
+		{
+			this.#worldHeight = height;
+			this.#worldWidth = height * aspectRatio;
+			this.#nonFullscreenWorldHeight = height;
+			this.#nonFullscreenWorldWidth = height * this.#canvasAspectRatio;
+		}
+
+		this.#worldCenterX = centerX ?? this.#worldCenterX;
+		this.#worldCenterY = centerY ?? this.#worldCenterY;
+
+		this.#clampWorldCoordinates();
+
+		if (this.useInteractionForPanAndZoom)
+		{
+			this.#interactionOnPanAndZoom();
+		}
 	}
 
 
@@ -662,7 +733,7 @@ class Wilson
 			+ this.#panVelocityY * this.#panVelocityY;
 
 		const threshold = this.#panVelocityThreshold
-			* Math.min(this.worldWidth, this.worldHeight);
+			* Math.min(this.#worldWidth, this.#worldHeight);
 
 		if (totalPanVelocitySquared < threshold * threshold)
 		{
@@ -683,41 +754,41 @@ class Wilson
 
 	#clampWorldCoordinates()
 	{
-		this.worldCenterX = Math.min(Math.max(this.worldCenterX, this.minWorldCenterX), this.maxWorldCenterX);
-		this.worldCenterY = Math.min(Math.max(this.worldCenterY, this.minWorldCenterY), this.maxWorldCenterY);
+		this.#worldCenterX = Math.min(Math.max(this.#worldCenterX, this.minWorldCenterX), this.maxWorldCenterX);
+		this.#worldCenterY = Math.min(Math.max(this.#worldCenterY, this.minWorldCenterY), this.maxWorldCenterY);
 		
 		this.#atMaxWorldSize = false;
 		this.#atMinWorldSize = false;
 
 		const applyFactor = (factor: number) =>
 		{
-			this.worldHeight *= factor;
-			this.worldWidth *= factor;
+			this.#worldHeight *= factor;
+			this.#worldWidth *= factor;
 			this.#nonFullscreenWorldHeight *= factor;
 			this.#nonFullscreenWorldWidth *= factor;
 		};
 
-		if (this.worldWidth < this.minWorldWidth)
+		if (this.#worldWidth < this.minWorldWidth)
 		{
-			applyFactor(this.minWorldWidth / this.worldWidth);
+			applyFactor(this.minWorldWidth / this.#worldWidth);
 			this.#atMinWorldSize = true;
 		}
 
-		else if (this.worldWidth > this.maxWorldWidth)
+		else if (this.#worldWidth > this.maxWorldWidth)
 		{
-			applyFactor(this.maxWorldWidth / this.worldWidth);
+			applyFactor(this.maxWorldWidth / this.#worldWidth);
 			this.#atMaxWorldSize = true;
 		}
 
-		if (this.worldHeight < this.minWorldHeight)
+		if (this.#worldHeight < this.minWorldHeight)
 		{
-			applyFactor(this.minWorldHeight / this.worldHeight);
+			applyFactor(this.minWorldHeight / this.#worldHeight);
 			this.#atMinWorldSize = true;
 		}
 
-		else if (this.worldHeight > this.maxWorldHeight)
+		else if (this.#worldHeight > this.maxWorldHeight)
 		{
-			applyFactor(this.maxWorldHeight / this.worldHeight);
+			applyFactor(this.maxWorldHeight / this.#worldHeight);
 			this.#atMaxWorldSize = true;
 		}
 	}
@@ -784,8 +855,8 @@ class Wilson
 
 		if (this.useInteractionForPanAndZoom && this.#currentlyDragging)
 		{
-			this.worldCenterX -= x - lastX;
-			this.worldCenterY -= y - lastY;
+			this.#worldCenterX -= x - lastX;
+			this.#worldCenterY -= y - lastY;
 
 			this.#setLastPanVelocity(lastX - x, lastY - y);
 			
@@ -828,14 +899,14 @@ class Wilson
 		);
 
 		const centerProportion = [
-			(this.#zoomFixedPoint[0] - this.worldCenterX) / this.worldWidth,
-			(this.#zoomFixedPoint[1] - this.worldCenterY) / this.worldHeight
+			(this.#zoomFixedPoint[0] - this.#worldCenterX) / this.#worldWidth,
+			(this.#zoomFixedPoint[1] - this.#worldCenterY) / this.#worldHeight
 		];
 
 		const scale = lastDistance / distance;
 
-		this.worldWidth *= scale;
-		this.worldHeight *= scale;
+		this.#worldWidth *= scale;
+		this.#worldHeight *= scale;
 
 		this.#nonFullscreenWorldWidth *= scale;
 		this.#nonFullscreenWorldHeight *= scale;
@@ -844,8 +915,8 @@ class Wilson
 
 
 
-		const newFixedPointX = centerProportion[0] * this.worldWidth;
-		const newFixedPointY = centerProportion[1] * this.worldHeight;
+		const newFixedPointX = centerProportion[0] * this.#worldWidth;
+		const newFixedPointY = centerProportion[1] * this.#worldHeight;
 
 		const newWorldCenterX = this.#zoomFixedPoint[0] - newFixedPointX;
 		const newWorldCenterY = this.#zoomFixedPoint[1] - newFixedPointY;
@@ -855,8 +926,8 @@ class Wilson
 		// 	newWorldCenterY - this.worldCenterY
 		// );
 
-		this.worldCenterX = newWorldCenterX;
-		this.worldCenterY = newWorldCenterY;
+		this.#worldCenterX = newWorldCenterX;
+		this.#worldCenterY = newWorldCenterY;
 	}
 	
 	#onTouchstart(e: TouchEvent)
@@ -1000,8 +1071,8 @@ class Wilson
 				const xDelta = (x + touch2[0]) / 2 - (lastX + lastTouch2[0]) / 2;
 				const yDelta = (y + touch2[1]) / 2 - (lastY + lastTouch2[1]) / 2;
 
-				this.worldCenterX -= xDelta;
-				this.worldCenterY -= yDelta;
+				this.#worldCenterX -= xDelta;
+				this.#worldCenterY -= yDelta;
 
 				this.#setLastPanVelocity(-xDelta, -yDelta);
 
@@ -1011,8 +1082,8 @@ class Wilson
 			
 			else
 			{
-				this.worldCenterX -= x - lastX;
-				this.worldCenterY -= y - lastY;
+				this.#worldCenterX -= x - lastX;
+				this.#worldCenterY -= y - lastY;
 
 				this.#setLastPanVelocity(lastX - x, lastY - y);
 			}
@@ -1041,21 +1112,21 @@ class Wilson
 		}
 
 		const centerProportion = [
-			(this.#zoomFixedPoint[0] - this.worldCenterX) / this.worldWidth,
-			(this.#zoomFixedPoint[1] - this.worldCenterY) / this.worldHeight
+			(this.#zoomFixedPoint[0] - this.#worldCenterX) / this.#worldWidth,
+			(this.#zoomFixedPoint[1] - this.#worldCenterY) / this.#worldHeight
 		];
 
-		this.worldWidth *= scale;
-		this.worldHeight *= scale;
+		this.#worldWidth *= scale;
+		this.#worldHeight *= scale;
 
 		this.#nonFullscreenWorldWidth *= scale;
 		this.#nonFullscreenWorldHeight *= scale;
 
-		const newFixedPointX = centerProportion[0] * this.worldWidth;
-		const newFixedPointY = centerProportion[1] * this.worldHeight;
+		const newFixedPointX = centerProportion[0] * this.#worldWidth;
+		const newFixedPointY = centerProportion[1] * this.#worldHeight;
 
-		this.worldCenterX = this.#zoomFixedPoint[0] - newFixedPointX;
-		this.worldCenterY = this.#zoomFixedPoint[1] - newFixedPointY;
+		this.#worldCenterX = this.#zoomFixedPoint[0] - newFixedPointX;
+		this.#worldCenterY = this.#zoomFixedPoint[1] - newFixedPointY;
 		
 		this.#needPanAndZoomUpdate = true;
 	}
@@ -1145,8 +1216,8 @@ class Wilson
 
 		if (this.#panVelocityX || this.#panVelocityY)
 		{
-			this.worldCenterX += this.#panVelocityX;
-			this.worldCenterY += this.#panVelocityY;
+			this.#worldCenterX += this.#panVelocityX;
+			this.#worldCenterY += this.#panVelocityY;
 
 			this.#needPanAndZoomUpdate = true;
 
@@ -1162,7 +1233,7 @@ class Wilson
 				+ this.#panVelocityY * this.#panVelocityY;
 
 			const threshold = this.#panVelocityThreshold
-				* Math.min(this.worldWidth, this.worldHeight);
+				* Math.min(this.#worldWidth, this.#worldHeight);
 
 			if (totalPanVelocitySquared < threshold * threshold)
 			{
@@ -1217,7 +1288,7 @@ class Wilson
 			currentlyDragging: boolean,
 		}
 	} = {};
-	get draggableElements()
+	get draggables()
 	{
 		return this.#draggableElements;
 	}
@@ -1252,13 +1323,13 @@ class Wilson
 		//First convert to page coordinates.
 		const uncappedRow = Math.floor(
 			this.#draggablesContainerRestrictedHeight * (
-				1 - ((y - this.worldCenterY) / this.worldHeight + .5)
+				1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
 			)
 		) + this.#draggablesRadius;
 
 		const uncappedCol = Math.floor(
 			this.#draggablesContainerRestrictedWidth * (
-				(x - this.worldCenterX) / this.worldWidth + .5
+				(x - this.#worldCenterX) / this.#worldWidth + .5
 			)
 		) + this.#draggablesRadius;
 
@@ -1314,13 +1385,13 @@ class Wilson
 
 		const uncappedRow = Math.floor(
 			this.#draggablesContainerRestrictedHeight * (
-				1 - ((y - this.worldCenterY) / this.worldHeight + .5)
+				1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
 			)
 		) + this.#draggablesRadius;
 
 		const uncappedCol = Math.floor(
 			this.#draggablesContainerRestrictedWidth * (
-				(x - this.worldCenterX) / this.worldWidth + .5
+				(x - this.#worldCenterX) / this.#worldWidth + .5
 			)
 		) + this.#draggablesRadius;
 
@@ -1406,12 +1477,12 @@ class Wilson
 		const x = (
 			(col - this.#draggablesRadius - this.#draggablesContainerRestrictedWidth / 2)
 				/ this.#draggablesContainerRestrictedWidth
-		) * this.worldWidth + this.worldCenterX;
+		) * this.#worldWidth + this.#worldCenterX;
 		
 		const y = (
 			-(row - this.#draggablesRadius - this.#draggablesContainerRestrictedHeight / 2)
 				/ this.#draggablesContainerRestrictedHeight
-		) * this.worldHeight + this.worldCenterY;
+		) * this.#worldHeight + this.#worldCenterY;
 		
 		requestAnimationFrame(() =>
 		{
@@ -1498,12 +1569,12 @@ class Wilson
 			const x = (
 				(col - this.#draggablesRadius - this.#draggablesContainerRestrictedWidth / 2)
 					/ this.#draggablesContainerRestrictedWidth
-			) * this.worldWidth + this.worldCenterX;
+			) * this.#worldWidth + this.#worldCenterX;
 			
 			const y = (
 				-(row - this.#draggablesRadius - this.#draggablesContainerRestrictedHeight / 2)
 					/ this.#draggablesContainerRestrictedHeight
-			) * this.worldHeight + this.worldCenterY;
+			) * this.#worldHeight + this.#worldCenterY;
 
 			return [x, y, row, col] as [number, number, number, number];
 		});
@@ -1589,13 +1660,13 @@ class Wilson
 
 			const uncappedRow = Math.floor(
 				this.#draggablesContainerRestrictedHeight * (
-					1 - ((y - this.worldCenterY) / this.worldHeight + .5)
+					1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
 				)
 			) + this.#draggablesRadius;
 
 			const uncappedCol = Math.floor(
 				this.#draggablesContainerRestrictedWidth * (
-					(x - this.worldCenterX) / this.worldWidth + .5
+					(x - this.#worldCenterX) / this.#worldWidth + .5
 				)
 			) + this.#draggablesRadius;
 
@@ -1725,8 +1796,8 @@ class Wilson
 
 			const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
 
-			this.worldWidth = Math.max(this.worldWidth * aspectRatioChange, this.worldWidth);
-			this.worldHeight = Math.max(this.worldHeight / aspectRatioChange, this.worldHeight);
+			this.#worldWidth = Math.max(this.#worldWidth * aspectRatioChange, this.#worldWidth);
+			this.#worldHeight = Math.max(this.#worldHeight / aspectRatioChange, this.#worldHeight);
 			
 			this.#clampWorldCoordinates();
 		}
@@ -1803,8 +1874,8 @@ class Wilson
 
 		if (this.#fullscreenFillScreen)
 		{
-			this.worldWidth = this.#nonFullscreenWorldWidth;
-			this.worldHeight = this.#nonFullscreenWorldHeight;
+			this.#worldWidth = this.#nonFullscreenWorldWidth;
+			this.#worldHeight = this.#nonFullscreenWorldHeight;
 			
 			this.#clampWorldCoordinates();
 		}
@@ -1893,19 +1964,19 @@ class Wilson
 	interpolateCanvasToWorld([row, col]: [number, number]): [number, number]
 	{
 		return [
-			(col / this.#canvasWidth - .5) * this.worldWidth
-				+ this.worldCenterX,
-			(.5 - row / this.#canvasHeight) * this.worldHeight
-				+ this.worldCenterY
+			(col / this.#canvasWidth - .5) * this.#worldWidth
+				+ this.#worldCenterX,
+			(.5 - row / this.#canvasHeight) * this.#worldHeight
+				+ this.#worldCenterY
 		];
 	}
 
 	interpolateWorldToCanvas([x, y]: [number, number]): [number, number]
 	{
 		return [
-			Math.floor((.5 - (y - this.worldCenterY) / this.worldHeight)
+			Math.floor((.5 - (y - this.#worldCenterY) / this.#worldHeight)
 				* this.#canvasHeight),
-			Math.floor(((x - this.worldCenterX) / this.worldWidth + .5)
+			Math.floor(((x - this.#worldCenterX) / this.#worldWidth + .5)
 				* this.#canvasWidth)
 		];
 	}
