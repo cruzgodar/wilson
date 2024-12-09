@@ -363,8 +363,9 @@ class Wilson {
         if (width !== undefined && height !== undefined) {
             __classPrivateFieldSet(this, _Wilson_worldWidth, width, "f");
             __classPrivateFieldSet(this, _Wilson_worldHeight, height, "f");
-            __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldWidth, width, "f");
-            __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldHeight, height, "f");
+            const aspectRatioChange = aspectRatio / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f");
+            __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldWidth, width / Math.max(aspectRatioChange, 1), "f");
+            __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldHeight, height * Math.min(aspectRatioChange, 1), "f");
         }
         else if (width !== undefined) {
             __classPrivateFieldSet(this, _Wilson_worldWidth, width, "f");

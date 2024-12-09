@@ -627,8 +627,10 @@ class Wilson
 			this.#worldWidth = width;
 			this.#worldHeight = height;
 
-			this.#nonFullscreenWorldWidth = width;
-			this.#nonFullscreenWorldHeight = height;
+			const aspectRatioChange = aspectRatio / this.#canvasAspectRatio;
+
+			this.#nonFullscreenWorldWidth = width / Math.max(aspectRatioChange, 1);
+			this.#nonFullscreenWorldHeight = height * Math.min(aspectRatioChange, 1);
 		}
 
 		else if (width !== undefined)
