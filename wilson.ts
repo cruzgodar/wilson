@@ -1908,8 +1908,11 @@ class Wilson
 		document.removeEventListener("gesturechange", this.#preventGestures);
 		document.removeEventListener("gestureend", this.#preventGestures);
 
-
-		this.resizeCanvas({ width: this.#canvasOldWidth });
+		
+		if (this.#fullscreenFillScreen)
+		{
+			this.resizeCanvas({ width: this.#canvasOldWidth });
+		}
 
 		this.canvas.style.width = this.#canvasOldWidthStyle;
 		this.canvas.style.height = this.#canvasOldHeightStyle;
