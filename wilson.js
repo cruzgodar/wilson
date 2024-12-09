@@ -571,7 +571,9 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable")) {
         return;
     }
-    e.preventDefault();
+    if (this.useInteractionForPanAndZoom) {
+        e.preventDefault();
+    }
     __classPrivateFieldSet(this, _Wilson_currentlyDragging, true, "f");
     if (this.useInteractionForPanAndZoom) {
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_zeroVelocities).call(this);
@@ -584,7 +586,9 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable")) {
         return;
     }
-    e.preventDefault();
+    if (this.useInteractionForPanAndZoom) {
+        e.preventDefault();
+    }
     if (this.useInteractionForPanAndZoom && __classPrivateFieldGet(this, _Wilson_currentlyDragging, "f")) {
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_setPanVelocity).call(this);
     }
@@ -594,7 +598,9 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     __classPrivateFieldSet(this, _Wilson_lastInteractionCol, e.clientX, "f");
     __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").mouseup({ x, y, event: e });
 }, _Wilson_onMousemove = function _Wilson_onMousemove(e) {
-    e.preventDefault();
+    if (this.useInteractionForPanAndZoom) {
+        e.preventDefault();
+    }
     const [x, y] = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [e.clientY, e.clientX]);
     const [lastX, lastY] = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [
         __classPrivateFieldGet(this, _Wilson_lastInteractionRow, "f"),
@@ -645,7 +651,9 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable")) {
         return;
     }
-    e.preventDefault();
+    if (this.useInteractionForPanAndZoom) {
+        e.preventDefault();
+    }
     __classPrivateFieldSet(this, _Wilson_currentlyDragging, true, "f");
     if (this.useInteractionForPanAndZoom) {
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_zeroVelocities).call(this);
@@ -663,7 +671,9 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable")) {
         return;
     }
-    e.preventDefault();
+    if (this.useInteractionForPanAndZoom) {
+        e.preventDefault();
+    }
     if (__classPrivateFieldGet(this, _Wilson_ignoreTouchendCooldown, "f") !== 0) {
         if (e.touches.length === 0) {
             __classPrivateFieldSet(this, _Wilson_currentlyDragging, false, "f");
@@ -702,7 +712,9 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     }
     __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").touchend({ x, y, event: e });
 }, _Wilson_onTouchmove = function _Wilson_onTouchmove(e) {
-    e.preventDefault();
+    if (this.useInteractionForPanAndZoom) {
+        e.preventDefault();
+    }
     if (__classPrivateFieldGet(this, _Wilson_ignoreTouchendCooldown, "f") !== 0) {
         return;
     }
@@ -772,7 +784,9 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     __classPrivateFieldSet(this, _Wilson_worldCenterY, __classPrivateFieldGet(this, _Wilson_zoomFixedPoint, "f")[1] - newFixedPointY, "f");
     __classPrivateFieldSet(this, _Wilson_needPanAndZoomUpdate, true, "f");
 }, _Wilson_onWheel = function _Wilson_onWheel(e) {
-    e.preventDefault();
+    if (this.useInteractionForPanAndZoom) {
+        e.preventDefault();
+    }
     const [x, y] = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [e.clientY, e.clientX]);
     if (this.useInteractionForPanAndZoom) {
         __classPrivateFieldSet(this, _Wilson_zoomFixedPoint, [x, y], "f");

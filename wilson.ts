@@ -802,7 +802,10 @@ class Wilson
 			return;
 		}
 
-		e.preventDefault();
+		if (this.useInteractionForPanAndZoom)
+		{
+			e.preventDefault();
+		}
 		
 		this.#currentlyDragging = true;
 
@@ -825,7 +828,10 @@ class Wilson
 			return;
 		}
 
-		e.preventDefault();
+		if (this.useInteractionForPanAndZoom)
+		{
+			e.preventDefault();
+		}
 
 		if (this.useInteractionForPanAndZoom && this.#currentlyDragging)
 		{
@@ -843,7 +849,10 @@ class Wilson
 
 	#onMousemove(e: MouseEvent)
 	{
-		e.preventDefault();
+		if (this.useInteractionForPanAndZoom)
+		{
+			e.preventDefault();
+		}
 
 		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
 		const [lastX, lastY] = this.#interpolatePageToWorld([
@@ -939,7 +948,10 @@ class Wilson
 			return;
 		}
 
-		e.preventDefault();
+		if (this.useInteractionForPanAndZoom)
+		{
+			e.preventDefault();
+		}
 
 		this.#currentlyDragging = true;
 
@@ -970,7 +982,10 @@ class Wilson
 			return;
 		}
 
-		e.preventDefault();
+		if (this.useInteractionForPanAndZoom)
+		{
+			e.preventDefault();
+		}
 
 		if (this.#ignoreTouchendCooldown !== 0)
 		{
@@ -1032,7 +1047,10 @@ class Wilson
 
 	#onTouchmove(e: TouchEvent)
 	{
-		e.preventDefault();
+		if (this.useInteractionForPanAndZoom)
+		{
+			e.preventDefault();
+		}
 
 		if (this.#ignoreTouchendCooldown !== 0)
 		{
@@ -1135,7 +1153,10 @@ class Wilson
 
 	#onWheel(e: WheelEvent)
 	{
-		e.preventDefault();
+		if (this.useInteractionForPanAndZoom)
+		{
+			e.preventDefault();
+		}
 
 		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
 
