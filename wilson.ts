@@ -2336,9 +2336,6 @@ export class WilsonGPU extends Wilson
 		{
 			const location = this.gl.getUniformLocation(this.#shaderPrograms[id], name);
 
-			console.log(this.#shaderPrograms[id], name);
-
-
 			if (location === null)
 			{
 				throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Full shader source: ${source}`);
