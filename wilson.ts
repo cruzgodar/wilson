@@ -2523,9 +2523,11 @@ export class WilsonGPU extends Wilson
 		);
 	}
 
-	readPixels()
+	readPixels(format: "unsignedByte" | "float" = "unsignedByte")
 	{
-		const pixels = new Uint8ClampedArray(this.canvasWidth * this.canvasHeight * 4);
+		const pixels = format === "float"
+			? new Float32Array(this.canvasWidth * this.canvasHeight * 4)
+			: new Uint8Array(this.canvasWidth * this.canvasHeight * 4);
 
 		this.gl.readPixels(
 			0,
@@ -2533,7 +2535,9 @@ export class WilsonGPU extends Wilson
 			this.canvasWidth,
 			this.canvasHeight,
 			this.gl.RGBA,
-			this.gl.UNSIGNED_BYTE,
+			format === "float"
+				? this.gl.FLOAT
+				: this.gl.UNSIGNED_BYTE,
 			pixels
 		);
 

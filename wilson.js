@@ -1326,9 +1326,13 @@ export class WilsonGPU extends Wilson {
             ? this.gl.FLOAT
             : this.gl.UNSIGNED_BYTE, data);
     }
-    readPixels() {
-        const pixels = new Uint8ClampedArray(this.canvasWidth * this.canvasHeight * 4);
-        this.gl.readPixels(0, 0, this.canvasWidth, this.canvasHeight, this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels);
+    readPixels(format = "unsignedByte") {
+        const pixels = format === "float"
+            ? new Float32Array(this.canvasWidth * this.canvasHeight * 4)
+            : new Uint8Array(this.canvasWidth * this.canvasHeight * 4);
+        this.gl.readPixels(0, 0, this.canvasWidth, this.canvasHeight, this.gl.RGBA, format === "float"
+            ? this.gl.FLOAT
+            : this.gl.UNSIGNED_BYTE, pixels);
         return pixels;
     }
     resizeCanvas(dimensions) {
