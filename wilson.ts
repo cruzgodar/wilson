@@ -1845,7 +1845,7 @@ class Wilson
 			)
 				.forEach(button => button.style.removeProperty("view-transition-name"));
 
-			document.body.querySelectorAll<HTMLElement>(".WILSON_applet-container")
+			document.body.querySelectorAll<HTMLElement>(".WILSON_canvas-container > canvas")
 				.forEach(container => container.style.removeProperty("view-transition-name"));
 
 			document.body.querySelectorAll<HTMLElement>(".WILSON_draggable")
@@ -1869,7 +1869,7 @@ class Wilson
 					)
 				}
 				
-				this.#appletContainer.style.setProperty("view-transition-name", "WILSON_applet-container")
+				this.canvas.style.setProperty("view-transition-name", "WILSON_canvas");
 
 				for (const [id, data] of Object.entries(this.#draggableElements))
 				{
@@ -1952,7 +1952,7 @@ class Wilson
 		{
 			if (!this.#fullscreenFillScreen && !this.reduceMotion)
 			{
-				this.#appletContainer.style.setProperty("view-transition-name", "WILSON_applet-container")
+				this.canvas.style.setProperty("view-transition-name", "WILSON_canvas");
 			}
 
 			// @ts-ignore

@@ -436,7 +436,7 @@ class Wilson {
         if (document.startViewTransition && this.animateFullscreen) {
             document.body.querySelectorAll(".WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button")
                 .forEach(button => button.style.removeProperty("view-transition-name"));
-            document.body.querySelectorAll(".WILSON_applet-container")
+            document.body.querySelectorAll(".WILSON_canvas-container > canvas")
                 .forEach(container => container.style.removeProperty("view-transition-name"));
             document.body.querySelectorAll(".WILSON_draggable")
                 .forEach(container => container.style.removeProperty("view-transition-name"));
@@ -447,7 +447,7 @@ class Wilson {
                 if (__classPrivateFieldGet(this, _Wilson_fullscreenExitFullscreenButton, "f")) {
                     __classPrivateFieldGet(this, _Wilson_fullscreenExitFullscreenButton, "f").style.setProperty("view-transition-name", "WILSON_fullscreen-button");
                 }
-                __classPrivateFieldGet(this, _Wilson_appletContainer, "f").style.setProperty("view-transition-name", "WILSON_applet-container");
+                this.canvas.style.setProperty("view-transition-name", "WILSON_canvas");
                 for (const [id, data] of Object.entries(__classPrivateFieldGet(this, _Wilson_draggableElements, "f"))) {
                     data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}`);
                 }
@@ -463,7 +463,7 @@ class Wilson {
         // @ts-ignore
         if (document.startViewTransition && this.animateFullscreen) {
             if (!__classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f") && !this.reduceMotion) {
-                __classPrivateFieldGet(this, _Wilson_appletContainer, "f").style.setProperty("view-transition-name", "WILSON_applet-container");
+                this.canvas.style.setProperty("view-transition-name", "WILSON_canvas");
             }
             // @ts-ignore
             document.startViewTransition(() => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_exitFullscreen).call(this));
