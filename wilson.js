@@ -1241,7 +1241,7 @@ export class WilsonGPU extends Wilson {
         for (const [name, value] of Object.entries(uniforms)) {
             const location = this.gl.getUniformLocation(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], name);
             if (location === null) {
-                throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Full shader source: ${source}`);
+                throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${source}`);
             }
             // Match strings like "uniform int foo;" to "int".
             const match = source.match(new RegExp(`uniform\\s+(\\S+?)\\s+${name}\\s*;`));
@@ -1268,9 +1268,6 @@ export class WilsonGPU extends Wilson {
         this.gl.useProgram(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id]);
     }
     createFramebufferTexturePair({ id, width = this.canvasWidth, height = this.canvasHeight, textureType }) {
-        if (__classPrivateFieldGet(this, _WilsonGPU_framebuffers, "f")[id] !== undefined || __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id] !== undefined) {
-            throw new Error(`[Wilson] Tried to create a framebuffer texture pair with id ${id}, but one already exists.`);
-        }
         const framebuffer = this.gl.createFramebuffer();
         if (!framebuffer) {
             throw new Error(`[Wilson] Couldn't create a framebuffer with id ${id}.`);

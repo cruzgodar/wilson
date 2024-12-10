@@ -2338,7 +2338,7 @@ export class WilsonGPU extends Wilson
 
 			if (location === null)
 			{
-				throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Full shader source: ${source}`);
+				throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${source}`);
 			}
 
 			// Match strings like "uniform int foo;" to "int".
@@ -2407,11 +2407,6 @@ export class WilsonGPU extends Wilson
 		height?: number,
 		textureType: "unsignedByte" | "float"
 	}) {
-		if (this.#framebuffers[id] !== undefined || this.#textures[id] !== undefined)
-		{
-			throw new Error(`[Wilson] Tried to create a framebuffer texture pair with id ${id}, but one already exists.`);
-		}
-
 		const framebuffer = this.gl.createFramebuffer();
 
 		if (!framebuffer)
