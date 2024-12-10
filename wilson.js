@@ -1148,11 +1148,17 @@ export class WilsonGPU extends Wilson {
         const gl = canvas.getContext("webgl2");
         if (gl) {
             this.gl = gl;
+            if (!this.gl.getExtension("EXT_color_buffer_float")) {
+                console.warn("[Wilson] No support for float textures.");
+            }
         }
         else {
             const gl = canvas.getContext("webgl");
             if (gl) {
                 this.gl = gl;
+                if (!this.gl.getExtension("OES_texture_float")) {
+                    console.warn("[Wilson] No support for float textures.");
+                }
             }
             else {
                 throw new Error("[Wilson] Failed to get WebGL or WebGL2 context.");
@@ -1234,6 +1240,7 @@ export class WilsonGPU extends Wilson {
         __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[id] = {};
         for (const [name, value] of Object.entries(uniforms)) {
             const location = this.gl.getUniformLocation(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], name);
+            console.log(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], name);
             if (location === null) {
                 throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Full shader source: ${source}`);
             }
@@ -1261,7 +1268,7 @@ export class WilsonGPU extends Wilson {
         __classPrivateFieldSet(this, _WilsonGPU_currentShaderId, id, "f");
         this.gl.useProgram(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id]);
     }
-    createFramebufferTexturePair({ id, textureType }) {
+    createFramebufferTexturePair({ id, width = this.canvasWidth, height = this.canvasHeight, textureType }) {
         if (__classPrivateFieldGet(this, _WilsonGPU_framebuffers, "f")[id] !== undefined || __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id] !== undefined) {
             throw new Error(`[Wilson] Tried to create a framebuffer texture pair with id ${id}, but one already exists.`);
         }
@@ -1274,7 +1281,11 @@ export class WilsonGPU extends Wilson {
             throw new Error(`[Wilson] Couldn't create a texture with id ${id}.`);
         }
         this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.canvasWidth, this.canvasHeight, 0, this.gl.RGBA, textureType === "unsignedByte" ? this.gl.UNSIGNED_BYTE : this.gl.FLOAT, null);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, (textureType === "float" && this.gl instanceof WebGL2RenderingContext)
+            ? this.gl.RGBA32F
+            : this.gl.RGBA, width, height, 0, this.gl.RGBA, textureType === "float"
+            ? this.gl.FLOAT
+            : this.gl.UNSIGNED_BYTE, null);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
@@ -1283,7 +1294,12 @@ export class WilsonGPU extends Wilson {
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
         this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, texture, 0);
         __classPrivateFieldGet(this, _WilsonGPU_framebuffers, "f")[id] = framebuffer;
-        __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id] = texture;
+        __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id] = {
+            texture,
+            width,
+            height,
+            type: textureType,
+        };
     }
     useFramebuffer(id) {
         if (id === null) {
@@ -1297,7 +1313,22 @@ export class WilsonGPU extends Wilson {
             this.gl.bindTexture(this.gl.TEXTURE_2D, null);
             return;
         }
-        this.gl.bindTexture(this.gl.TEXTURE_2D, __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id]);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id].texture);
+    }
+    setTexture({ id, data, }) {
+        if (!__classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id]) {
+            throw new Error(`[Wilson] Tried to set a texture with id ${id}, but it doesn't exist.`);
+        }
+        if ((data instanceof Uint8Array && __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id].type !== "unsignedByte")
+            || (data instanceof Float32Array && __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id].type !== "float")) {
+            throw new Error(`[Wilson] Tried to set a texture with id ${id}, but the data type does not match the texture type (the data type should be a ${__classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id].type === 'unsignedByte' ? 'Uint8Array' : 'Float32Array'}).`);
+        }
+        this.gl.bindTexture(this.gl.TEXTURE_2D, __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id].texture);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, (__classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id].type === "float" && this.gl instanceof WebGL2RenderingContext)
+            ? this.gl.RGBA32F
+            : this.gl.RGBA, __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id].width, __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id].height, 0, this.gl.RGBA, __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id].type === "float"
+            ? this.gl.FLOAT
+            : this.gl.UNSIGNED_BYTE, data);
     }
     readPixels() {
         const pixels = new Uint8ClampedArray(this.canvasWidth * this.canvasHeight * 4);

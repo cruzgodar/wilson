@@ -2164,6 +2164,11 @@ export class WilsonGPU extends Wilson
 		if (gl)
 		{
 			this.gl = gl;
+
+			if (!this.gl.getExtension("EXT_color_buffer_float"))
+			{
+				console.warn("[Wilson] No support for float textures.");
+			}
 		}
 
 		else
@@ -2173,6 +2178,11 @@ export class WilsonGPU extends Wilson
 			if (gl)
 			{
 				this.gl = gl;
+
+				if (!this.gl.getExtension("OES_texture_float"))
+				{
+					console.warn("[Wilson] No support for float textures.");
+				}
 			}
 
 			else
@@ -2326,6 +2336,9 @@ export class WilsonGPU extends Wilson
 		{
 			const location = this.gl.getUniformLocation(this.#shaderPrograms[id], name);
 
+			console.log(this.#shaderPrograms[id], name);
+
+
 			if (location === null)
 			{
 				throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Full shader source: ${source}`);
@@ -2377,13 +2390,24 @@ export class WilsonGPU extends Wilson
 	
 
 	#framebuffers: {[id: string]: WebGLFramebuffer} = {};
-	#textures: {[id: string]: WebGLTexture} = {};
+	#textures: {
+		[id: string]: {
+			texture: WebGLTexture,
+			width: number,
+			height: number,
+			type: "unsignedByte" | "float"
+		}
+	} = {};
 
 	createFramebufferTexturePair({
 		id,
+		width = this.canvasWidth,
+		height = this.canvasHeight,
 		textureType
 	}: {
 		id: string,
+		width?: number,
+		height?: number,
 		textureType: "unsignedByte" | "float"
 	}) {
 		if (this.#framebuffers[id] !== undefined || this.#textures[id] !== undefined)
@@ -2409,12 +2433,16 @@ export class WilsonGPU extends Wilson
 		this.gl.texImage2D(
 			this.gl.TEXTURE_2D,
 			0,
-			this.gl.RGBA,
-			this.canvasWidth,
-			this.canvasHeight,
+			(textureType === "float" && this.gl instanceof WebGL2RenderingContext)
+				? this.gl.RGBA32F
+				: this.gl.RGBA,
+			width,
+			height,
 			0,
 			this.gl.RGBA,
-			textureType === "unsignedByte" ? this.gl.UNSIGNED_BYTE : this.gl.FLOAT,
+			textureType === "float"
+				? this.gl.FLOAT
+				: this.gl.UNSIGNED_BYTE,
 			null
 		);
 
@@ -2435,7 +2463,12 @@ export class WilsonGPU extends Wilson
 		);
 
 		this.#framebuffers[id] = framebuffer;
-		this.#textures[id] = texture;
+		this.#textures[id] = {
+			texture,
+			width,
+			height,
+			type: textureType,
+		};
 	}
 
 	useFramebuffer(id: string | null)
@@ -2457,7 +2490,45 @@ export class WilsonGPU extends Wilson
 			return;
 		}
 
-		this.gl.bindTexture(this.gl.TEXTURE_2D, this.#textures[id]);
+		this.gl.bindTexture(this.gl.TEXTURE_2D, this.#textures[id].texture);
+	}
+
+	setTexture({
+		id,
+		data,
+	}: {
+		id: string,
+		data: Uint8Array | Float32Array | null
+	}) {
+		if (!this.#textures[id])
+		{
+			throw new Error(`[Wilson] Tried to set a texture with id ${id}, but it doesn't exist.`);
+		}
+
+		if (
+			(data instanceof Uint8Array && this.#textures[id].type !== "unsignedByte")
+			|| (data instanceof Float32Array && this.#textures[id].type !== "float")
+		) {
+			throw new Error(`[Wilson] Tried to set a texture with id ${id}, but the data type does not match the texture type (the data type should be a ${this.#textures[id].type === 'unsignedByte' ? 'Uint8Array' : 'Float32Array'}).`);
+		}
+
+		this.gl.bindTexture(this.gl.TEXTURE_2D, this.#textures[id].texture);
+
+		this.gl.texImage2D(
+			this.gl.TEXTURE_2D,
+			0,
+			(this.#textures[id].type === "float" && this.gl instanceof WebGL2RenderingContext)
+				? this.gl.RGBA32F
+				: this.gl.RGBA,
+			this.#textures[id].width,
+			this.#textures[id].height,
+			0,
+			this.gl.RGBA,
+			this.#textures[id].type === "float"
+				? this.gl.FLOAT
+				: this.gl.UNSIGNED_BYTE,
+			data
+		);
 	}
 
 	readPixels()

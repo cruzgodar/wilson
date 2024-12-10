@@ -269,7 +269,8 @@ The above guide, along with the example project, are a great way to get started 
 - `loadShader({ id?: string, source: string, uniforms?: {[name: string]: number | number[]} })`: loads a new shader program and sets it as the current one. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders.
 - `setUniform({ name: string, value: number | number[], shader?: string })`: sets a uniform for the shader program with the given ID. If no shader ID is specified, it defaults to the current shader program's.
 - `useShader(id: string)`: sets the current shader program.
-- `createFramebufferTexturePair({ id: string, textureType: "unsignedByte" | "float" })`: creates a framebuffer texture pair with a given ID and type. The size of the texture is the same as the canvas.
+- `createFramebufferTexturePair({ id: string, width?: number, height?: number, textureType: "unsignedByte" | "float" })`: creates a framebuffer texture pair with a given ID and type. If width or height are unspecified, they default to the canvas width and height.
 - `useFramebuffer(id: string | null)`: sets the current framebuffer.
 - `useTexture(id: string | null)`: sets the current texture.
+- `setTexture({ id: string, data: Float32Array | Uint8Array | null })`: writes `data` to the texture with the given ID. The type of `data` must match the texture type (i.e. if the texture is of type `float`, the data must be a `Float32Array`), and the length of `data` must be equal to the texture's width times its height, times 4.
 - `readPixels()`: reads the current frame as a Uint8ClampedArray.
