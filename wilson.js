@@ -105,17 +105,27 @@ class Wilson {
         _Wilson_metaThemeColorElement.set(this, document.querySelector("meta[name='theme-color']"));
         _Wilson_oldMetaThemeColor.set(this, null);
         _Wilson_onResizeWindow.set(this, () => {
-            if (__classPrivateFieldGet(this, _Wilson_currentlyFullscreen, "f") && __classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f")) {
-                // Resize the canvas to fill the screen but keep the same total number of pixels.
-                const windowAspectRatio = window.innerWidth / window.innerHeight;
-                const aspectRatioChange = windowAspectRatio / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f");
-                __classPrivateFieldSet(this, _Wilson_worldWidth, Math.max(__classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f") * aspectRatioChange, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f")), "f");
-                __classPrivateFieldSet(this, _Wilson_worldHeight, Math.max(__classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f") / aspectRatioChange, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f")), "f");
-                const width = Math.round(Math.sqrt(__classPrivateFieldGet(this, _Wilson_canvasWidth, "f") * __classPrivateFieldGet(this, _Wilson_canvasHeight, "f") * windowAspectRatio));
-                this.resizeCanvas({ width });
-                __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_onResizeCanvas).call(this);
-            }
-            __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesContainerSize).call(this);
+            const update = () => {
+                if (__classPrivateFieldGet(this, _Wilson_currentlyFullscreen, "f") && __classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f")) {
+                    // Resize the canvas to fill the screen but keep the same total number of pixels.
+                    const windowAspectRatio = window.innerWidth / window.innerHeight;
+                    const aspectRatioChange = windowAspectRatio / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f");
+                    this.canvas.style.width = "100vw";
+                    this.canvas.style.height = "100vh";
+                    // A sketchy hack to make rotating on iOS work properly.
+                    requestAnimationFrame(() => this.canvas.style.height = "100%");
+                    window.scroll(0, 0);
+                    __classPrivateFieldSet(this, _Wilson_worldWidth, Math.max(__classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f") * aspectRatioChange, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f")), "f");
+                    __classPrivateFieldSet(this, _Wilson_worldHeight, Math.max(__classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f") / aspectRatioChange, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f")), "f");
+                    const width = Math.round(Math.sqrt(__classPrivateFieldGet(this, _Wilson_canvasWidth, "f") * __classPrivateFieldGet(this, _Wilson_canvasHeight, "f") * windowAspectRatio));
+                    this.resizeCanvas({ width });
+                    __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_onResizeCanvas).call(this);
+                }
+                requestAnimationFrame(() => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesContainerSize).call(this));
+            };
+            update();
+            setTimeout(update, 10);
+            setTimeout(update, 50);
         });
         _Wilson_handleKeydownEvent.set(this, (e) => {
             if (e.key === "Escape" && __classPrivateFieldGet(this, _Wilson_currentlyFullscreen, "f")) {
@@ -844,6 +854,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     e.preventDefault();
     __classPrivateFieldSet(this, _Wilson_currentMouseDraggableId, undefined, "f");
     __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging = false;
+    __classPrivateFieldSet(this, _Wilson_currentlyDragging, false, "f");
     requestAnimationFrame(() => {
         __classPrivateFieldGet(this, _Wilson_draggableCallbacks, "f").onrelease({
             id,
@@ -899,6 +910,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     }
     e.preventDefault();
     __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].currentlyDragging = false;
+    __classPrivateFieldSet(this, _Wilson_currentlyDragging, false, "f");
     requestAnimationFrame(() => {
         __classPrivateFieldGet(this, _Wilson_draggableCallbacks, "f").onrelease({
             id,
@@ -1026,7 +1038,6 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         __classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f").setAttribute("content", "#000000");
     }
     if (__classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f")) {
-        __classPrivateFieldGet(this, _Wilson_fullscreenContainer, "f").classList.add("WILSON_true-fullscreen");
         this.canvas.style.width = "100vw";
         this.canvas.style.height = "100%";
         window.scroll(0, 0);

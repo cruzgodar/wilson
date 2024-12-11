@@ -1,3 +1,4 @@
+
 type InteractionCallbacks = {
 	mousedown: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
 
@@ -533,34 +534,48 @@ class Wilson
 
 	#onResizeWindow = () =>
 	{
-		if (this.#currentlyFullscreen && this.#fullscreenFillScreen)
+		const update = () =>
 		{
-			// Resize the canvas to fill the screen but keep the same total number of pixels.
-			const windowAspectRatio = window.innerWidth / window.innerHeight;
+			if (this.#currentlyFullscreen && this.#fullscreenFillScreen)
+			{
+				// Resize the canvas to fill the screen but keep the same total number of pixels.
+				const windowAspectRatio = window.innerWidth / window.innerHeight;
 
-			const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
+				const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
 
-			this.#worldWidth = Math.max(
-				this.#nonFullscreenWorldWidth * aspectRatioChange,
-				this.#nonFullscreenWorldWidth
-			);
+				this.canvas.style.width = "100vw";
+				this.canvas.style.height = "100vh";
+				// A sketchy hack to make rotating on iOS work properly.
+				requestAnimationFrame(() => this.canvas.style.height = "100%");
 
-			this.#worldHeight = Math.max(
-				this.#nonFullscreenWorldHeight / aspectRatioChange,
-				this.#nonFullscreenWorldHeight
-			);
+				window.scroll(0, 0);
+
+				this.#worldWidth = Math.max(
+					this.#nonFullscreenWorldWidth * aspectRatioChange,
+					this.#nonFullscreenWorldWidth
+				);
+
+				this.#worldHeight = Math.max(
+					this.#nonFullscreenWorldHeight / aspectRatioChange,
+					this.#nonFullscreenWorldHeight
+				);
 
 
 
-			const width = Math.round(
-				Math.sqrt(this.#canvasWidth * this.#canvasHeight * windowAspectRatio)
-			);
+				const width = Math.round(
+					Math.sqrt(this.#canvasWidth * this.#canvasHeight * windowAspectRatio)
+				);
 
-			this.resizeCanvas({ width });
-			this.#onResizeCanvas();
-		}
+				this.resizeCanvas({ width });
+				this.#onResizeCanvas();
+			}
 
-		this.#updateDraggablesContainerSize();
+			requestAnimationFrame(() => this.#updateDraggablesContainerSize());
+		};
+
+		update();
+		setTimeout(update, 10);
+		setTimeout(update, 50);
 	}
 
 	#handleKeydownEvent = (e: KeyboardEvent) =>
@@ -1465,6 +1480,7 @@ class Wilson
 
 		this.#currentMouseDraggableId = undefined;
 		this.#draggableElements[id].currentlyDragging = false;
+		this.#currentlyDragging = false;
 
 		requestAnimationFrame(() =>
 		{
@@ -1554,6 +1570,7 @@ class Wilson
 		e.preventDefault();
 
 		this.#draggableElements[id].currentlyDragging = false;
+		this.#currentlyDragging = false;
 
 
 		requestAnimationFrame(() =>
@@ -1806,8 +1823,6 @@ class Wilson
 
 		if (this.#fullscreenFillScreen)
 		{
-			this.#fullscreenContainer.classList.add("WILSON_true-fullscreen");
-
 			this.canvas.style.width = "100vw";
 			this.canvas.style.height = "100%";
 
