@@ -490,8 +490,7 @@ class Wilson
 			{
 				this.addDraggable({
 					id,
-					x: location[0],
-					y: location[1],
+					location
 				});
 			}
 		}
@@ -1306,8 +1305,7 @@ class Wilson
 	#draggableElements: {
 		[id: string]: {
 			element: HTMLDivElement,
-			x: number,
-			y: number,
+			location: [number, number],
 			currentlyDragging: boolean,
 		}
 	} = {};
@@ -1341,8 +1339,10 @@ class Wilson
 		document.documentElement.addEventListener("mouseup", this.#documentDraggableMouseupListener);
 	}
 
-	addDraggable({ id, x, y }: { id: string, x: number, y: number })
+	addDraggable({ id, location }: { id: string, location: [number, number] })
 	{
+		const [x, y] = location;
+
 		//First convert to page coordinates.
 		const uncappedRow = Math.floor(
 			this.#draggablesContainerRestrictedHeight * (
@@ -1385,8 +1385,7 @@ class Wilson
 
 		this.#draggableElements[useableId] = {
 			element,
-			x,
-			y,
+			location: [x, y],
 			currentlyDragging: false,
 		};
 
@@ -1399,10 +1398,11 @@ class Wilson
 		delete this.#draggableElements[id];
 	}
 
-	setDraggablePosition({ id, x, y }: { id: string, x: number, y: number })
+	setDraggablePosition({ id, location }: { id: string, location: [number, number] })
 	{
-		this.#draggableElements[id].x = x;
-		this.#draggableElements[id].y = y;
+		const [x, y] = location;
+
+		this.#draggableElements[id].location = [x, y];
 
 		const element = this.#draggableElements[id].element;
 
@@ -1447,8 +1447,8 @@ class Wilson
 		{
 			this.#draggableCallbacks.ongrab({
 				id,
-				x: this.#draggableElements[id].x,
-				y: this.#draggableElements[id].y,
+				x: this.#draggableElements[id].location[0],
+				y: this.#draggableElements[id].location[1],
 				event: e,
 			});
 		});
@@ -1470,8 +1470,8 @@ class Wilson
 		{
 			this.#draggableCallbacks.onrelease({
 				id,
-				x: this.#draggableElements[id].x,
-				y: this.#draggableElements[id].y,
+				x: this.#draggableElements[id].location[0],
+				y: this.#draggableElements[id].location[1],
 				event: e,
 			});
 		});
@@ -1513,13 +1513,12 @@ class Wilson
 				id,
 				x,
 				y,
-				xDelta: x - this.#draggableElements[id].x,
-				yDelta: y - this.#draggableElements[id].y,
+				xDelta: x - this.#draggableElements[id].location[0],
+				yDelta: y - this.#draggableElements[id].location[1],
 				event: e,
 			});
 
-			this.#draggableElements[id].x = x;
-			this.#draggableElements[id].y = y;
+			this.#draggableElements[id].location = [x, y];
 		});
 	}
 
@@ -1538,8 +1537,8 @@ class Wilson
 		{
 			this.#draggableCallbacks.ongrab({
 				id,
-				x: this.#draggableElements[id].x,
-				y: this.#draggableElements[id].y,
+				x: this.#draggableElements[id].location[0],
+				y: this.#draggableElements[id].location[1],
 				event: e,
 			});
 		});
@@ -1561,8 +1560,8 @@ class Wilson
 		{
 			this.#draggableCallbacks.onrelease({
 				id,
-				x: this.#draggableElements[id].x,
-				y: this.#draggableElements[id].y,
+				x: this.#draggableElements[id].location[0],
+				y: this.#draggableElements[id].location[1],
 				event: e,
 			});
 		});
@@ -1606,8 +1605,8 @@ class Wilson
 
 		const distancesFromDraggableCenter = worldCoordinates.map(coordinate =>
 		{
-			return (coordinate[0] - this.#draggableElements[id].x) ** 2
-				+ (coordinate[1] - this.#draggableElements[id].y) ** 2;
+			return (coordinate[0] - this.#draggableElements[id].location[0]) ** 2
+				+ (coordinate[1] - this.#draggableElements[id].location[1]) ** 2;
 		});
 
 		let minIndex = 0;
@@ -1634,13 +1633,12 @@ class Wilson
 				id,
 				x,
 				y,
-				xDelta: x - this.#draggableElements[id].x,
-				yDelta: y - this.#draggableElements[id].y,
+				xDelta: x - this.#draggableElements[id].location[0],
+				yDelta: y - this.#draggableElements[id].location[1],
 				event: e,
 			});
 
-			this.#draggableElements[id].x = x;
-			this.#draggableElements[id].y = y;
+			this.#draggableElements[id].location = [x, y];
 		});
 	}
 
@@ -1677,8 +1675,8 @@ class Wilson
 	{
 		for (const id in this.#draggableElements)
 		{
-			const x = this.#draggableElements[id].x;
-			const y = this.#draggableElements[id].y;
+			const x = this.#draggableElements[id].location[0];
+			const y = this.#draggableElements[id].location[1];
 			const element = this.#draggableElements[id].element;
 
 			const uncappedRow = Math.floor(

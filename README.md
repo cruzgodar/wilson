@@ -240,17 +240,16 @@ The above guide, along with the example project, are a great way to get started 
 {
 	[id: string]: {
 		element: HTMLDivElement,
-		x: number,
-		y: number,
+		location: [number, number],
 		currentlyDragging: boolean,
 	}
 }
 ```
 - `resizeCanvas({ width?: number, height?: number })`: resizes the canvas to the given dimensions. Exactly one of `width` and `height` must be specified.
 - `resizeWorld({ width?: number, height?: number, centerX?: number, centerY?: number })`: sets the world width, height, and center. If one of `width` and `height` is unspecified, the other will be calculated automatically to match the aspect ratio; it is possible, though not recommended, to specify both.
-- `addDraggable({ id: string, x: number, y: number })`: adds a draggable at the given world coordinates.
+- `addDraggable({ id: string, location: [number, number] })`: adds a draggable at the given world coordinates.
 - `removeDraggable(id: string)`: removes the draggable with the given ID.
-- `setDraggablePosition({ id: string, x: number, y: number })`: sets the world coordinates of the draggable with the given ID.
+- `setDraggablePosition({ id: string, location: [number, number] })`: sets the world coordinates of the draggable with the given ID.
 - `enterFullscreen()`: enters fullscreen mode.
 - `exitFullscreen()`: exits fullscreen mode.
 - `interpolateCanvasToWorld([row: number, col: number]): [number, number]`: converts a point in canvas coordinates to world coordinates.

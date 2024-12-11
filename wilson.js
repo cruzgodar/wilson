@@ -319,8 +319,7 @@ class Wilson {
             for (const [id, location] of Object.entries(options.draggableOptions.draggables)) {
                 this.addDraggable({
                     id,
-                    x: location[0],
-                    y: location[1],
+                    location
                 });
             }
         }
@@ -389,8 +388,9 @@ class Wilson {
     get draggables() {
         return __classPrivateFieldGet(this, _Wilson_draggableElements, "f");
     }
-    addDraggable({ id, x, y }) {
+    addDraggable({ id, location }) {
         var _a;
+        const [x, y] = location;
         //First convert to page coordinates.
         const uncappedRow = Math.floor(__classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedHeight, "f") * (1 - ((y - __classPrivateFieldGet(this, _Wilson_worldCenterY, "f")) / __classPrivateFieldGet(this, _Wilson_worldHeight, "f") + .5))) + __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f");
         const uncappedCol = Math.floor(__classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedWidth, "f") * ((x - __classPrivateFieldGet(this, _Wilson_worldCenterX, "f")) / __classPrivateFieldGet(this, _Wilson_worldWidth, "f") + .5)) + __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f");
@@ -411,8 +411,7 @@ class Wilson {
         __classPrivateFieldGet(this, _Wilson_draggablesContainer, "f").appendChild(element);
         __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[useableId] = {
             element,
-            x,
-            y,
+            location: [x, y],
             currentlyDragging: false,
         };
         return element;
@@ -421,9 +420,9 @@ class Wilson {
         __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].element.remove();
         delete __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id];
     }
-    setDraggablePosition({ id, x, y }) {
-        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x = x;
-        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y = y;
+    setDraggablePosition({ id, location }) {
+        const [x, y] = location;
+        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location = [x, y];
         const element = __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].element;
         const uncappedRow = Math.floor(__classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedHeight, "f") * (1 - ((y - __classPrivateFieldGet(this, _Wilson_worldCenterY, "f")) / __classPrivateFieldGet(this, _Wilson_worldHeight, "f") + .5))) + __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f");
         const uncappedCol = Math.floor(__classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedWidth, "f") * ((x - __classPrivateFieldGet(this, _Wilson_worldCenterX, "f")) / __classPrivateFieldGet(this, _Wilson_worldWidth, "f") + .5)) + __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f");
@@ -833,8 +832,8 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     requestAnimationFrame(() => {
         __classPrivateFieldGet(this, _Wilson_draggableCallbacks, "f").ongrab({
             id,
-            x: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x,
-            y: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y,
+            x: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[0],
+            y: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[1],
             event: e,
         });
     });
@@ -848,8 +847,8 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     requestAnimationFrame(() => {
         __classPrivateFieldGet(this, _Wilson_draggableCallbacks, "f").onrelease({
             id,
-            x: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x,
-            y: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y,
+            x: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[0],
+            y: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[1],
             event: e,
         });
     });
@@ -874,12 +873,11 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
             id,
             x,
             y,
-            xDelta: x - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x,
-            yDelta: y - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y,
+            xDelta: x - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[0],
+            yDelta: y - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[1],
             event: e,
         });
-        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x = x;
-        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y = y;
+        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location = [x, y];
     });
 }, _Wilson_draggableOnTouchstart = function _Wilson_draggableOnTouchstart(e, id) {
     if (__classPrivateFieldGet(this, _Wilson_draggablesStatic, "f")) {
@@ -890,8 +888,8 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     requestAnimationFrame(() => {
         __classPrivateFieldGet(this, _Wilson_draggableCallbacks, "f").ongrab({
             id,
-            x: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x,
-            y: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y,
+            x: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[0],
+            y: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[1],
             event: e,
         });
     });
@@ -904,8 +902,8 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     requestAnimationFrame(() => {
         __classPrivateFieldGet(this, _Wilson_draggableCallbacks, "f").onrelease({
             id,
-            x: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x,
-            y: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y,
+            x: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[0],
+            y: __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[1],
             event: e,
         });
     });
@@ -928,8 +926,8 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         return [x, y, row, col];
     });
     const distancesFromDraggableCenter = worldCoordinates.map(coordinate => {
-        return (coordinate[0] - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x) ** 2
-            + (coordinate[1] - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y) ** 2;
+        return (coordinate[0] - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[0]) ** 2
+            + (coordinate[1] - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[1]) ** 2;
     });
     let minIndex = 0;
     let minDistance = distancesFromDraggableCenter[0];
@@ -946,12 +944,11 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
             id,
             x,
             y,
-            xDelta: x - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x,
-            yDelta: y - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y,
+            xDelta: x - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[0],
+            yDelta: y - __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[1],
             event: e,
         });
-        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x = x;
-        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y = y;
+        __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location = [x, y];
     });
 }, _Wilson_updateDraggablesContainerSize = function _Wilson_updateDraggablesContainerSize() {
     const computedStyle = getComputedStyle(this.canvas);
@@ -974,8 +971,8 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesLocation).call(this);
 }, _Wilson_updateDraggablesLocation = function _Wilson_updateDraggablesLocation() {
     for (const id in __classPrivateFieldGet(this, _Wilson_draggableElements, "f")) {
-        const x = __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].x;
-        const y = __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].y;
+        const x = __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[0];
+        const y = __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].location[1];
         const element = __classPrivateFieldGet(this, _Wilson_draggableElements, "f")[id].element;
         const uncappedRow = Math.floor(__classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedHeight, "f") * (1 - ((y - __classPrivateFieldGet(this, _Wilson_worldCenterY, "f")) / __classPrivateFieldGet(this, _Wilson_worldHeight, "f") + .5))) + __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f");
         const uncappedCol = Math.floor(__classPrivateFieldGet(this, _Wilson_draggablesContainerRestrictedWidth, "f") * ((x - __classPrivateFieldGet(this, _Wilson_worldCenterX, "f")) / __classPrivateFieldGet(this, _Wilson_worldWidth, "f") + .5)) + __classPrivateFieldGet(this, _Wilson_draggablesRadius, "f");

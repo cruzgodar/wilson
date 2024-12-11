@@ -38,15 +38,9 @@ function initWilson1()
 
 		// Draw 3/4 of a circle.
 		wilson.ctx.fillStyle = "color(display-p3 1 0 0)";
-		const [centerRow, centerCol] = wilson.interpolateWorldToCanvas([
-			wilson.draggables.center.x,
-			wilson.draggables.center.y
-		]);
+		const [centerRow, centerCol] = wilson.interpolateWorldToCanvas(wilson.draggables.center.location);
 
-		const [radiusRow, radiusCol] = wilson.interpolateWorldToCanvas([
-			wilson.draggables.radius.x,
-			wilson.draggables.radius.y
-		]);
+		const [radiusRow, radiusCol] = wilson.interpolateWorldToCanvas(wilson.draggables.radius.location);
 
 		const startingAngle = Math.atan2(radiusRow - centerRow, radiusCol - centerCol);
 
