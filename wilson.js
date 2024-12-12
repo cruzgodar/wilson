@@ -1261,14 +1261,16 @@ export class WilsonGPU extends Wilson {
                 throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader source: ${source}`);
             }
             __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[id][name] = { location, type: type };
-            this.setUniform({ name, value });
+            this.setUniforms({ [name]: value });
         }
     }
-    setUniform({ name, value, shader: shader = __classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f") }) {
+    setUniforms(uniforms, shader = __classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f")) {
         this.useShader(shader);
-        const { location, type } = __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[shader][name];
-        const uniformFunction = uniformFunctions[type];
-        uniformFunction(this.gl, location, value);
+        for (const [name, value] of Object.entries(uniforms)) {
+            const { location, type } = __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[shader][name];
+            const uniformFunction = uniformFunctions[type];
+            uniformFunction(this.gl, location, value);
+        }
         this.useShader(__classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f"));
     }
     useShader(id) {

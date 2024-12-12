@@ -117,7 +117,7 @@ function initWilson2() {
             callbacks: {
                 ondrag: ({ id, x, y }) => {
                     if (id === "c") {
-                        wilson.setUniform({ name: "c", value: [x, y] });
+                        wilson.setUniforms({ c: [x, y] });
                         wilson.drawFrame();
                     }
                 }
@@ -127,19 +127,9 @@ function initWilson2() {
     const wilson = new WilsonGPU(canvas, options);
     drawFrame();
     function drawFrame() {
-        wilson.setUniform({
-            name: "worldCenter",
-            value: [
-                wilson.worldCenterX,
-                wilson.worldCenterY
-            ]
-        });
-        wilson.setUniform({
-            name: "worldSize",
-            value: [
-                wilson.worldWidth,
-                wilson.worldHeight
-            ]
+        wilson.setUniforms({
+            worldCenter: [wilson.worldCenterX, wilson.worldCenterY],
+            worldSize: [wilson.worldWidth, wilson.worldHeight]
         });
         wilson.drawFrame();
     }

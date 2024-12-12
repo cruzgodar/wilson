@@ -2369,24 +2369,20 @@ export class WilsonGPU extends Wilson
 			}
 
 			this.#uniforms[id][name] = { location, type: type as UniformType };
-			this.setUniform({ name, value });
+			this.setUniforms({ [name]: value });
 		}
 	}
 
-	setUniform({
-		name,
-		value,
-		shader: shader = this.#currentShaderId
-	}: {
-		name: string,
-		value: number | number[],
-		shader?: ShaderProgramId
-	}) {
+	setUniforms(uniforms: UniformInitializers, shader: ShaderProgramId = this.#currentShaderId)
+	{
 		this.useShader(shader);
-
-		const { location, type } = this.#uniforms[shader][name];
-		const uniformFunction = uniformFunctions[type];
-		uniformFunction(this.gl, location, value);
+		
+		for (const [name, value] of Object.entries(uniforms))
+		{
+			const { location, type } = this.#uniforms[shader][name];
+			const uniformFunction = uniformFunctions[type];
+			uniformFunction(this.gl, location, value);
+		}
 
 		this.useShader(this.#currentShaderId);
 	}
