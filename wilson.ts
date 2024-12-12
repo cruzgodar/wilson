@@ -2151,11 +2151,17 @@ type MultipleShaders = {
 	uniforms?: {[id: ShaderProgramId]: UniformInitializers},
 };
 
-export type WilsonGPUOptions = WilsonOptions & (SingleShader | MultipleShaders);
+export type WilsonGPUOptions = WilsonOptions
+	& (SingleShader | MultipleShaders)
+	& {
+		useWebGL2?: boolean,
+	}
 
 export class WilsonGPU extends Wilson
 {
 	gl: WebGLRenderingContext | WebGL2RenderingContext;
+
+	#useWebGL2: boolean;
 
 	#shaderPrograms: {[id: ShaderProgramId]: WebGLProgram} = {};
 
@@ -2172,36 +2178,30 @@ export class WilsonGPU extends Wilson
 	{
 		super(canvas, options);
 
-		const gl = canvas.getContext("webgl2");
+		this.#useWebGL2 = options.useWebGL2 ?? true;
 
-		if (gl)
+		const gl = this.#useWebGL2
+			? canvas.getContext("webgl2") ?? canvas.getContext("webgl")
+			: canvas.getContext("webgl");
+
+		if (!gl)
 		{
-			this.gl = gl;
-
-			if (!this.gl.getExtension("EXT_color_buffer_float"))
-			{
-				console.warn("[Wilson] No support for float textures.");
-			}
+			throw new Error("[Wilson] Failed to get WebGL or WebGL2 context.");
 		}
 
-		else
-		{
-			const gl = canvas.getContext("webgl");
+		this.gl = gl;
 
-			if (gl)
-			{
-				this.gl = gl;
+		if (
+			this.gl instanceof WebGL2RenderingContext
+			&& !this.gl.getExtension("EXT_color_buffer_float")
+		) {
+			console.warn("[Wilson] No support for float textures.");
+		}
 
-				if (!this.gl.getExtension("OES_texture_float"))
-				{
-					console.warn("[Wilson] No support for float textures.");
-				}
-			}
-
-			else
-			{
-				throw new Error("[Wilson] Failed to get WebGL or WebGL2 context.");
-			}
+		else if (this.gl instanceof WebGLRenderingContext
+			&& !this.gl.getExtension("OES_texture_float")
+		) {
+			console.warn("[Wilson] No support for float textures.");
 		}
 
 		if ("drawingBufferColorSpace" in this.gl && this.useP3ColorSpace)
