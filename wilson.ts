@@ -171,42 +171,28 @@ class Wilson
 
 	canvas: HTMLCanvasElement;
 
+	// Duplicated properties like this are effectively readonly. Whenever we
+	// change the private version, we also change the public one.
+	// Writing to the public version does nothing.
 	#canvasWidth: number;
-	get canvasWidth()
-	{
-		return this.#canvasWidth;
-	}
+	canvasWidth: number;
 
 	#canvasHeight: number;
-	get canvasHeight()
-	{
-		return this.#canvasHeight;
-	}
+	canvasHeight: number;
+
 	#canvasAspectRatio: number;
 
 	#worldWidth: number;
-	get worldWidth()
-	{
-		return this.#worldWidth;
-	}
+	worldWidth: number;
 
 	#worldHeight: number;
-	get worldHeight()
-	{
-		return this.#worldHeight;
-	}
+	worldHeight: number;
 
 	#worldCenterX: number;
-	get worldCenterX()
-	{
-		return this.#worldCenterX;
-	}
-	
+	worldCenterX: number;
+
 	#worldCenterY: number;
-	get worldCenterY()
-	{
-		return this.#worldCenterY;
-	}
+	worldCenterY: number;
 
 	#nonFullscreenWorldWidth: number;
 	#nonFullscreenWorldHeight: number;
@@ -223,10 +209,7 @@ class Wilson
 	#onResizeCanvasCallback: () => void;
 
 	#useP3ColorSpace: boolean;
-	get useP3ColorSpace()
-	{
-		return this.#useP3ColorSpace;
-	}
+	useP3ColorSpace: boolean;
 
 	reduceMotion: boolean;
 
@@ -271,10 +254,7 @@ class Wilson
 
 	
 	#currentlyFullscreen: boolean = false;
-	get currentlyFullscreen()
-	{
-		return this.#currentlyFullscreen;
-	}
+	currentlyFullscreen: boolean = false;
 
 	animateFullscreen: boolean;
 	#fullscreenOldScroll: number = 0;
@@ -305,13 +285,19 @@ class Wilson
 		if (options.canvasWidth !== undefined)
 		{
 			this.#canvasWidth = Math.round(options.canvasWidth);
+			this.canvasWidth = this.#canvasWidth;
+			
 			this.#canvasHeight = Math.round(options.canvasWidth / this.#canvasAspectRatio);
+			this.canvasHeight = this.#canvasHeight;
 		}
 
 		else
 		{
 			this.#canvasWidth = Math.round(options.canvasHeight * this.#canvasAspectRatio);
+			this.canvasWidth = this.#canvasWidth;
+
 			this.#canvasHeight = Math.round(options.canvasHeight);
+			this.canvasHeight = this.#canvasHeight;
 		}
 		
 
@@ -323,25 +309,37 @@ class Wilson
 		if (options.worldWidth !== undefined && options.worldHeight !== undefined)
 		{
 			this.#worldWidth = options.worldWidth;
+			this.worldWidth = this.#worldWidth;
+
 			this.#worldHeight = options.worldHeight;
+			this.worldHeight = this.#worldHeight;
 		}
 		
 		else if (options.worldHeight !== undefined)
 		{
 			this.#worldHeight = options.worldHeight;
+			this.worldHeight = this.#worldHeight;
+
 			this.#worldWidth = this.#worldHeight * this.#canvasAspectRatio;
+			this.worldWidth = this.#worldWidth;
 		}
 
 		else if (options.worldWidth !== undefined)
 		{
 			this.#worldWidth = options.worldWidth;
+			this.worldWidth = this.#worldWidth;
+
 			this.#worldHeight = this.#worldWidth / this.#canvasAspectRatio;
+			this.worldHeight = this.#worldHeight;
 		}
 
 		else
 		{
 			this.#worldWidth = Math.max(2, 2 * this.#canvasAspectRatio);
+			this.worldWidth = this.#worldWidth;
+
 			this.#worldHeight = Math.max(2, 2 / this.#canvasAspectRatio);
+			this.worldHeight = this.#worldHeight;
 		}
 
 		this.#nonFullscreenWorldWidth = this.#worldWidth;
@@ -350,7 +348,10 @@ class Wilson
 
 
 		this.#worldCenterX = options.worldCenterX ?? 0;
+		this.worldCenterX = this.#worldCenterX;
+
 		this.#worldCenterY = options.worldCenterY ?? 0;
+		this.worldCenterY = this.#worldCenterY;
 
 		this.minWorldWidth = options.minWorldWidth ?? 0;
 		this.maxWorldWidth = options.maxWorldWidth ?? Infinity;
@@ -366,6 +367,7 @@ class Wilson
 		this.#onResizeCanvasCallback = options?.onResizeCanvas ?? (() => {});
 
 		this.#useP3ColorSpace = options.useP3ColorSpace ?? true;
+		this.useP3ColorSpace = this.#useP3ColorSpace;
 
 		this.reduceMotion = options.reduceMotion
 			?? matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -554,11 +556,13 @@ class Wilson
 					this.#nonFullscreenWorldWidth * aspectRatioChange,
 					this.#nonFullscreenWorldWidth
 				);
+				this.worldWidth = this.#worldWidth;
 
 				this.#worldHeight = Math.max(
 					this.#nonFullscreenWorldHeight / aspectRatioChange,
 					this.#nonFullscreenWorldHeight
 				);
+				this.worldHeight = this.#worldHeight;
 
 
 
@@ -606,13 +610,19 @@ class Wilson
 		if (dimensions.width !== undefined)
 		{
 			this.#canvasWidth = Math.round(dimensions.width);
+			this.canvasWidth = this.#canvasWidth;
+
 			this.#canvasHeight = Math.round(dimensions.width / aspectRatio);
+			this.canvasHeight = this.#canvasHeight;
 		}
 
 		else
 		{
 			this.#canvasWidth = Math.round(dimensions.height * aspectRatio);
+			this.canvasWidth = this.#canvasWidth;
+
 			this.#canvasHeight = Math.round(dimensions.height);
+			this.canvasHeight = this.#canvasHeight;
 		}
 
 		this.canvas.setAttribute("width", this.#canvasWidth.toString());
@@ -639,7 +649,10 @@ class Wilson
 		if (width !== undefined && height !== undefined)
 		{
 			this.#worldWidth = width;
+			this.worldWidth = this.#worldWidth;
+
 			this.#worldHeight = height;
+			this.worldHeight = this.#worldHeight;
 
 			const aspectRatioChange = aspectRatio / this.#canvasAspectRatio;
 
@@ -650,7 +663,11 @@ class Wilson
 		else if (width !== undefined)
 		{
 			this.#worldWidth = width;
+			this.worldWidth = this.#worldWidth;
+
 			this.#worldHeight = width / aspectRatio;
+			this.worldHeight = this.#worldHeight;
+
 			this.#nonFullscreenWorldWidth = width;
 			this.#nonFullscreenWorldHeight = width / this.#canvasAspectRatio;
 		}
@@ -658,13 +675,20 @@ class Wilson
 		else if (height !== undefined)
 		{
 			this.#worldHeight = height;
+			this.worldHeight = this.#worldHeight;
+
 			this.#worldWidth = height * aspectRatio;
+			this.worldWidth = this.#worldWidth;
+
 			this.#nonFullscreenWorldHeight = height;
 			this.#nonFullscreenWorldWidth = height * this.#canvasAspectRatio;
 		}
 
 		this.#worldCenterX = centerX ?? this.#worldCenterX;
+		this.worldCenterX = this.#worldCenterX;
+
 		this.#worldCenterY = centerY ?? this.#worldCenterY;
+		this.worldCenterY = this.#worldCenterY;
 
 		this.#clampWorldCoordinates();
 
@@ -771,7 +795,10 @@ class Wilson
 	#clampWorldCoordinates()
 	{
 		this.#worldCenterX = Math.min(Math.max(this.#worldCenterX, this.minWorldCenterX), this.maxWorldCenterX);
+		this.worldCenterX = this.#worldCenterX;
+
 		this.#worldCenterY = Math.min(Math.max(this.#worldCenterY, this.minWorldCenterY), this.maxWorldCenterY);
+		this.worldCenterY = this.#worldCenterY;
 		
 		this.#atMaxWorldSize = false;
 		this.#atMinWorldSize = false;
@@ -946,13 +973,11 @@ class Wilson
 		const newWorldCenterX = this.#zoomFixedPoint[0] - newFixedPointX;
 		const newWorldCenterY = this.#zoomFixedPoint[1] - newFixedPointY;
 
-		// this.#setLastPanVelocity(
-		// 	newWorldCenterX - this.worldCenterX,
-		// 	newWorldCenterY - this.worldCenterY
-		// );
-
 		this.#worldCenterX = newWorldCenterX;
+		this.worldCenterX = this.#worldCenterX;
+
 		this.#worldCenterY = newWorldCenterY;
+		this.worldCenterY = this.#worldCenterY;
 	}
 	
 	#onTouchstart(e: TouchEvent)
@@ -1160,7 +1185,10 @@ class Wilson
 		const newFixedPointY = centerProportion[1] * this.#worldHeight;
 
 		this.#worldCenterX = this.#zoomFixedPoint[0] - newFixedPointX;
+		this.worldCenterX = this.#worldCenterX;
+
 		this.#worldCenterY = this.#zoomFixedPoint[1] - newFixedPointY;
+		this.worldCenterY = this.#worldCenterY;
 		
 		this.#needPanAndZoomUpdate = true;
 	}
@@ -1317,17 +1345,20 @@ class Wilson
 
 
 
-	#draggableElements: {
+	#draggables: {
 		[id: string]: {
 			element: HTMLDivElement,
 			location: [number, number],
 			currentlyDragging: boolean,
 		}
 	} = {};
-	get draggables()
-	{
-		return this.#draggableElements;
-	}
+	draggables: {
+		[id: string]: {
+			element: HTMLDivElement,
+			location: [number, number],
+			currentlyDragging: boolean,
+		}
+	} = {};
 
 	#draggableDefaultId: number = 0;
 	#currentMouseDraggableId?: string;
@@ -1398,7 +1429,12 @@ class Wilson
 
 		this.#draggablesContainer.appendChild(element);
 
-		this.#draggableElements[useableId] = {
+		this.#draggables[useableId] = {
+			element,
+			location: [x, y],
+			currentlyDragging: false,
+		};
+		this.draggables[useableId] = {
 			element,
 			location: [x, y],
 			currentlyDragging: false,
@@ -1409,17 +1445,19 @@ class Wilson
 
 	removeDraggable(id: string)
 	{
-		this.#draggableElements[id].element.remove();
-		delete this.#draggableElements[id];
+		this.#draggables[id].element.remove();
+		delete this.#draggables[id];
+		delete this.draggables[id];
 	}
 
 	setDraggablePosition({ id, location }: { id: string, location: [number, number] })
 	{
 		const [x, y] = location;
 
-		this.#draggableElements[id].location = [x, y];
+		this.#draggables[id].location = [x, y];
+		this.draggables[id].location = [x, y];
 
-		const element = this.#draggableElements[id].element;
+		const element = this.#draggables[id].element;
 
 		const uncappedRow = Math.floor(
 			this.#draggablesContainerRestrictedHeight * (
@@ -1456,14 +1494,15 @@ class Wilson
 		e.preventDefault();
 		
 		this.#currentMouseDraggableId = id;
-		this.#draggableElements[id].currentlyDragging = true;
+		this.#draggables[id].currentlyDragging = true;
+		this.draggables[id].currentlyDragging = true;
 
 		requestAnimationFrame(() =>
 		{
 			this.#draggableCallbacks.ongrab({
 				id,
-				x: this.#draggableElements[id].location[0],
-				y: this.#draggableElements[id].location[1],
+				x: this.#draggables[id].location[0],
+				y: this.#draggables[id].location[1],
 				event: e,
 			});
 		});
@@ -1479,15 +1518,16 @@ class Wilson
 		e.preventDefault();
 
 		this.#currentMouseDraggableId = undefined;
-		this.#draggableElements[id].currentlyDragging = false;
+		this.#draggables[id].currentlyDragging = false;
+		this.draggables[id].currentlyDragging = false;
 		this.#currentlyDragging = false;
 
 		requestAnimationFrame(() =>
 		{
 			this.#draggableCallbacks.onrelease({
 				id,
-				x: this.#draggableElements[id].location[0],
-				y: this.#draggableElements[id].location[1],
+				x: this.#draggables[id].location[0],
+				y: this.#draggables[id].location[1],
 				event: e,
 			});
 		});
@@ -1502,7 +1542,7 @@ class Wilson
 		
 		e.preventDefault();
 
-		if (!this.#draggableElements[id].currentlyDragging)
+		if (!this.#draggables[id].currentlyDragging)
 		{
 			return;
 		}
@@ -1511,7 +1551,7 @@ class Wilson
 		const row = Math.min(Math.max(this.#draggablesRadius, e.clientY - rect.top), this.#draggablesContainerHeight - this.#draggablesRadius);
 		const col = Math.min(Math.max(this.#draggablesRadius, e.clientX - rect.left), this.#draggablesContainerWidth - this.#draggablesRadius);
 
-		this.#draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+		this.#draggables[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
 
 		const x = (
 			(col - this.#draggablesRadius - this.#draggablesContainerRestrictedWidth / 2)
@@ -1529,12 +1569,13 @@ class Wilson
 				id,
 				x,
 				y,
-				xDelta: x - this.#draggableElements[id].location[0],
-				yDelta: y - this.#draggableElements[id].location[1],
+				xDelta: x - this.#draggables[id].location[0],
+				yDelta: y - this.#draggables[id].location[1],
 				event: e,
 			});
 
-			this.#draggableElements[id].location = [x, y];
+			this.#draggables[id].location = [x, y];
+			this.draggables[id].location = [x, y];
 		});
 	}
 
@@ -1547,14 +1588,15 @@ class Wilson
 		
 		e.preventDefault();
 
-		this.#draggableElements[id].currentlyDragging = true;
+		this.#draggables[id].currentlyDragging = true;
+		this.draggables[id].currentlyDragging = true;
 		
 		requestAnimationFrame(() =>
 		{
 			this.#draggableCallbacks.ongrab({
 				id,
-				x: this.#draggableElements[id].location[0],
-				y: this.#draggableElements[id].location[1],
+				x: this.#draggables[id].location[0],
+				y: this.#draggables[id].location[1],
 				event: e,
 			});
 		});
@@ -1569,7 +1611,8 @@ class Wilson
 		
 		e.preventDefault();
 
-		this.#draggableElements[id].currentlyDragging = false;
+		this.#draggables[id].currentlyDragging = false;
+		this.draggables[id].currentlyDragging = false;
 		this.#currentlyDragging = false;
 
 
@@ -1577,8 +1620,8 @@ class Wilson
 		{
 			this.#draggableCallbacks.onrelease({
 				id,
-				x: this.#draggableElements[id].location[0],
-				y: this.#draggableElements[id].location[1],
+				x: this.#draggables[id].location[0],
+				y: this.#draggables[id].location[1],
 				event: e,
 			});
 		});
@@ -1593,7 +1636,7 @@ class Wilson
 		
 		e.preventDefault();
 
-		if (!this.#draggableElements[id].currentlyDragging)
+		if (!this.#draggables[id].currentlyDragging)
 		{
 			return;
 		}
@@ -1622,8 +1665,8 @@ class Wilson
 
 		const distancesFromDraggableCenter = worldCoordinates.map(coordinate =>
 		{
-			return (coordinate[0] - this.#draggableElements[id].location[0]) ** 2
-				+ (coordinate[1] - this.#draggableElements[id].location[1]) ** 2;
+			return (coordinate[0] - this.#draggables[id].location[0]) ** 2
+				+ (coordinate[1] - this.#draggables[id].location[1]) ** 2;
 		});
 
 		let minIndex = 0;
@@ -1640,7 +1683,7 @@ class Wilson
 
 		const [x, y, row, col] = worldCoordinates[minIndex];
 
-		this.#draggableElements[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+		this.#draggables[id].element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
 
 
 
@@ -1650,12 +1693,13 @@ class Wilson
 				id,
 				x,
 				y,
-				xDelta: x - this.#draggableElements[id].location[0],
-				yDelta: y - this.#draggableElements[id].location[1],
+				xDelta: x - this.#draggables[id].location[0],
+				yDelta: y - this.#draggables[id].location[1],
 				event: e,
 			});
 
-			this.#draggableElements[id].location = [x, y];
+			this.#draggables[id].location = [x, y];
+			this.draggables[id].location = [x, y];
 		});
 	}
 
@@ -1690,11 +1734,11 @@ class Wilson
 
 	#updateDraggablesLocation()
 	{
-		for (const id in this.#draggableElements)
+		for (const id in this.#draggables)
 		{
-			const x = this.#draggableElements[id].location[0];
-			const y = this.#draggableElements[id].location[1];
-			const element = this.#draggableElements[id].element;
+			const x = this.#draggables[id].location[0];
+			const y = this.#draggables[id].location[1];
+			const element = this.#draggables[id].element;
 
 			const uncappedRow = Math.floor(
 				this.#draggablesContainerRestrictedHeight * (
@@ -1778,6 +1822,7 @@ class Wilson
 	#enterFullscreen()
 	{
 		this.#currentlyFullscreen = true;
+		this.currentlyFullscreen = this.#currentlyFullscreen;
 
 		this.#fullscreenOldScroll = window.scrollY;
 
@@ -1823,6 +1868,8 @@ class Wilson
 
 		if (this.#fullscreenFillScreen)
 		{
+			this.#fullscreenContainer.classList.add("WILSON_fullscreen-fill-screen");
+
 			this.canvas.style.width = "100vw";
 			this.canvas.style.height = "100%";
 
@@ -1833,7 +1880,10 @@ class Wilson
 			const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
 
 			this.#worldWidth = Math.max(this.#worldWidth * aspectRatioChange, this.#worldWidth);
+			this.worldWidth = this.#worldWidth;
+
 			this.#worldHeight = Math.max(this.#worldHeight / aspectRatioChange, this.#worldHeight);
+			this.worldHeight = this.#worldHeight;
 			
 			this.#clampWorldCoordinates();
 		}
@@ -1884,7 +1934,7 @@ class Wilson
 				
 				this.canvas.style.setProperty("view-transition-name", "WILSON_canvas");
 
-				for (const [id, data] of Object.entries(this.#draggableElements))
+				for (const [id, data] of Object.entries(this.#draggables))
 				{
 					data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}`);
 				}
@@ -1907,11 +1957,15 @@ class Wilson
 	#exitFullscreen()
 	{
 		this.#currentlyFullscreen = false;
+		this.currentlyFullscreen = this.#currentlyFullscreen;
 
 		if (this.#fullscreenFillScreen)
 		{
 			this.#worldWidth = this.#nonFullscreenWorldWidth;
+			this.worldWidth = this.#worldWidth;
+
 			this.#worldHeight = this.#nonFullscreenWorldHeight;
+			this.worldHeight = this.#worldHeight;
 			
 			this.#clampWorldCoordinates();
 		}
@@ -1945,6 +1999,8 @@ class Wilson
 		
 		if (this.#fullscreenFillScreen)
 		{
+			this.#fullscreenContainer.classList.remove("WILSON_fullscreen-fill-screen");
+
 			this.resizeCanvas({ width: this.#canvasOldWidth });
 		}
 
