@@ -806,7 +806,11 @@ class Wilson
 		const applyFactor = (factor: number) =>
 		{
 			this.#worldHeight *= factor;
+			this.worldHeight = this.#worldHeight;
+
 			this.#worldWidth *= factor;
+			this.worldWidth = this.#worldWidth;
+
 			this.#nonFullscreenWorldHeight *= factor;
 			this.#nonFullscreenWorldWidth *= factor;
 		};
@@ -908,7 +912,10 @@ class Wilson
 		if (this.useInteractionForPanAndZoom && this.#currentlyDragging)
 		{
 			this.#worldCenterX -= x - lastX;
+			this.worldCenterX = this.#worldCenterX;
+
 			this.#worldCenterY -= y - lastY;
+			this.worldCenterY = this.#worldCenterY;
 
 			this.#setLastPanVelocity(lastX - x, lastY - y);
 			
@@ -958,7 +965,10 @@ class Wilson
 		const scale = lastDistance / distance;
 
 		this.#worldWidth *= scale;
+		this.worldWidth = this.#worldWidth;
+
 		this.#worldHeight *= scale;
+		this.worldHeight = this.#worldHeight;
 
 		this.#nonFullscreenWorldWidth *= scale;
 		this.#nonFullscreenWorldHeight *= scale;
@@ -1131,7 +1141,10 @@ class Wilson
 				const yDelta = (y + touch2[1]) / 2 - (lastY + lastTouch2[1]) / 2;
 
 				this.#worldCenterX -= xDelta;
+				this.worldCenterX = this.#worldCenterX;
+
 				this.#worldCenterY -= yDelta;
+				this.worldCenterY = this.#worldCenterY;
 
 				this.#setLastPanVelocity(-xDelta, -yDelta);
 
@@ -1142,7 +1155,10 @@ class Wilson
 			else
 			{
 				this.#worldCenterX -= x - lastX;
+				this.worldCenterX = this.#worldCenterX;
+
 				this.#worldCenterY -= y - lastY;
+				this.worldCenterY = this.#worldCenterY;
 
 				this.#setLastPanVelocity(lastX - x, lastY - y);
 			}
@@ -1176,7 +1192,10 @@ class Wilson
 		];
 
 		this.#worldWidth *= scale;
+		this.worldWidth = this.#worldWidth;
+
 		this.#worldHeight *= scale;
+		this.worldHeight = this.#worldHeight;
 
 		this.#nonFullscreenWorldWidth *= scale;
 		this.#nonFullscreenWorldHeight *= scale;
@@ -1282,7 +1301,10 @@ class Wilson
 		if (this.#panVelocityX || this.#panVelocityY)
 		{
 			this.#worldCenterX += this.#panVelocityX;
+			this.worldCenterX = this.#worldCenterX;
+
 			this.#worldCenterY += this.#panVelocityY;
+			this.worldCenterY = this.#worldCenterY;
 
 			this.#needPanAndZoomUpdate = true;
 

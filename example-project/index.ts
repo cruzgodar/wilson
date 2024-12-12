@@ -122,9 +122,9 @@ function initWilson2()
 
 		worldHeight: 3,
 
-		minWorldWidth: 0.000003,
+		minWorldWidth: 0.00001,
 		maxWorldWidth: 6,
-		minWorldHeight: 0.000003,
+		minWorldHeight: 0.00001,
 		maxWorldHeight: 6,
 
 		minWorldCenterX: -1.5,
