@@ -580,7 +580,7 @@ class Wilson
 					Math.sqrt(this.#canvasWidth * this.#canvasHeight * windowAspectRatio)
 				);
 
-				if (this.resizeCanvas({ width }))
+				if (this.#resizeCanvas({ width }))
 				{
 					this.#onResizeCanvasCallback();
 				}
@@ -604,9 +604,11 @@ class Wilson
 		}
 	}
 	
+	
 
+	resizeCanvasGPU = () => {}
 
-	resizeCanvas(
+	#resizeCanvas(
 		dimensions: { width: number, height?: undefined }
 		| { height: number, width?: undefined }
 	) {
@@ -639,6 +641,8 @@ class Wilson
 			this.canvas.setAttribute("width", this.#canvasWidth.toString());
 			this.canvas.setAttribute("height", this.#canvasHeight.toString());
 
+			this.resizeCanvasGPU();
+
 			this.#lastCanvasWidth = this.#canvasWidth;
 			this.#lastCanvasHeight = this.#canvasHeight;
 
@@ -646,6 +650,16 @@ class Wilson
 		}
 
 		return false;
+	}
+
+	resizeCanvas(
+		dimensions: { width: number, height?: undefined }
+		| { height: number, width?: undefined }
+	) {
+		if (this.#resizeCanvas(dimensions))
+		{
+			this.#onResizeCanvasCallback();
+		}
 	}
 
 	resizeWorld({
@@ -2028,7 +2042,7 @@ class Wilson
 		{
 			this.#fullscreenContainer.classList.remove("WILSON_fullscreen-fill-screen");
 
-			if (this.resizeCanvas({ width: this.#canvasOldWidth }))
+			if (this.#resizeCanvas({ width: this.#canvasOldWidth }))
 			{
 				this.#onResizeCanvasCallback();
 			}
@@ -2640,16 +2654,10 @@ export class WilsonGPU extends Wilson
 
 
 
-	resizeCanvas(
-		dimensions: { width: number, height?: undefined }
-		| { height: number, width?: undefined }
-	) {
-		const resized = super.resizeCanvas(dimensions);
-
+	resizeCanvasGPU = () =>
+	{
 		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
-
-		return resized;
-	}
+	};
 
 	downloadFrame(
 		filename: string,
