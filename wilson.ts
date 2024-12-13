@@ -180,6 +180,9 @@ class Wilson
 	#canvasHeight: number;
 	canvasHeight: number;
 
+	#lastCanvasWidth: number;
+	#lastCanvasHeight: number;
+
 	#canvasAspectRatio: number;
 
 	#worldWidth: number;
@@ -301,6 +304,9 @@ class Wilson
 			this.#canvasHeight = Math.round(options.canvasHeight);
 			this.canvasHeight = this.#canvasHeight;
 		}
+
+		this.#lastCanvasWidth = this.#canvasWidth;
+		this.#lastCanvasHeight = this.#canvasHeight;
 		
 
 		this.canvas.setAttribute("width", this.#canvasWidth.toString());
@@ -574,7 +580,10 @@ class Wilson
 					Math.sqrt(this.#canvasWidth * this.#canvasHeight * windowAspectRatio)
 				);
 
-				this.resizeCanvas({ width });
+				if (this.resizeCanvas({ width }))
+				{
+					this.#onResizeCanvasCallback();
+				}
 			}
 
 			this.#needDraggablesContainerSizeUpdate = true;
@@ -594,8 +603,8 @@ class Wilson
 			this.exitFullscreen();
 		}
 	}
-
 	
+
 
 	resizeCanvas(
 		dimensions: { width: number, height?: undefined }
@@ -623,10 +632,20 @@ class Wilson
 			this.canvasHeight = this.#canvasHeight;
 		}
 
-		this.canvas.setAttribute("width", this.#canvasWidth.toString());
-		this.canvas.setAttribute("height", this.#canvasHeight.toString());
+		if (
+			this.#lastCanvasWidth !== this.#canvasWidth
+			|| this.#lastCanvasHeight !== this.#canvasHeight
+		) {
+			this.canvas.setAttribute("width", this.#canvasWidth.toString());
+			this.canvas.setAttribute("height", this.#canvasHeight.toString());
 
-		this.#onResizeCanvasCallback();
+			this.#lastCanvasWidth = this.#canvasWidth;
+			this.#lastCanvasHeight = this.#canvasHeight;
+
+			return true;
+		}
+
+		return false;
 	}
 
 	resizeWorld({
@@ -2009,7 +2028,10 @@ class Wilson
 		{
 			this.#fullscreenContainer.classList.remove("WILSON_fullscreen-fill-screen");
 
-			this.resizeCanvas({ width: this.#canvasOldWidth });
+			if (this.resizeCanvas({ width: this.#canvasOldWidth }))
+			{
+				this.#onResizeCanvasCallback();
+			}
 		}
 
 		this.canvas.style.width = this.#canvasOldWidthStyle;
@@ -2622,9 +2644,11 @@ export class WilsonGPU extends Wilson
 		dimensions: { width: number, height?: undefined }
 		| { height: number, width?: undefined }
 	) {
-		super.resizeCanvas(dimensions);
+		const resized = super.resizeCanvas(dimensions);
 
 		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
+
+		return resized;
 	}
 
 	downloadFrame(
