@@ -2409,7 +2409,6 @@ export class WilsonGPU extends Wilson
 		}
 
 		this.useShader(id);
-		this.#currentShaderId = id;
 
 		const positionBuffer = this.gl.createBuffer();
 
@@ -2474,7 +2473,7 @@ export class WilsonGPU extends Wilson
 
 	setUniforms(uniforms: UniformInitializers, shader: ShaderProgramId = this.#currentShaderId)
 	{
-		this.useShader(shader);
+		this.gl.useProgram(this.#shaderPrograms[shader]);
 		
 		for (const [name, value] of Object.entries(uniforms))
 		{
@@ -2483,7 +2482,7 @@ export class WilsonGPU extends Wilson
 			uniformFunction(this.gl, location, value);
 		}
 
-		this.useShader(this.#currentShaderId);
+		this.gl.useProgram(this.#shaderPrograms[this.#currentShaderId]);
 	}
 
 	useShader(id: ShaderProgramId)
