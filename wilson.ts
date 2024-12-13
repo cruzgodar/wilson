@@ -213,6 +213,8 @@ class Wilson
 
 	reduceMotion: boolean;
 
+	#needDraggablesContainerSizeUpdate: boolean = false;
+
 	#interactionCallbacks: InteractionCallbacks;
 	useInteractionForPanAndZoom: boolean;
 	#needPanAndZoomUpdate: boolean = false;
@@ -484,6 +486,8 @@ class Wilson
 		this.#initDraggables();
 		this.#initFullscreen();
 
+		requestAnimationFrame(this.#animationFrameLoop);
+
 		window.addEventListener("resize", this.#onResizeWindow);
 		document.documentElement.addEventListener("keydown", this.#handleKeydownEvent);
 
@@ -571,10 +575,9 @@ class Wilson
 				);
 
 				this.resizeCanvas({ width });
-				this.#onResizeCanvas();
 			}
 
-			requestAnimationFrame(() => this.#updateDraggablesContainerSize());
+			this.#needDraggablesContainerSizeUpdate = true;
 		};
 
 		update();
@@ -590,11 +593,6 @@ class Wilson
 			e.stopPropagation();
 			this.exitFullscreen();
 		}
-	}
-
-	#onResizeCanvas()
-	{
-		requestAnimationFrame(() => this.#onResizeCanvasCallback());
 	}
 
 	
@@ -628,7 +626,7 @@ class Wilson
 		this.canvas.setAttribute("width", this.#canvasWidth.toString());
 		this.canvas.setAttribute("height", this.#canvasHeight.toString());
 
-		this.#onResizeCanvas();
+		this.#onResizeCanvasCallback();
 	}
 
 	resizeWorld({
@@ -1255,30 +1253,33 @@ class Wilson
 	}
 	
 	#lastPanAndZoomTimestamp = -1;
-	#updatePanAndZoomVelocity = (timestamp: number) =>
+	#animationFrameLoop = (timestamp: number) =>
 	{
-		this.#lastZoomVelocities.shift();
-		this.#lastZoomVelocities.push(this.#lastZoomVelocity);
-		this.#lastZoomVelocity = 0;
-
-		this.#lastPanVelocitiesX.shift();
-		this.#lastPanVelocitiesX.push(this.#lastPanVelocityX);
-		this.#lastPanVelocityX = 0;
-
-		this.#lastPanVelocitiesY.shift();
-		this.#lastPanVelocitiesY.push(this.#lastPanVelocityY);
-		this.#lastPanVelocityY = 0;
-
 		const timeElapsed = timestamp - this.#lastPanAndZoomTimestamp;
-
-		this.#ignoreTouchendCooldown = Math.max(0, this.#ignoreTouchendCooldown - timeElapsed);
 		this.#lastPanAndZoomTimestamp = timestamp;
+
+		if (this.useInteractionForPanAndZoom)
+		{
+			this.#lastZoomVelocities.shift();
+			this.#lastZoomVelocities.push(this.#lastZoomVelocity);
+			this.#lastZoomVelocity = 0;
+
+			this.#lastPanVelocitiesX.shift();
+			this.#lastPanVelocitiesX.push(this.#lastPanVelocityX);
+			this.#lastPanVelocityX = 0;
+
+			this.#lastPanVelocitiesY.shift();
+			this.#lastPanVelocitiesY.push(this.#lastPanVelocityY);
+			this.#lastPanVelocityY = 0;
+
+			this.#ignoreTouchendCooldown = Math.max(0, this.#ignoreTouchendCooldown - timeElapsed);
+		}
 
 		if (timeElapsed === 0 || timeElapsed > 10000)
 		{
 			if (!this.#destroyed)
 			{
-				requestAnimationFrame(this.#updatePanAndZoomVelocity);
+				requestAnimationFrame(this.#animationFrameLoop);
 			}
 
 			return;
@@ -1329,6 +1330,8 @@ class Wilson
 			}
 		}
 
+
+
 		if (this.#needPanAndZoomUpdate)
 		{
 			this.#clampWorldCoordinates();
@@ -1338,9 +1341,17 @@ class Wilson
 			this.#needPanAndZoomUpdate = false;
 		}
 
+		if (this.#needDraggablesContainerSizeUpdate)
+		{
+			this.#updateDraggablesContainerSize();
+			this.#needDraggablesContainerSizeUpdate = false;
+		}
+
+		
+
 		if (!this.#destroyed)
 		{
-			requestAnimationFrame(this.#updatePanAndZoomVelocity);
+			requestAnimationFrame(this.#animationFrameLoop);
 		}
 	}
 
@@ -1357,11 +1368,6 @@ class Wilson
 			canvas.addEventListener("wheel", (e) => this.#onWheel(e as WheelEvent));
 
 			canvas.addEventListener("mouseleave", (e) => this.#onMouseup(e as MouseEvent));
-		}
-
-		if (this.useInteractionForPanAndZoom)
-		{
-			requestAnimationFrame(this.#updatePanAndZoomVelocity);
 		}
 	}
 
@@ -1519,14 +1525,11 @@ class Wilson
 		this.#draggables[id].currentlyDragging = true;
 		this.draggables[id].currentlyDragging = true;
 
-		requestAnimationFrame(() =>
-		{
-			this.#draggableCallbacks.ongrab({
-				id,
-				x: this.#draggables[id].location[0],
-				y: this.#draggables[id].location[1],
-				event: e,
-			});
+		this.#draggableCallbacks.ongrab({
+			id,
+			x: this.#draggables[id].location[0],
+			y: this.#draggables[id].location[1],
+			event: e,
 		});
 	}
 
@@ -1544,14 +1547,11 @@ class Wilson
 		this.draggables[id].currentlyDragging = false;
 		this.#currentlyDragging = false;
 
-		requestAnimationFrame(() =>
-		{
-			this.#draggableCallbacks.onrelease({
-				id,
-				x: this.#draggables[id].location[0],
-				y: this.#draggables[id].location[1],
-				event: e,
-			});
+		this.#draggableCallbacks.onrelease({
+			id,
+			x: this.#draggables[id].location[0],
+			y: this.#draggables[id].location[1],
+			event: e,
 		});
 	}
 
@@ -1585,20 +1585,17 @@ class Wilson
 				/ this.#draggablesContainerRestrictedHeight
 		) * this.#worldHeight + this.#worldCenterY;
 		
-		requestAnimationFrame(() =>
-		{
-			this.#draggableCallbacks.ondrag({
-				id,
-				x,
-				y,
-				xDelta: x - this.#draggables[id].location[0],
-				yDelta: y - this.#draggables[id].location[1],
-				event: e,
-			});
-
-			this.#draggables[id].location = [x, y];
-			this.draggables[id].location = [x, y];
+		this.#draggableCallbacks.ondrag({
+			id,
+			x,
+			y,
+			xDelta: x - this.#draggables[id].location[0],
+			yDelta: y - this.#draggables[id].location[1],
+			event: e,
 		});
+
+		this.#draggables[id].location = [x, y];
+		this.draggables[id].location = [x, y];
 	}
 
 	#draggableOnTouchstart(e: TouchEvent, id: string)
@@ -1613,14 +1610,11 @@ class Wilson
 		this.#draggables[id].currentlyDragging = true;
 		this.draggables[id].currentlyDragging = true;
 		
-		requestAnimationFrame(() =>
-		{
-			this.#draggableCallbacks.ongrab({
-				id,
-				x: this.#draggables[id].location[0],
-				y: this.#draggables[id].location[1],
-				event: e,
-			});
+		this.#draggableCallbacks.ongrab({
+			id,
+			x: this.#draggables[id].location[0],
+			y: this.#draggables[id].location[1],
+			event: e,
 		});
 	}
 
@@ -1637,15 +1631,11 @@ class Wilson
 		this.draggables[id].currentlyDragging = false;
 		this.#currentlyDragging = false;
 
-
-		requestAnimationFrame(() =>
-		{
-			this.#draggableCallbacks.onrelease({
-				id,
-				x: this.#draggables[id].location[0],
-				y: this.#draggables[id].location[1],
-				event: e,
-			});
+		this.#draggableCallbacks.onrelease({
+			id,
+			x: this.#draggables[id].location[0],
+			y: this.#draggables[id].location[1],
+			event: e,
 		});
 	}
 
@@ -1709,20 +1699,17 @@ class Wilson
 
 
 
-		requestAnimationFrame(() =>
-		{
-			this.#draggableCallbacks.ondrag({
-				id,
-				x,
-				y,
-				xDelta: x - this.#draggables[id].location[0],
-				yDelta: y - this.#draggables[id].location[1],
-				event: e,
-			});
-
-			this.#draggables[id].location = [x, y];
-			this.draggables[id].location = [x, y];
+		this.#draggableCallbacks.ondrag({
+			id,
+			x,
+			y,
+			xDelta: x - this.#draggables[id].location[0],
+			yDelta: y - this.#draggables[id].location[1],
+			event: e,
 		});
+
+		this.#draggables[id].location = [x, y];
+		this.draggables[id].location = [x, y];
 	}
 
 	#updateDraggablesContainerSize()
@@ -1917,7 +1904,6 @@ class Wilson
 		}
 
 		this.#onResizeWindow();
-		this.#onResizeCanvas();
 	}
 
 	enterFullscreen()
@@ -2030,7 +2016,6 @@ class Wilson
 		this.canvas.style.height = this.#canvasOldHeightStyle;
 
 		this.#onResizeWindow();
-		this.#onResizeCanvas();
 
 		window.scrollTo(0, this.#fullscreenOldScroll);
 		setTimeout(() => window.scrollTo(0, this.#fullscreenOldScroll), 10);
