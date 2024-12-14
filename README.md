@@ -254,8 +254,7 @@ The above guide, along with the example project, are a great way to get started 
 ```
 - `resizeCanvas({ width?: number, height?: number })`: resizes the canvas to the given dimensions. Exactly one of `width` and `height` must be specified.
 - `resizeWorld({ width?: number, height?: number, centerX?: number, centerY?: number })`: sets the world width, height, and center. If one of `width` and `height` is unspecified, the other will be calculated automatically to match the aspect ratio; it is possible, though not recommended, to specify both.
-- `addDraggables(draggables: {[id: string]: [number, number]})`: adds draggables at the given world coordinates.
-- `setDraggables(draggables: {[id: string]: [number, number]})`: sets the world coordinates of the draggables.
+- `setDraggables(draggables: {[id: string]: [number, number]})`: sets the world coordinates of the draggables. If a draggable with the given ID does not exist, it will be created.
 - `removeDraggables(id: string | string[])`: removes the draggable with the given ID. If an array of IDs is given, all of them will be removed.
 - `enterFullscreen()`: enters fullscreen mode.
 - `exitFullscreen()`: exits fullscreen mode.
