@@ -114,8 +114,10 @@ type InteractionOptions = ({
 	callbacks?: Partial<InteractionCallbacks>,
 };
 
+type DraggableInitializers = {[id: string]: [number, number]};
+
 type DraggableOptions = {
-	draggables?: {[id: string]: [number, number]},
+	draggables?: DraggableInitializers,
 	radius?: number,
 	static?: boolean,
 	callbacks?: Partial<DraggableCallBacks>,
@@ -499,13 +501,7 @@ class Wilson
 
 		if (options.draggableOptions?.draggables)
 		{
-			for (const [id, location] of Object.entries(options.draggableOptions.draggables))
-			{
-				this.addDraggable({
-					id,
-					location
-				});
-			}
+			this.addDraggables(options.draggableOptions.draggables);
 		}
 
 
@@ -1446,103 +1442,112 @@ class Wilson
 		document.documentElement.addEventListener("mouseup", this.#documentDraggableMouseupListener);
 	}
 
-	addDraggable({ id, location }: { id: string, location: [number, number] })
+	addDraggables(draggables: DraggableInitializers)
 	{
-		const [x, y] = location;
+		for (const [id, location] of Object.entries(draggables))
+		{
+			const [x, y] = location;
 
-		//First convert to page coordinates.
-		const uncappedRow = Math.floor(
-			this.#draggablesContainerRestrictedHeight * (
-				1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
-			)
-		) + this.#draggablesRadius;
+			//First convert to page coordinates.
+			const uncappedRow = Math.floor(
+				this.#draggablesContainerRestrictedHeight * (
+					1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
+				)
+			) + this.#draggablesRadius;
 
-		const uncappedCol = Math.floor(
-			this.#draggablesContainerRestrictedWidth * (
-				(x - this.#worldCenterX) / this.#worldWidth + .5
-			)
-		) + this.#draggablesRadius;
+			const uncappedCol = Math.floor(
+				this.#draggablesContainerRestrictedWidth * (
+					(x - this.#worldCenterX) / this.#worldWidth + .5
+				)
+			) + this.#draggablesRadius;
 
-		const row = Math.min(
-			Math.max(this.#draggablesRadius, uncappedRow),
-			this.#draggablesContainerHeight - this.#draggablesRadius
-		);
+			const row = Math.min(
+				Math.max(this.#draggablesRadius, uncappedRow),
+				this.#draggablesContainerHeight - this.#draggablesRadius
+			);
 
-		const col = Math.min(
-			Math.max(this.#draggablesRadius, uncappedCol),
-			this.#draggablesContainerWidth - this.#draggablesRadius
-		);
+			const col = Math.min(
+				Math.max(this.#draggablesRadius, uncappedCol),
+				this.#draggablesContainerWidth - this.#draggablesRadius
+			);
 
-		const useableId = id ?? `WILSON_draggable-${this.#draggableDefaultId}`;
-		this.#draggableDefaultId++;
+			const useableId = id ?? `WILSON_draggable-${this.#draggableDefaultId}`;
+			this.#draggableDefaultId++;
 
-		const element = document.createElement("div");
-		element.classList.add("WILSON_draggable");
-		element.id = useableId;
-		element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+			const element = document.createElement("div");
+			element.classList.add("WILSON_draggable");
+			element.id = useableId;
+			element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+			
+			element.addEventListener("mousedown", e => this.#draggableOnMousedown(e as MouseEvent, useableId));
+			element.addEventListener("mouseup", e => this.#draggableOnMouseup(e as MouseEvent, useableId));
+			element.addEventListener("mousemove", e => this.#draggableOnMousemove(e as MouseEvent, useableId));
+			element.addEventListener("touchstart", e => this.#draggableOnTouchstart(e as TouchEvent, useableId));
+			element.addEventListener("touchend", e => this.#draggableOnTouchend(e as TouchEvent, useableId));
+			element.addEventListener("touchmove", e => this.#draggableOnTouchmove(e as TouchEvent, useableId));
+
+			this.#draggablesContainer.appendChild(element);
+
+			this.#draggables[useableId] = {
+				element,
+				location: [x, y],
+				currentlyDragging: false,
+			};
+			this.draggables[useableId] = {
+				element,
+				location: [x, y],
+				currentlyDragging: false,
+			};
+		}
+	}
+
+	removeDraggables(id: string | string[])
+	{
+		const ids = Array.isArray(id) ? id : [id];
 		
-		element.addEventListener("mousedown", e => this.#draggableOnMousedown(e as MouseEvent, useableId));
-		element.addEventListener("mouseup", e => this.#draggableOnMouseup(e as MouseEvent, useableId));
-		element.addEventListener("mousemove", e => this.#draggableOnMousemove(e as MouseEvent, useableId));
-		element.addEventListener("touchstart", e => this.#draggableOnTouchstart(e as TouchEvent, useableId));
-		element.addEventListener("touchend", e => this.#draggableOnTouchend(e as TouchEvent, useableId));
-		element.addEventListener("touchmove", e => this.#draggableOnTouchmove(e as TouchEvent, useableId));
-
-		this.#draggablesContainer.appendChild(element);
-
-		this.#draggables[useableId] = {
-			element,
-			location: [x, y],
-			currentlyDragging: false,
-		};
-		this.draggables[useableId] = {
-			element,
-			location: [x, y],
-			currentlyDragging: false,
-		};
-
-		return element;
+		for (const draggableId of ids)
+		{
+			this.#draggables[draggableId].element.remove();
+			delete this.#draggables[draggableId];
+			delete this.draggables[draggableId];
+		}
 	}
 
-	removeDraggable(id: string)
+	setDraggables(draggables: DraggableInitializers)
 	{
-		this.#draggables[id].element.remove();
-		delete this.#draggables[id];
-		delete this.draggables[id];
-	}
+		for (const [id, location] of Object.entries(draggables))
+		{
+			const [x, y] = location;
 
-	setDraggablePosition({ id, location }: { id: string, location: [number, number] })
-	{
-		const [x, y] = location;
+			this.#draggables[id].location = [x, y];
+			this.draggables[id].location = [x, y];
 
-		this.#draggables[id].location = [x, y];
-		this.draggables[id].location = [x, y];
+			const element = this.#draggables[id].element;
 
-		const element = this.#draggables[id].element;
+			const uncappedRow = Math.floor(
+				this.#draggablesContainerRestrictedHeight * (
+					1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
+				)
+			) + this.#draggablesRadius;
 
-		const uncappedRow = Math.floor(
-			this.#draggablesContainerRestrictedHeight * (
-				1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
-			)
-		) + this.#draggablesRadius;
+			const uncappedCol = Math.floor(
+				this.#draggablesContainerRestrictedWidth * (
+					(x - this.#worldCenterX) / this.#worldWidth + .5
+				)
+			) + this.#draggablesRadius;
 
-		const uncappedCol = Math.floor(
-			this.#draggablesContainerRestrictedWidth * (
-				(x - this.#worldCenterX) / this.#worldWidth + .5
-			)
-		) + this.#draggablesRadius;
+			const row = Math.min(
+				Math.max(this.#draggablesRadius, uncappedRow),
+				this.#draggablesContainerHeight - this.#draggablesRadius
+			);
 
-		const row = Math.min(
-			Math.max(this.#draggablesRadius, uncappedRow),
-			this.#draggablesContainerHeight - this.#draggablesRadius
-		);
+			const col = Math.min(
+				Math.max(this.#draggablesRadius, uncappedCol),
+				this.#draggablesContainerWidth - this.#draggablesRadius
+			);
 
-		const col = Math.min(
-			Math.max(this.#draggablesRadius, uncappedCol),
-			this.#draggablesContainerWidth - this.#draggablesRadius
-		);
-
-		element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+			element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+		}
 	}
 
 	#draggableOnMousedown(e: MouseEvent, id: string)

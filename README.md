@@ -211,7 +211,7 @@ The above guide, along with the example project, are a great way to get started 
 		- `touchmove: ({ x, y, xDelta, yDelta, event }) => void`: a function called when a touch point is moved while dragging on the canvas.
 		- `wheel: ({ x, y, scrollDelta, event }) => void`: a function called when a mouse wheel is scrolled on the canvas.
 - `draggableOptions`: an object with the following fields:
-	- `draggables`: an object whose keys are the IDs of draggable elements, and whose values are arrays of two numbers representing the initial world coordinates of the draggable.
+	- `draggables: {[id: string]: [number, number]}`: an object whose keys are the IDs of draggable elements, and whose values are the initial world coordinates of the draggable.
 	- `radius`: the radius of the draggable circles, in pixels (including the border). Defaults to `12`. Change this only if you are also restyling the CSS of the draggables.
 	- `static`: a boolean for whether the draggables are unable to be moved. Defaults to `false`.
 	- `callbacks`: an object with some or all of the following fields:
@@ -240,7 +240,7 @@ The above guide, along with the example project, are a great way to get started 
 - `minWorldWidth`, `maxWorldWidth`, `minWorldHeight`, `maxWorldHeight`, `minWorldCenterX`, `maxWorldCenterX`, `minWorldCenterY`, `maxWorldCenterY`: bounds on the world coordinates. May be changed dynamically, although the possible subsequent clamping of the coordinates may be undesirable.
 - `reduceMotion`: a boolean for whether reduced motion animations are enabled. Can be changed dynamically.
 - `useInteractionForPanAndZoom`: a boolean for whether to use pan and zoom interactions. Can be changed dynamically.
-- `currentlyFullscreen`: a boolean for whether the canvas is currently in fullscreen mode. Readonly.
+- `currentlyFullscreen`: a boolean for whether the canvas is currently in fullscreen mode. Readonly; to change the fullscreen mode, use `enterFullscreen` or `exitFullscreen`.
 - `animateFullscreen`: a boolean for whether the fullscreen transition is animated. Can be changed dynamically.
 - `draggables`: a readonly object containing the current draggables, of the form
 ```ts
@@ -254,9 +254,9 @@ The above guide, along with the example project, are a great way to get started 
 ```
 - `resizeCanvas({ width?: number, height?: number })`: resizes the canvas to the given dimensions. Exactly one of `width` and `height` must be specified.
 - `resizeWorld({ width?: number, height?: number, centerX?: number, centerY?: number })`: sets the world width, height, and center. If one of `width` and `height` is unspecified, the other will be calculated automatically to match the aspect ratio; it is possible, though not recommended, to specify both.
-- `addDraggable({ id: string, location: [number, number] })`: adds a draggable at the given world coordinates.
-- `removeDraggable(id: string)`: removes the draggable with the given ID.
-- `setDraggablePosition({ id: string, location: [number, number] })`: sets the world coordinates of the draggable with the given ID.
+- `addDraggables(draggables: {[id: string]: [number, number]})`: adds draggables at the given world coordinates.
+- `setDraggables(draggables: {[id: string]: [number, number]})`: sets the world coordinates of the draggables.
+- `removeDraggables(id: string | string[])`: removes the draggable with the given ID. If an array of IDs is given, all of them will be removed.
 - `enterFullscreen()`: enters fullscreen mode.
 - `exitFullscreen()`: exits fullscreen mode.
 - `interpolateCanvasToWorld([row: number, col: number]): [number, number]`: converts a point in canvas coordinates to world coordinates.
