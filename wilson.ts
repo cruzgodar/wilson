@@ -1327,6 +1327,10 @@ class Wilson
 			this.#lastPanVelocitiesY.push(this.#lastPanVelocityY);
 			this.#lastPanVelocityY = 0;
 
+			// It would seem like we should divide by timeElapsed,
+			// but this is a lag compensation measure --- if we're dropping
+			// frames, we increase the velocity factor so that the inertia effect
+			// isn't halted so quickly
 			this.#lastVelocityFactors.shift();
 			this.#lastVelocityFactors.push(
 				Math.max(timeElapsed / (1000 / 60), 1)

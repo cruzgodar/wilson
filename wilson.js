@@ -147,6 +147,10 @@ class Wilson {
                 __classPrivateFieldGet(this, _Wilson_lastPanVelocitiesY, "f").shift();
                 __classPrivateFieldGet(this, _Wilson_lastPanVelocitiesY, "f").push(__classPrivateFieldGet(this, _Wilson_lastPanVelocityY, "f"));
                 __classPrivateFieldSet(this, _Wilson_lastPanVelocityY, 0, "f");
+                // It would seem like we should divide by timeElapsed,
+                // but this is a lag compensation measure --- if we're dropping
+                // frames, we increase the velocity factor so that the inertia effect
+                // isn't halted so quickly
                 __classPrivateFieldGet(this, _Wilson_lastVelocityFactors, "f").shift();
                 __classPrivateFieldGet(this, _Wilson_lastVelocityFactors, "f").push(Math.max(timeElapsed / (1000 / 60), 1));
                 __classPrivateFieldSet(this, _Wilson_ignoreTouchendCooldown, Math.max(0, __classPrivateFieldGet(this, _Wilson_ignoreTouchendCooldown, "f") - timeElapsed), "f");
