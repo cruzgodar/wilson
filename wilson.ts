@@ -110,6 +110,7 @@ type InteractionOptions = ({
 	inertia?: boolean,
 	panFriction?: number,
 	zoomFriction?: number,
+	disallowZooming?: boolean,
 }) & {
 	callbacks?: Partial<InteractionCallbacks>,
 };
@@ -222,6 +223,7 @@ class Wilson
 
 	#interactionCallbacks: InteractionCallbacks;
 	useInteractionForPanAndZoom: boolean;
+	disallowZooming: boolean = false;
 	#needPanAndZoomUpdate: boolean = false;
 	#interactionOnPanAndZoom: () => void = () => {};
 
@@ -401,6 +403,8 @@ class Wilson
 				this.#panVelocityThreshold = Infinity;
 				this.#zoomVelocityThreshold = Infinity;
 			}
+
+			this.disallowZooming = options.interactionOptions?.disallowZooming ?? false;
 
 			this.#lastPanVelocitiesX = Array(this.#numPreviousVelocities).fill(0);
 			this.#lastPanVelocitiesY = Array(this.#numPreviousVelocities).fill(0);
@@ -765,6 +769,11 @@ class Wilson
 
 	#setZoomVelocity()
 	{
+		if (this.disallowZooming)
+		{
+			return;
+		}
+
 		this.#zoomVelocity = 0;
 
 		for (let i = 0; i < this.#numPreviousVelocities; i++)
@@ -969,6 +978,11 @@ class Wilson
 		lastTouch1: [number, number],
 		lastTouch2: [number, number]
 	}) {
+		if (this.disallowZooming)
+		{
+			return;
+		}
+
 		this.#zoomFixedPoint = [
 			(touch1[0] + touch2[0]) / 2,
 			(touch1[1] + touch2[1]) / 2
@@ -1208,6 +1222,11 @@ class Wilson
 	#zoomFixedPoint: [number, number] = [0, 0];
 	#zoomCanvas(scale: number)
 	{
+		if (this.disallowZooming)
+		{
+			return;
+		}
+
 		if (scale > 1 && this.#atMaxWorldSize || scale < 1 && this.#atMinWorldSize)
 		{
 			return;
@@ -2167,7 +2186,7 @@ export class WilsonCPU extends Wilson
 
 type ShaderProgramId = string;
 type UniformType = "int" | "float" | "vec2" | "vec3" | "vec4" | "mat2" | "mat3" | "mat4";
-type UniformInitializers = {[name: string]: number | number[]};
+type UniformInitializers = {[name: string]: number | number[] | number[][]};
 
 const uniformFunctions: {[key in UniformType]: any} = {
 	int: (
@@ -2203,20 +2222,20 @@ const uniformFunctions: {[key in UniformType]: any} = {
 	mat2: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
-		value: [number, number, number, number]
-	) => gl.uniformMatrix2fv(location, false, value),
+		value: [[number, number], [number, number]]
+	) => gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]]),
 	
 	mat3: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
-		value: [number, number, number, number, number, number, number, number, number]
-	) => gl.uniformMatrix3fv(location, false, value),
+		value: [[number, number, number], [number, number, number], [number, number, number]]
+	) => gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]]),
 	
 	mat4: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
-		value: [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number]
-	) => gl.uniformMatrix4fv(location, false, value),
+		value: [[number, number, number, number], [number, number, number, number], [number, number, number, number], [number, number, number, number]]
+	) => gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]),
 };
 
 type SingleShader = {

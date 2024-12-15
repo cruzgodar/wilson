@@ -91,7 +91,7 @@ const options = {
 };
 ```
 
-Ints and floats are initialized with numbers, while vectors and matrices are initialized with 1D arrays of numbers of appropriate lengths.
+Ints and floats are initialized with numbers, vectors are initialized with 1D arrays, and matrices are initialized with 2D arrays in **row-major** order (i.e. the way you're likely used to representing them in JavaScript, but not in GLSL).
 
 To draw a frame, call the `drawFrame` method on the `WilsonGPU` instance. To set a uniform, use the `setUniform` method:
 
@@ -197,6 +197,7 @@ The above guide, along with the example project, are a great way to get started 
 - `reduceMotion`: a boolean for whether to use reduced motion animations. If left unspecified, the user's accessibility settings will be used to determine whether reduced motion is enabled.
 - `interactionOptions`: an object with some or all of the following fields:
 	- `useForPanAndZoom`: a boolean for whether to use pan and zoom interactions. Defaults to `false`.
+	- `disallowZooming`: a boolean for whether to disallow zooming. Defaults to `false`; only allowed if `useForPanAndZoom` is `true`.
 	- `onPanAndZoom: () => void`: a function called whenever the world coordinates change due to panning or zooming. Only allowed if `useForPanAndZoom` is `true`.
 	- `inertia`: a boolean for whether to use inertia for panning and zooming. Defaults to `true`; only allowed if `useForPanAndZoom` is `true`.
 	- `panFriction`: a number between `0` and `1` that the panning velocity is multiplied by when panning. Defaults to `0.875`; only allowed if `useForPanAndZoom` is `true`.
@@ -271,8 +272,8 @@ The above guide, along with the example project, are a great way to get started 
 - `gl`: the WebGL or WebGL2 context.
 - `drawFrame()`: draws a frame with the current shader program.instances.
 - `downloadFrame(filename: string, drawNewFrame?: boolean)`: downloads the current frame as a png file. For this to work properly, a new frame must be drawn immediately before downloading. Setting drawNewFrame to `false` will skip this step; only use this if you are manually drawing a frame directly before calling this method.
-- `loadShader({ id?: string, source: string, uniforms?: {[name: string]: number | number[]} })`: loads a new shader program and sets it as the current one. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders.
-- `setUniforms(uniforms: {[name: string]: number | number[]} }, shader?: string)`: sets uniforms for the shader program with the given ID. If no shader ID is specified, it defaults to that of the current shader program.
+- `loadShader({ id?: string, source: string, uniforms?: {[name: string]: number | number[] | number[][]} })`: loads a new shader program and sets it as the current one. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders.
+- `setUniforms(uniforms: {[name: string]: number | number[] | number[][]} }, shader?: string)`: sets uniforms for the shader program with the given ID. If no shader ID is specified, it defaults to that of the current shader program.
 - `useShader(id: string)`: sets the current shader program.
 - `createFramebufferTexturePair({ id: string, width?: number, height?: number, textureType: "unsignedByte" | "float" })`: creates a framebuffer texture pair with a given ID and type. If width or height are unspecified, they default to the canvas width and height.
 - `useFramebuffer(id: string | null)`: sets the current framebuffer.
