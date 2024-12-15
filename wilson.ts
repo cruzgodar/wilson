@@ -229,7 +229,8 @@ class Wilson
 
 	
 
-	#numPreviousVelocities: number = 5;
+	#numPreviousVelocities: number = 4;
+	#lastVelocityFactors: number[] = [];
 
 	#lastPanVelocityX = 0;
 	#lastPanVelocityY = 0;
@@ -405,6 +406,8 @@ class Wilson
 			}
 
 			this.disallowZooming = options.interactionOptions?.disallowZooming ?? false;
+
+			this.#lastVelocityFactors = Array(this.#numPreviousVelocities).fill(1);
 
 			this.#lastPanVelocitiesX = Array(this.#numPreviousVelocities).fill(0);
 			this.#lastPanVelocitiesY = Array(this.#numPreviousVelocities).fill(0);
@@ -740,6 +743,8 @@ class Wilson
 		this.#lastPanVelocityX = 0;
 		this.#lastPanVelocityY = 0;
 		this.#lastZoomVelocity = 0;
+		
+		this.#lastVelocityFactors = Array(this.#numPreviousVelocities).fill(1);
 
 		this.#lastPanVelocitiesX = Array(this.#numPreviousVelocities).fill(0);
 		this.#lastPanVelocitiesY = Array(this.#numPreviousVelocities).fill(0);
@@ -798,8 +803,10 @@ class Wilson
 
 		for (let i = 0; i < this.#numPreviousVelocities; i++)
 		{
-			this.#panVelocityX += this.#lastPanVelocitiesX[i];
-			this.#panVelocityY += this.#lastPanVelocitiesY[i];
+			this.#panVelocityX += this.#lastPanVelocitiesX[i]
+				* this.#lastVelocityFactors[i];
+			this.#panVelocityY += this.#lastPanVelocitiesY[i]
+				* this.#lastVelocityFactors[i];
 		}
 
 		this.#panVelocityX /= this.#numPreviousVelocities;
@@ -1260,7 +1267,7 @@ class Wilson
 
 	#onWheel(e: WheelEvent)
 	{
-		if (this.useInteractionForPanAndZoom)
+		if (this.useInteractionForPanAndZoom && !this.disallowZooming)
 		{
 			e.preventDefault();
 		}
@@ -1319,6 +1326,11 @@ class Wilson
 			this.#lastPanVelocitiesY.shift();
 			this.#lastPanVelocitiesY.push(this.#lastPanVelocityY);
 			this.#lastPanVelocityY = 0;
+
+			this.#lastVelocityFactors.shift();
+			this.#lastVelocityFactors.push(
+				Math.max(timeElapsed / (1000 / 60), 1)
+			);
 
 			this.#ignoreTouchendCooldown = Math.max(0, this.#ignoreTouchendCooldown - timeElapsed);
 		}
@@ -1391,7 +1403,7 @@ class Wilson
 
 		if (this.#needDraggablesContainerSizeUpdate)
 		{
-			this.#updateDraggablesContainerSize();
+			requestAnimationFrame(() => this.#updateDraggablesContainerSize());
 			this.#needDraggablesContainerSizeUpdate = false;
 		}
 
