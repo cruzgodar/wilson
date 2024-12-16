@@ -287,4 +287,4 @@ The above guide, along with the example project, are a great way to get started 
 - `useFramebuffer(id: string | null)`: sets the current framebuffer.
 - `useTexture(id: string | null)`: sets the current texture.
 - `setTexture({ id: string, data: Float32Array | Uint8Array | null })`: writes `data` to the texture with the given ID. The type of `data` must match the texture type (i.e. if the texture is of type `float`, the data must be a `Float32Array`), and the length of `data` must be equal to the texture's width times its height, times 4.
-- `readPixels(format: "unsignedByte" | "float")`: reads the current frame as either  a `Uint8Array` or `Float32Array`, depending on the format.
+- `readPixels({ row: number, col: number, height: number, width: number, format: "unsignedByte" | "float", includeAlpha: boolean })`: reads the a rectangle of pixels out of the current frame as either  a `Uint8Array` or `Float32Array`, depending on the format. `row` and `col` default to `0`, and `height` and `width` default to the canvas height and width, respectively. The size of the returned array is `width * height * 4`.

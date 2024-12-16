@@ -2254,6 +2254,14 @@ const uniformFunctions: {[key in UniformType]: any} = {
 	) => gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]),
 };
 
+type ReadPixelsOptions = {
+	row: number,
+	col: number,
+	height: number,
+	width: number,
+	format: "unsignedByte" | "float",
+}
+
 type SingleShader = {
 	shader: string,
 	uniforms?: UniformInitializers
@@ -2644,17 +2652,27 @@ export class WilsonGPU extends Wilson
 		);
 	}
 
-	readPixels(format: "unsignedByte" | "float" = "unsignedByte")
+	readPixels(options: ReadPixelsOptions)
 	{
+		const defaultOptions: ReadPixelsOptions = {
+			row: 0,
+			col: 0,
+			height: this.canvasHeight,
+			width: this.canvasWidth,
+			format: "unsignedByte",
+		};
+
+		const { row, col, height, width, format } = { ...defaultOptions, ...(options ?? {}) };
+
 		const pixels = format === "float"
-			? new Float32Array(this.canvasWidth * this.canvasHeight * 4)
-			: new Uint8Array(this.canvasWidth * this.canvasHeight * 4);
+			? new Float32Array(width * height * 4)
+			: new Uint8Array(width * height * 4);
 
 		this.gl.readPixels(
-			0,
-			0,
-			this.canvasWidth,
-			this.canvasHeight,
+			col,
+			row,
+			width,
+			height,
 			this.gl.RGBA,
 			format === "float"
 				? this.gl.FLOAT
