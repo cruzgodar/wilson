@@ -140,10 +140,10 @@ Draggables are a built-in way to add interactive elements directly to the canvas
 ```js
 const options = {
 	draggableOptions: {
-		draggables: [
+		draggables: {
 			c: [0, 0],
 			r: [1, 0],
-		],
+		},
 	},
 };
 ```
@@ -151,9 +151,17 @@ const options = {
 Callbacks can be specified for when a draggable is grabbed, dragged, and released, with the following signatures:
 
 ```js
-ongrab: ({ id, x, y, event }) => {}
-ondrag: ({ id, x, y, xDelta, yDelta, event }) => {}
-onrelease: ({ id, x, y, event }) => {}
+draggableOptions: {
+	draggables: {
+		c: [0, 0],
+		r: [1, 0],
+	},
+	callbacks: {
+		grab: ({ id, x, y, event }) => {}
+		drag: ({ id, x, y, xDelta, yDelta, event }) => {}
+		release: ({ id, x, y, event }) => {}
+	}
+},
 ```
 
 The example project uses a draggable to represent the `c` value for the Julia set and updates the corresponding uniform when the draggable is moved.
@@ -216,9 +224,9 @@ The above guide, along with the example project, are a great way to get started 
 	- `radius`: the radius of the draggable circles, in pixels (including the border). Defaults to `12`. Change this only if you are also restyling the CSS of the draggables.
 	- `static`: a boolean for whether the draggables are unable to be moved. Defaults to `false`.
 	- `callbacks`: an object with some or all of the following fields:
-		- `ongrab: ({ id, x, y, event }) => void`: a function called when a draggable is grabbed.
-		- `ondrag: ({ id, x, y, xDelta, yDelta, event }) => void`: a function called when a draggable is moved.
-		- `onrelease: ({ id, x, y, event }) => void`: a function called when a draggable is released.
+		- `grab: ({ id, x, y, event }) => void`: a function called when a draggable is grabbed.
+		- `drag: ({ id, x, y, xDelta, yDelta, event }) => void`: a function called when a draggable is moved.
+		- `release: ({ id, x, y, event }) => void`: a function called when a draggable is released.
 - `fullscreenOptions`: an object with the following fields:
 	- `fillScreen`: a boolean for whether to resize the canvas and world to fill the entire screen. Defaults to `false`.
 	- `animate`: a boolean for whether to animate the transition to fullscreen. Defaults to `true`.

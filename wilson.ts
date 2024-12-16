@@ -75,9 +75,9 @@ const defaultInteractionCallbacks: InteractionCallbacks = {
 };
 
 type DraggableCallBacks = {
-	ongrab: ({ id, x, y, event }: { id: string, x: number, y: number, event: Event }) => void,
+	grab: ({ id, x, y, event }: { id: string, x: number, y: number, event: Event }) => void,
 
-	ondrag: ({
+	drag: ({
 		id,
 		x,
 		y,
@@ -93,13 +93,13 @@ type DraggableCallBacks = {
 		event: Event
 	}) => void,
 
-	onrelease: ({ id, x, y, event }: { id: string, x: number, y: number, event: Event }) => void,
+	release: ({ id, x, y, event }: { id: string, x: number, y: number, event: Event }) => void,
 }
 
 const defaultDraggableCallbacks: DraggableCallBacks = {
-	ongrab: ({ id, x, y, event }) => {},
-	ondrag: ({ id, x, y, xDelta, yDelta, event }) => {},
-	onrelease: ({ id, x, y, event }) => {},
+	grab: ({ id, x, y, event }) => {},
+	drag: ({ id, x, y, xDelta, yDelta, event }) => {},
+	release: ({ id, x, y, event }) => {},
 };
 
 type InteractionOptions = ({
@@ -1572,7 +1572,7 @@ class Wilson
 		this.#draggables[id].currentlyDragging = true;
 		this.draggables[id].currentlyDragging = true;
 
-		this.#draggableCallbacks.ongrab({
+		this.#draggableCallbacks.grab({
 			id,
 			x: this.#draggables[id].location[0],
 			y: this.#draggables[id].location[1],
@@ -1594,7 +1594,7 @@ class Wilson
 		this.draggables[id].currentlyDragging = false;
 		this.#currentlyDragging = false;
 
-		this.#draggableCallbacks.onrelease({
+		this.#draggableCallbacks.release({
 			id,
 			x: this.#draggables[id].location[0],
 			y: this.#draggables[id].location[1],
@@ -1632,7 +1632,7 @@ class Wilson
 				/ this.#draggablesContainerRestrictedHeight
 		) * this.#worldHeight + this.#worldCenterY;
 		
-		this.#draggableCallbacks.ondrag({
+		this.#draggableCallbacks.drag({
 			id,
 			x,
 			y,
@@ -1657,7 +1657,7 @@ class Wilson
 		this.#draggables[id].currentlyDragging = true;
 		this.draggables[id].currentlyDragging = true;
 		
-		this.#draggableCallbacks.ongrab({
+		this.#draggableCallbacks.grab({
 			id,
 			x: this.#draggables[id].location[0],
 			y: this.#draggables[id].location[1],
@@ -1678,7 +1678,7 @@ class Wilson
 		this.draggables[id].currentlyDragging = false;
 		this.#currentlyDragging = false;
 
-		this.#draggableCallbacks.onrelease({
+		this.#draggableCallbacks.release({
 			id,
 			x: this.#draggables[id].location[0],
 			y: this.#draggables[id].location[1],
@@ -1746,7 +1746,7 @@ class Wilson
 
 
 
-		this.#draggableCallbacks.ondrag({
+		this.#draggableCallbacks.drag({
 			id,
 			x,
 			y,

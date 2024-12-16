@@ -11,7 +11,7 @@ function initWilson1() {
                 radius: [1, 0],
             },
             callbacks: {
-                ondrag: drawFrame
+                drag: drawFrame
             }
         },
         fullscreenOptions: {
@@ -115,7 +115,7 @@ function initWilson2() {
                 c: [0, 1]
             },
             callbacks: {
-                ondrag: ({ id, x, y }) => {
+                drag: ({ id, x, y }) => {
                     if (id === "c") {
                         wilson.setUniforms({ c: [x, y] });
                         wilson.drawFrame();
