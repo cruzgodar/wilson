@@ -407,6 +407,7 @@ class Wilson {
         __classPrivateFieldSet(this, _Wilson_worldCenterY, centerY !== null && centerY !== void 0 ? centerY : __classPrivateFieldGet(this, _Wilson_worldCenterY, "f"), "f");
         this.worldCenterY = __classPrivateFieldGet(this, _Wilson_worldCenterY, "f");
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_clampWorldCoordinates).call(this);
+        __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesLocation).call(this);
         if (this.useInteractionForPanAndZoom) {
             __classPrivateFieldGet(this, _Wilson_interactionOnPanAndZoom, "f").call(this);
         }

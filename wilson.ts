@@ -725,6 +725,7 @@ class Wilson
 		this.worldCenterY = this.#worldCenterY;
 
 		this.#clampWorldCoordinates();
+		this.#updateDraggablesLocation();
 
 		if (this.useInteractionForPanAndZoom)
 		{
