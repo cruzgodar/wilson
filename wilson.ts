@@ -970,12 +970,12 @@ class Wilson
 			const yIncrease = Math.max(this.#minWorldY + this.#worldHeight / 2 - this.#worldCenterY, 0);
 			const yDecrease = Math.max(this.#worldCenterY - (this.#maxWorldY - this.#worldHeight / 2), 0);
 
-			let xAdjust = (xIncrease !== 0 && xDecrease !== 0)
-				? (xIncrease - xDecrease) / 2
+			let xAdjust = (xIncrease !== 0 && xDecrease !== 0 || this.#worldWidth >= this.#maxWorldWidth)
+				? (this.#maxWorldX + this.#minWorldX) / 2 - this.#worldCenterX
 				: xIncrease - xDecrease;
 
-			let yAdjust = (yIncrease !== 0 && yDecrease !== 0)
-				? (yIncrease - yDecrease) / 2
+			let yAdjust = (yIncrease !== 0 && yDecrease !== 0 || this.#worldHeight >= this.#maxWorldHeight)
+				? (this.#maxWorldY + this.#minWorldY) / 2 - this.#worldCenterY
 				: yIncrease - yDecrease;
 
 			if (this.usePanAndZoomRubberbanding)
