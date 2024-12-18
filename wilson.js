@@ -115,6 +115,7 @@ class Wilson {
                     this.worldWidth = __classPrivateFieldGet(this, _Wilson_worldWidth, "f");
                     __classPrivateFieldSet(this, _Wilson_worldHeight, Math.max(__classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f") / aspectRatioChange, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f")), "f");
                     this.worldHeight = __classPrivateFieldGet(this, _Wilson_worldHeight, "f");
+                    __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_clampWorldCoordinates).call(this);
                     const width = Math.round(Math.sqrt(__classPrivateFieldGet(this, _Wilson_canvasWidth, "f") * __classPrivateFieldGet(this, _Wilson_canvasHeight, "f") * windowAspectRatio));
                     if (__classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_resizeCanvas).call(this, { width })) {
                         __classPrivateFieldGet(this, _Wilson_onResizeCanvasCallback, "f").call(this);
@@ -626,7 +627,6 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         __classPrivateFieldSet(this, _Wilson_panVelocityY, 0, "f");
     }
 }, _Wilson_clampWorldCoordinates = function _Wilson_clampWorldCoordinates(hardnessFactor = 1) {
-    console.log(hardnessFactor);
     __classPrivateFieldSet(this, _Wilson_atMaxWorldSize, false, "f");
     __classPrivateFieldSet(this, _Wilson_atMinWorldSize, false, "f");
     const applyFactor = (factor) => {

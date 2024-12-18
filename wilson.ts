@@ -603,6 +603,8 @@ class Wilson
 				);
 				this.worldHeight = this.#worldHeight;
 
+				this.#clampWorldCoordinates();
+
 
 
 				const width = Math.round(
@@ -866,7 +868,6 @@ class Wilson
 
 	#clampWorldCoordinates(hardnessFactor: number = 1)
 	{
-		console.log(hardnessFactor);
 		this.#atMaxWorldSize = false;
 		this.#atMinWorldSize = false;
 

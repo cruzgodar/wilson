@@ -98,7 +98,6 @@ function initWilson2() {
         maxWorldX: 1.5,
         minWorldY: -1.5,
         maxWorldY: 1.5,
-        clampWorldCoordinatesMode: "one",
         interactionOptions: {
             useForPanAndZoom: true,
             onPanAndZoom: drawFrame
