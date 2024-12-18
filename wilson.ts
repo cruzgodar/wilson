@@ -109,6 +109,8 @@ type InteractionOptions = ({
 	onPanAndZoom?: () => void,
 	inertia?: boolean,
 	rubberbanding?: boolean,
+	rubberbandingPanSoftness?: number,
+	rubberbandingZoomSoftness?: number,
 	panFriction?: number,
 	zoomFriction?: number,
 	disallowZooming?: boolean,
@@ -424,7 +426,9 @@ class Wilson
 				this.#zoomVelocityThreshold = Infinity;
 			}
 
-			this.usePanAndZoomRubberbanding = options.interactionOptions?.rubberbanding ?? true;
+			this.usePanAndZoomRubberbanding = options.interactionOptions?.rubberbanding ?? false;
+			this.rubberbandingPanSoftness = options.interactionOptions?.rubberbandingPanSoftness ?? 3.5;
+			this.rubberbandingZoomSoftness = options.interactionOptions?.rubberbandingZoomSoftness ?? 2;
 
 			this.disallowZooming = options.interactionOptions?.disallowZooming ?? false;
 
@@ -965,10 +969,15 @@ class Wilson
 			const yIncrease = Math.max(this.#minWorldY + this.#worldHeight / 2 - this.#worldCenterY, 0);
 			const yDecrease = Math.max(this.#worldCenterY - (this.#maxWorldY - this.#worldHeight / 2), 0);
 
-			const increaseAmounts = [
-				(xIncrease - xDecrease) / this.rubberbandingPanSoftness * hardnessFactor,
-				(yIncrease - yDecrease) / this.rubberbandingPanSoftness * hardnessFactor
-			];
+			const increaseAmounts = this.usePanAndZoomRubberbanding
+				? [
+					(xIncrease - xDecrease) / this.rubberbandingPanSoftness * hardnessFactor,
+					(yIncrease - yDecrease) / this.rubberbandingPanSoftness * hardnessFactor
+				]
+				: [
+					(xIncrease - xDecrease),
+					(yIncrease - yDecrease)
+				]
 
 			this.#worldCenterX += increaseAmounts[0];
 			this.worldCenterX = this.#worldCenterX;
@@ -979,8 +988,10 @@ class Wilson
 			const threshold = this.#panVelocityThreshold
 				* Math.min(this.#worldWidth, this.#worldHeight);
 
-			if (increaseAmounts[0] ** 2 + increaseAmounts[1] ** 2 > threshold * threshold)
-			{
+			if (
+				this.usePanAndZoomRubberbanding
+				&& increaseAmounts[0] ** 2 + increaseAmounts[1] ** 2 > threshold * threshold
+			) {
 				this.#needPanAndZoomUpdate = true;
 			}
 		}
@@ -1402,22 +1413,22 @@ class Wilson
 		{
 			this.#zoomFixedPoint = [x, y];
 
-			if (Math.abs(e.deltaY) < 80)
-			{
+			// if (Math.abs(e.deltaY) < 80)
+			// {
 				const scale = 1 + e.deltaY * 0.005;
 				this.#zoomCanvas(scale);
-			}
+			// }
 
-			else
-			{
-				this.#zoomVelocity = Math.min(
-					Math.max(
-						this.#zoomVelocity + Math.sign(e.deltaY) * 15,
-						-30
-					),
-					30
-				);
-			}
+			// else
+			// {
+			// 	this.#zoomVelocity = Math.min(
+			// 		Math.max(
+			// 			this.#zoomVelocity + Math.sign(e.deltaY) * 15,
+			// 			-30
+			// 		),
+			// 		30
+			// 	);
+			// }
 		}
 
 		this.#interactionCallbacks.wheel({
