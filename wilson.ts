@@ -108,6 +108,7 @@ type InteractionOptions = ({
 	useForPanAndZoom?: true,
 	onPanAndZoom?: () => void,
 	inertia?: boolean,
+	rubberbanding?: boolean,
 	panFriction?: number,
 	zoomFriction?: number,
 	disallowZooming?: boolean,
@@ -152,10 +153,11 @@ type WilsonOptions = (
 	maxWorldWidth?: number,
 	minWorldHeight?: number,
 	maxWorldHeight?: number,
-	minWorldCenterX?: number,
-	maxWorldCenterX?: number,
-	minWorldCenterY?: number,
-	maxWorldCenterY?: number,
+	minWorldX?: number,
+	maxWorldX?: number,
+	minWorldY?: number,
+	maxWorldY?: number,
+	clampWorldCoordinatesMode?: "one" | "both",
 
 	onResizeCanvas?: () => void,
 
@@ -203,14 +205,15 @@ class Wilson
 	#nonFullscreenWorldWidth: number;
 	#nonFullscreenWorldHeight: number;
 
-	minWorldWidth: number;
-	maxWorldWidth: number;
-	minWorldHeight: number;
-	maxWorldHeight: number;
-	minWorldCenterX: number;
-	maxWorldCenterX: number;
-	minWorldCenterY: number;
-	maxWorldCenterY: number;
+	#minWorldWidth: number;
+	#maxWorldWidth: number;
+	#minWorldHeight: number;
+	#maxWorldHeight: number;
+	#minWorldX: number;
+	#maxWorldX: number;
+	#minWorldY: number;
+	#maxWorldY: number;
+	clampWorldCoordinatesMode: "one" | "both";
 
 	#onResizeCanvasCallback: () => void;
 
@@ -223,6 +226,9 @@ class Wilson
 
 	#interactionCallbacks: InteractionCallbacks;
 	useInteractionForPanAndZoom: boolean;
+	usePanAndZoomRubberbanding: boolean = true;
+	rubberbandingPanSoftness: number = 3.5;
+	rubberbandingZoomSoftness: number = 2;
 	disallowZooming: boolean = false;
 	#needPanAndZoomUpdate: boolean = false;
 	#interactionOnPanAndZoom: () => void = () => {};
@@ -366,14 +372,27 @@ class Wilson
 		this.#worldCenterY = options.worldCenterY ?? 0;
 		this.worldCenterY = this.#worldCenterY;
 
-		this.minWorldWidth = options.minWorldWidth ?? 0;
-		this.maxWorldWidth = options.maxWorldWidth ?? Infinity;
-		this.minWorldHeight = options.minWorldHeight ?? 0;
-		this.maxWorldHeight = options.maxWorldHeight ?? Infinity;
-		this.minWorldCenterX = options.minWorldCenterX ?? -Infinity;
-		this.maxWorldCenterX = options.maxWorldCenterX ?? Infinity;
-		this.minWorldCenterY = options.minWorldCenterY ?? -Infinity;
-		this.maxWorldCenterY = options.maxWorldCenterY ?? Infinity;
+		this.#minWorldX = options.minWorldX ?? -Infinity;
+		this.#maxWorldX = options.maxWorldX ?? Infinity;
+		this.#minWorldY = options.minWorldY ?? -Infinity;
+		this.#maxWorldY = options.maxWorldY ?? Infinity;
+
+		if (this.#minWorldX >= this.#maxWorldX || this.#minWorldY >= this.#maxWorldY)
+		{
+			throw new Error("[Wilson] minWorldX and minWorldY must be less than maxWorldX and maxWorldY, repsectively");
+		}
+
+		this.#maxWorldWidth = (options.minWorldX !== undefined && options.maxWorldX !== undefined)
+			? options.maxWorldX - options.minWorldX
+			: options.maxWorldWidth ?? Infinity;
+		this.#minWorldWidth = options.minWorldWidth ?? 0;
+
+		this.#maxWorldHeight = (options.minWorldY !== undefined && options.maxWorldY !== undefined)
+			? options.maxWorldY - options.minWorldY
+			: options.maxWorldHeight ?? Infinity;
+		this.#minWorldHeight = options.minWorldHeight ?? 0;
+
+		this.clampWorldCoordinatesMode = options.clampWorldCoordinatesMode ?? "one";
 
 
 
@@ -404,6 +423,8 @@ class Wilson
 				this.#panVelocityThreshold = Infinity;
 				this.#zoomVelocityThreshold = Infinity;
 			}
+
+			this.usePanAndZoomRubberbanding = options.interactionOptions?.rubberbanding ?? true;
 
 			this.disallowZooming = options.interactionOptions?.disallowZooming ?? false;
 
@@ -496,6 +517,7 @@ class Wilson
 
 
 
+		this.#clampWorldCoordinates();
 
 		this.#initInteraction();
 		this.#initDraggables();
@@ -828,6 +850,8 @@ class Wilson
 	
 	#currentlyDragging: boolean = false;
 	#currentlyPinching: boolean = false;
+	#currentlyWheeling: boolean = false;
+	#currentlyWheelingTimeoutId: number = -1;
 	#ignoreTouchendCooldown: number = 0;
 	#atMaxWorldSize: boolean = false;
 	#atMinWorldSize: boolean = false;
@@ -836,19 +860,33 @@ class Wilson
 	#lastInteractionRow2: number = 0;
 	#lastInteractionCol2: number = 0;
 
-	#clampWorldCoordinates()
+	#clampWorldCoordinates(hardnessFactor: number = 1)
 	{
-		this.#worldCenterX = Math.min(Math.max(this.#worldCenterX, this.minWorldCenterX), this.maxWorldCenterX);
-		this.worldCenterX = this.#worldCenterX;
-
-		this.#worldCenterY = Math.min(Math.max(this.#worldCenterY, this.minWorldCenterY), this.maxWorldCenterY);
-		this.worldCenterY = this.#worldCenterY;
-		
+		console.log(hardnessFactor);
 		this.#atMaxWorldSize = false;
 		this.#atMinWorldSize = false;
 
 		const applyFactor = (factor: number) =>
 		{
+			if (this.usePanAndZoomRubberbanding)
+			{
+				if (this.#currentlyPinching)
+				{
+					return;
+				}
+
+				factor = Math.pow(
+					factor,
+					(hardnessFactor / this.rubberbandingZoomSoftness)
+						/ (this.#currentlyWheeling ? 1.5 : 1)
+				);
+
+				if (Math.abs(factor - 1) > this.#zoomVelocityThreshold)
+				{
+					this.#needPanAndZoomUpdate = true;
+				}
+			}
+
 			this.#worldHeight *= factor;
 			this.worldHeight = this.#worldHeight;
 
@@ -859,28 +897,92 @@ class Wilson
 			this.#nonFullscreenWorldWidth *= factor;
 		};
 
-		if (this.#worldWidth < this.minWorldWidth)
+		let factor1 = 1;
+		let factor2 = 1;
+
+		if (this.#worldWidth < this.#minWorldWidth)
 		{
-			applyFactor(this.minWorldWidth / this.#worldWidth);
-			this.#atMinWorldSize = true;
+			factor1 = this.#minWorldWidth / this.#worldWidth;
 		}
 
-		else if (this.#worldWidth > this.maxWorldWidth)
+		else if (this.#worldWidth > this.#maxWorldWidth)
 		{
-			applyFactor(this.maxWorldWidth / this.#worldWidth);
-			this.#atMaxWorldSize = true;
+			factor1 = this.#maxWorldWidth / this.#worldWidth;
 		}
 
-		if (this.#worldHeight < this.minWorldHeight)
+		if (this.#worldHeight < this.#minWorldHeight)
 		{
-			applyFactor(this.minWorldHeight / this.#worldHeight);
-			this.#atMinWorldSize = true;
+			factor2 = this.#minWorldHeight / this.#worldHeight;
 		}
 
-		else if (this.#worldHeight > this.maxWorldHeight)
+		else if (this.#worldHeight > this.#maxWorldHeight)
 		{
-			applyFactor(this.maxWorldHeight / this.#worldHeight);
-			this.#atMaxWorldSize = true;
+			factor2 = this.#maxWorldHeight / this.#worldHeight;
+		}
+
+		const maxFactor = Math.max(factor1, factor2);
+		const minFactor = Math.min(factor1, factor2);
+
+		if (this.clampWorldCoordinatesMode === "both")
+		{
+			if (minFactor < 1)
+			{
+				applyFactor(minFactor);
+				this.#atMaxWorldSize = true;
+			}
+
+			else if (maxFactor > 1)
+			{
+				applyFactor(maxFactor);
+				this.#atMinWorldSize = true;
+			}
+		}
+
+		else
+		{
+			if (maxFactor < 1)
+			{
+				applyFactor(maxFactor);
+				this.#atMaxWorldSize = true;
+			}
+
+			else if (minFactor > 1)
+			{
+				applyFactor(minFactor);
+				this.#atMinWorldSize = true;
+			}
+		}
+
+		
+
+		if (
+			(this.usePanAndZoomRubberbanding && !this.#currentlyDragging)
+			|| !this.usePanAndZoomRubberbanding
+		) {
+			const xIncrease = Math.max(this.#minWorldX + this.#worldWidth / 2 - this.#worldCenterX, 0);
+			const xDecrease = Math.max(this.#worldCenterX - (this.#maxWorldX - this.#worldWidth / 2), 0);
+
+			const yIncrease = Math.max(this.#minWorldY + this.#worldHeight / 2 - this.#worldCenterY, 0);
+			const yDecrease = Math.max(this.#worldCenterY - (this.#maxWorldY - this.#worldHeight / 2), 0);
+
+			const increaseAmounts = [
+				(xIncrease - xDecrease) / this.rubberbandingPanSoftness * hardnessFactor,
+				(yIncrease - yDecrease) / this.rubberbandingPanSoftness * hardnessFactor
+			];
+
+			this.#worldCenterX += increaseAmounts[0];
+			this.worldCenterX = this.#worldCenterX;
+
+			this.#worldCenterY += increaseAmounts[1];
+			this.worldCenterY = this.#worldCenterY;
+
+			const threshold = this.#panVelocityThreshold
+				* Math.min(this.#worldWidth, this.#worldHeight);
+
+			if (increaseAmounts[0] ** 2 + increaseAmounts[1] ** 2 > threshold * threshold)
+			{
+				this.#needPanAndZoomUpdate = true;
+			}
 		}
 	}
 
@@ -925,6 +1027,7 @@ class Wilson
 		if (this.useInteractionForPanAndZoom && this.#currentlyDragging)
 		{
 			this.#setPanVelocity();
+			this.#needPanAndZoomUpdate = true;
 		}
 
 		this.#currentlyDragging = false;
@@ -1100,6 +1203,7 @@ class Wilson
 		if (this.useInteractionForPanAndZoom && this.#currentlyDragging && this.#ignoreTouchendCooldown === 0)
 		{
 			this.#setPanVelocity();
+			this.#needPanAndZoomUpdate = true;
 		}
 
 		if (e.touches.length === 0)
@@ -1135,6 +1239,7 @@ class Wilson
 			{
 				this.#ignoreTouchendCooldown = 350;
 				this.#setZoomVelocity();
+				this.#needPanAndZoomUpdate = true;
 			}
 
 			this.#currentlyPinching = false;
@@ -1235,8 +1340,12 @@ class Wilson
 			return;
 		}
 
-		if (scale > 1 && this.#atMaxWorldSize || scale < 1 && this.#atMinWorldSize)
-		{
+		if (
+			!this.usePanAndZoomRubberbanding && (
+				scale > 1 && this.#atMaxWorldSize
+				|| scale < 1 && this.#atMinWorldSize
+			)
+		) {
 			return;
 		}
 
@@ -1273,13 +1382,27 @@ class Wilson
 			e.preventDefault();
 		}
 
+		this.#currentlyWheeling = true;
+
+		if (this.#currentlyWheelingTimeoutId !== -1)
+		{
+			clearTimeout(this.#currentlyWheelingTimeoutId);
+		}
+
+		this.#currentlyWheelingTimeoutId = setTimeout(() =>
+		{
+			this.#currentlyWheeling = false;
+			this.#currentlyWheelingTimeoutId = -1;
+			this.#needPanAndZoomUpdate = true;
+		}, 100) as unknown as number;
+
 		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
 
 		if (this.useInteractionForPanAndZoom)
 		{
 			this.#zoomFixedPoint = [x, y];
 
-			if (Math.abs(e.deltaY) < 50)
+			if (Math.abs(e.deltaY) < 80)
 			{
 				const scale = 1 + e.deltaY * 0.005;
 				this.#zoomCanvas(scale);
@@ -1399,11 +1522,11 @@ class Wilson
 
 		if (this.#needPanAndZoomUpdate)
 		{
-			this.#clampWorldCoordinates();
+			this.#needPanAndZoomUpdate = false;
+
+			this.#clampWorldCoordinates(Math.min(timeElapsed / (1000 / 60), 1));
 			this.#updateDraggablesLocation();
 			this.#interactionOnPanAndZoom();
-
-			this.#needPanAndZoomUpdate = false;
 		}
 
 		if (this.#needDraggablesContainerSizeUpdate)

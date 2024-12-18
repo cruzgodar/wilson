@@ -93,13 +93,12 @@ function initWilson2() {
         onResizeCanvas: drawFrame,
         worldHeight: 3,
         minWorldWidth: 0.00001,
-        maxWorldWidth: 6,
         minWorldHeight: 0.00001,
-        maxWorldHeight: 6,
-        minWorldCenterX: -1.5,
-        maxWorldCenterX: 1.5,
-        minWorldCenterY: -1.5,
-        maxWorldCenterY: 1.5,
+        minWorldX: -1.5,
+        maxWorldX: 1.5,
+        minWorldY: -1.5,
+        maxWorldY: 1.5,
+        clampWorldCoordinatesMode: "one",
         interactionOptions: {
             useForPanAndZoom: true,
             onPanAndZoom: drawFrame
