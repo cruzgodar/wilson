@@ -1413,13 +1413,13 @@ class Wilson
 		{
 			this.#zoomFixedPoint = [x, y];
 
-			if (Math.abs(e.deltaY) < 80)
+			if (Math.abs(e.deltaY) < 50)
 			{
 				const scale = 1 + e.deltaY * 0.005;
 				this.#zoomCanvas(scale);
 			}
 
-			else
+			else if (!this.#currentlyWheeling)
 			{
 				this.#zoomVelocity = Math.min(
 					Math.max(
