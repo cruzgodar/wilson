@@ -969,20 +969,24 @@ class Wilson
 			const yIncrease = Math.max(this.#minWorldY + this.#worldHeight / 2 - this.#worldCenterY, 0);
 			const yDecrease = Math.max(this.#worldCenterY - (this.#maxWorldY - this.#worldHeight / 2), 0);
 
-			const increaseAmounts = this.usePanAndZoomRubberbanding
-				? [
-					(xIncrease - xDecrease) / this.rubberbandingPanSoftness * hardnessFactor,
-					(yIncrease - yDecrease) / this.rubberbandingPanSoftness * hardnessFactor
-				]
-				: [
-					(xIncrease - xDecrease),
-					(yIncrease - yDecrease)
-				]
+			let xAdjust = (xIncrease !== 0 && xDecrease !== 0)
+				? (xIncrease - xDecrease) / 2
+				: xIncrease - xDecrease;
 
-			this.#worldCenterX += increaseAmounts[0];
+			let yAdjust = (yIncrease !== 0 && yDecrease !== 0)
+				? (yIncrease - yDecrease) / 2
+				: yIncrease - yDecrease;
+
+			if (this.usePanAndZoomRubberbanding)
+			{
+				xAdjust /= this.rubberbandingPanSoftness * hardnessFactor;
+				yAdjust /= this.rubberbandingPanSoftness * hardnessFactor;
+			}
+
+			this.#worldCenterX += xAdjust;
 			this.worldCenterX = this.#worldCenterX;
 
-			this.#worldCenterY += increaseAmounts[1];
+			this.#worldCenterY += yAdjust;
 			this.worldCenterY = this.#worldCenterY;
 
 			const threshold = this.#panVelocityThreshold
@@ -990,7 +994,7 @@ class Wilson
 
 			if (
 				this.usePanAndZoomRubberbanding
-				&& increaseAmounts[0] ** 2 + increaseAmounts[1] ** 2 > threshold * threshold
+				&& xAdjust ** 2 + yAdjust ** 2 > threshold * threshold
 			) {
 				this.#needPanAndZoomUpdate = true;
 			}
@@ -1413,13 +1417,17 @@ class Wilson
 		{
 			this.#zoomFixedPoint = [x, y];
 
-			if (Math.abs(e.deltaY) < 50)
+			if (Math.abs(e.deltaY) < 50 || this.#currentlyWheeling)
 			{
-				const scale = 1 + e.deltaY * 0.005;
+				const sigmoided = 60 * (
+					2 / (1 + Math.pow(1.035, -e.deltaY)) - 1
+				);
+
+				const scale = 1 + sigmoided * 0.005;
 				this.#zoomCanvas(scale);
 			}
 
-			else if (!this.#currentlyWheeling)
+			else
 			{
 				this.#zoomVelocity = Math.min(
 					Math.max(

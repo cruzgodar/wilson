@@ -689,23 +689,24 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         const xDecrease = Math.max(__classPrivateFieldGet(this, _Wilson_worldCenterX, "f") - (__classPrivateFieldGet(this, _Wilson_maxWorldX, "f") - __classPrivateFieldGet(this, _Wilson_worldWidth, "f") / 2), 0);
         const yIncrease = Math.max(__classPrivateFieldGet(this, _Wilson_minWorldY, "f") + __classPrivateFieldGet(this, _Wilson_worldHeight, "f") / 2 - __classPrivateFieldGet(this, _Wilson_worldCenterY, "f"), 0);
         const yDecrease = Math.max(__classPrivateFieldGet(this, _Wilson_worldCenterY, "f") - (__classPrivateFieldGet(this, _Wilson_maxWorldY, "f") - __classPrivateFieldGet(this, _Wilson_worldHeight, "f") / 2), 0);
-        const increaseAmounts = this.usePanAndZoomRubberbanding
-            ? [
-                (xIncrease - xDecrease) / this.rubberbandingPanSoftness * hardnessFactor,
-                (yIncrease - yDecrease) / this.rubberbandingPanSoftness * hardnessFactor
-            ]
-            : [
-                (xIncrease - xDecrease),
-                (yIncrease - yDecrease)
-            ];
-        __classPrivateFieldSet(this, _Wilson_worldCenterX, __classPrivateFieldGet(this, _Wilson_worldCenterX, "f") + increaseAmounts[0], "f");
+        let xAdjust = (xIncrease !== 0 && xDecrease !== 0)
+            ? (xIncrease - xDecrease) / 2
+            : xIncrease - xDecrease;
+        let yAdjust = (yIncrease !== 0 && yDecrease !== 0)
+            ? (yIncrease - yDecrease) / 2
+            : yIncrease - yDecrease;
+        if (this.usePanAndZoomRubberbanding) {
+            xAdjust /= this.rubberbandingPanSoftness * hardnessFactor;
+            yAdjust /= this.rubberbandingPanSoftness * hardnessFactor;
+        }
+        __classPrivateFieldSet(this, _Wilson_worldCenterX, __classPrivateFieldGet(this, _Wilson_worldCenterX, "f") + xAdjust, "f");
         this.worldCenterX = __classPrivateFieldGet(this, _Wilson_worldCenterX, "f");
-        __classPrivateFieldSet(this, _Wilson_worldCenterY, __classPrivateFieldGet(this, _Wilson_worldCenterY, "f") + increaseAmounts[1], "f");
+        __classPrivateFieldSet(this, _Wilson_worldCenterY, __classPrivateFieldGet(this, _Wilson_worldCenterY, "f") + yAdjust, "f");
         this.worldCenterY = __classPrivateFieldGet(this, _Wilson_worldCenterY, "f");
         const threshold = __classPrivateFieldGet(this, _Wilson_panVelocityThreshold, "f")
             * Math.min(__classPrivateFieldGet(this, _Wilson_worldWidth, "f"), __classPrivateFieldGet(this, _Wilson_worldHeight, "f"));
         if (this.usePanAndZoomRubberbanding
-            && increaseAmounts[0] ** 2 + increaseAmounts[1] ** 2 > threshold * threshold) {
+            && xAdjust ** 2 + yAdjust ** 2 > threshold * threshold) {
             __classPrivateFieldSet(this, _Wilson_needPanAndZoomUpdate, true, "f");
         }
     }
@@ -961,11 +962,12 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     const [x, y] = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [e.clientY, e.clientX]);
     if (this.useInteractionForPanAndZoom) {
         __classPrivateFieldSet(this, _Wilson_zoomFixedPoint, [x, y], "f");
-        if (Math.abs(e.deltaY) < 50) {
-            const scale = 1 + e.deltaY * 0.005;
+        if (Math.abs(e.deltaY) < 50 || __classPrivateFieldGet(this, _Wilson_currentlyWheeling, "f")) {
+            const sigmoided = 60 * (2 / (1 + Math.pow(1.035, -e.deltaY)) - 1);
+            const scale = 1 + sigmoided * 0.005;
             __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_zoomCanvas).call(this, scale);
         }
-        else if (!__classPrivateFieldGet(this, _Wilson_currentlyWheeling, "f")) {
+        else {
             __classPrivateFieldSet(this, _Wilson_zoomVelocity, Math.min(Math.max(__classPrivateFieldGet(this, _Wilson_zoomVelocity, "f") + Math.sign(e.deltaY) * 15, -30), 30), "f");
         }
     }
