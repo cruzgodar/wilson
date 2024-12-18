@@ -2202,7 +2202,19 @@ export class WilsonCPU extends Wilson
 
 
 type ShaderProgramId = string;
-type UniformType = "int" | "float" | "vec2" | "vec3" | "vec4" | "mat2" | "mat3" | "mat4";
+type UniformType = "int"
+	| "float"
+	| "vec2"
+	| "vec3"
+	| "vec4"
+	| "intArray"
+	| "floatArray"
+	| "vec2Array"
+	| "vec3Array"
+	| "vec4Array"
+	| "mat2"
+	| "mat3"
+	| "mat4";
 type UniformInitializers = {[name: string]: number | number[] | number[][]};
 
 const uniformFunctions: {[key in UniformType]: any} = {
@@ -2235,6 +2247,36 @@ const uniformFunctions: {[key in UniformType]: any} = {
 		location: WebGLUniformLocation,
 		value: [number, number, number, number]
 	) => gl.uniform4fv(location, value),
+
+	intArray: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: number[]
+	) => gl.uniform1iv(location, value),
+	
+	floatArray: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: number[]
+	) => gl.uniform1fv(location, value),
+	
+	vec2Array: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: [number, number][]
+	) => gl.uniform2fv(location, value.flat()),
+
+	vec3Array: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: [number, number, number][]
+	) => gl.uniform3fv(location, value.flat()),
+	
+	vec4Array: (
+		gl: WebGLRenderingContext | WebGL2RenderingContext,
+		location: WebGLUniformLocation,
+		value: [number, number, number, number][]
+	) => gl.uniform4fv(location, value.flat()),
 
 	mat2: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
@@ -2476,13 +2518,15 @@ export class WilsonGPU extends Wilson
 			}
 
 			// Match strings like "uniform int foo;" to "int".
-			const match = source.match(new RegExp(`uniform\\s+(\\S+?)\\s+${name}\\s*;`));
+			const match = source.match(
+				new RegExp(`uniform\\s+(\\S+?)\\s+${name}(\\[\\d+\\])?\\s*;`)
+			);
 			if (!match)
 			{
 				throw new Error(`[Wilson] Couldn't find uniform ${name} in shader source: ${source}`);
 			}
 			
-			const type = match[1].trim();
+			const type = match[1].trim() + (match[2] ? "Array" : "");
 
 			if (!(type in uniformFunctions))
 			{

@@ -1208,6 +1208,11 @@ const uniformFunctions = {
     vec2: (gl, location, value) => gl.uniform2fv(location, value),
     vec3: (gl, location, value) => gl.uniform3fv(location, value),
     vec4: (gl, location, value) => gl.uniform4fv(location, value),
+    intArray: (gl, location, value) => gl.uniform1iv(location, value),
+    floatArray: (gl, location, value) => gl.uniform1fv(location, value),
+    vec2Array: (gl, location, value) => gl.uniform2fv(location, value.flat()),
+    vec3Array: (gl, location, value) => gl.uniform3fv(location, value.flat()),
+    vec4Array: (gl, location, value) => gl.uniform4fv(location, value.flat()),
     mat2: (gl, location, value) => gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]]),
     mat3: (gl, location, value) => gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]]),
     mat4: (gl, location, value) => gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]),
@@ -1322,11 +1327,11 @@ export class WilsonGPU extends Wilson {
                 throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${source}`);
             }
             // Match strings like "uniform int foo;" to "int".
-            const match = source.match(new RegExp(`uniform\\s+(\\S+?)\\s+${name}\\s*;`));
+            const match = source.match(new RegExp(`uniform\\s+(\\S+?)\\s+${name}(\\[\\d+\\])?\\s*;`));
             if (!match) {
                 throw new Error(`[Wilson] Couldn't find uniform ${name} in shader source: ${source}`);
             }
-            const type = match[1].trim();
+            const type = match[1].trim() + (match[2] ? "Array" : "");
             if (!(type in uniformFunctions)) {
                 throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader source: ${source}`);
             }
