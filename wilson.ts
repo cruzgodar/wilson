@@ -1413,22 +1413,22 @@ class Wilson
 		{
 			this.#zoomFixedPoint = [x, y];
 
-			// if (Math.abs(e.deltaY) < 80)
-			// {
+			if (Math.abs(e.deltaY) < 80)
+			{
 				const scale = 1 + e.deltaY * 0.005;
 				this.#zoomCanvas(scale);
-			// }
+			}
 
-			// else
-			// {
-			// 	this.#zoomVelocity = Math.min(
-			// 		Math.max(
-			// 			this.#zoomVelocity + Math.sign(e.deltaY) * 15,
-			// 			-30
-			// 		),
-			// 		30
-			// 	);
-			// }
+			else
+			{
+				this.#zoomVelocity = Math.min(
+					Math.max(
+						this.#zoomVelocity + Math.sign(e.deltaY) * 15,
+						-30
+					),
+					30
+				);
+			}
 		}
 
 		this.#interactionCallbacks.wheel({
