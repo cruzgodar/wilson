@@ -379,11 +379,6 @@ class Wilson
 		this.#minWorldY = options.minWorldY ?? -Infinity;
 		this.#maxWorldY = options.maxWorldY ?? Infinity;
 
-		if (this.#minWorldX >= this.#maxWorldX || this.#minWorldY >= this.#maxWorldY)
-		{
-			throw new Error("[Wilson] minWorldX and minWorldY must be less than maxWorldX and maxWorldY, repsectively");
-		}
-
 		this.#maxWorldWidth = (options.minWorldX !== undefined && options.maxWorldX !== undefined)
 			? options.maxWorldX - options.minWorldX
 			: options.maxWorldWidth ?? Infinity;
@@ -393,6 +388,15 @@ class Wilson
 			? options.maxWorldY - options.minWorldY
 			: options.maxWorldHeight ?? Infinity;
 		this.#minWorldHeight = options.minWorldHeight ?? 0;
+
+		if (
+			this.#minWorldX >= this.#maxWorldX
+			|| this.#minWorldY >= this.#maxWorldY
+			|| this.#minWorldWidth >= this.#maxWorldWidth
+			|| this.#minWorldHeight >= this.#maxWorldHeight
+		) {
+			throw new Error("[Wilson] minWorldX and minWorldY must be less than maxWorldX and maxWorldY, repsectively");
+		}
 
 		this.clampWorldCoordinatesMode = options.clampWorldCoordinatesMode ?? "one";
 
@@ -697,12 +701,28 @@ class Wilson
 		width,
 		height,
 		centerX,
-		centerY
+		centerY,
+		minWidth,
+		maxWidth,
+		minHeight,
+		maxHeight,
+		minX,
+		maxX,
+		minY,
+		maxY,
 	}: {
 		width?: number,
 		height?: number,
 		centerX?: number,
-		centerY?: number
+		centerY?: number,
+		minWidth?: number,
+		maxWidth?: number,
+		minHeight?: number,
+		maxHeight?: number,
+		minX?: number,
+		maxX?: number,
+		minY?: number,
+		maxY?: number,
 	}) {
 		const aspectRatio = (this.#currentlyFullscreen && this.#fullscreenFillScreen)
 			? window.innerWidth / window.innerHeight
@@ -751,6 +771,34 @@ class Wilson
 
 		this.#worldCenterY = centerY ?? this.#worldCenterY;
 		this.worldCenterY = this.#worldCenterY;
+
+
+
+		this.#minWorldX = minX ?? this.#minWorldX;
+		this.#maxWorldX = maxX ?? this.#maxWorldX;
+		this.#minWorldY = minY ?? this.#minWorldY;
+		this.#maxWorldY = maxY ?? this.#maxWorldY;
+
+		this.#maxWorldWidth = (minX !== undefined && maxX !== undefined)
+			? maxX - minX
+			: maxWidth ?? this.#maxWorldWidth;
+		this.#minWorldWidth = minWidth ?? this.#minWorldWidth;
+
+		this.#maxWorldHeight = (minY !== undefined && maxY !== undefined)
+			? maxY - minY
+			: maxHeight ?? this.#maxWorldHeight;
+		this.#minWorldHeight = minHeight ?? this.#minWorldHeight;
+
+		if (
+			this.#minWorldX >= this.#maxWorldX
+			|| this.#minWorldY >= this.#maxWorldY
+			|| this.#minWorldWidth >= this.#maxWorldWidth
+			|| this.#minWorldHeight >= this.#maxWorldHeight
+		) {
+			throw new Error("[Wilson] minWorldX and minWorldY must be less than maxWorldX and maxWorldY, repsectively");
+		}
+
+
 
 		this.#clampWorldCoordinates();
 		this.#updateDraggablesLocation();

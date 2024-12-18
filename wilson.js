@@ -287,9 +287,6 @@ class Wilson {
         __classPrivateFieldSet(this, _Wilson_maxWorldX, (_d = options.maxWorldX) !== null && _d !== void 0 ? _d : Infinity, "f");
         __classPrivateFieldSet(this, _Wilson_minWorldY, (_e = options.minWorldY) !== null && _e !== void 0 ? _e : -Infinity, "f");
         __classPrivateFieldSet(this, _Wilson_maxWorldY, (_f = options.maxWorldY) !== null && _f !== void 0 ? _f : Infinity, "f");
-        if (__classPrivateFieldGet(this, _Wilson_minWorldX, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldX, "f") || __classPrivateFieldGet(this, _Wilson_minWorldY, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldY, "f")) {
-            throw new Error("[Wilson] minWorldX and minWorldY must be less than maxWorldX and maxWorldY, repsectively");
-        }
         __classPrivateFieldSet(this, _Wilson_maxWorldWidth, (options.minWorldX !== undefined && options.maxWorldX !== undefined)
             ? options.maxWorldX - options.minWorldX
             : (_g = options.maxWorldWidth) !== null && _g !== void 0 ? _g : Infinity, "f");
@@ -298,6 +295,12 @@ class Wilson {
             ? options.maxWorldY - options.minWorldY
             : (_j = options.maxWorldHeight) !== null && _j !== void 0 ? _j : Infinity, "f");
         __classPrivateFieldSet(this, _Wilson_minWorldHeight, (_k = options.minWorldHeight) !== null && _k !== void 0 ? _k : 0, "f");
+        if (__classPrivateFieldGet(this, _Wilson_minWorldX, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldX, "f")
+            || __classPrivateFieldGet(this, _Wilson_minWorldY, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldY, "f")
+            || __classPrivateFieldGet(this, _Wilson_minWorldWidth, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldWidth, "f")
+            || __classPrivateFieldGet(this, _Wilson_minWorldHeight, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldHeight, "f")) {
+            throw new Error("[Wilson] minWorldX and minWorldY must be less than maxWorldX and maxWorldY, repsectively");
+        }
         this.clampWorldCoordinatesMode = (_l = options.clampWorldCoordinatesMode) !== null && _l !== void 0 ? _l : "one";
         __classPrivateFieldSet(this, _Wilson_onResizeCanvasCallback, (_m = options === null || options === void 0 ? void 0 : options.onResizeCanvas) !== null && _m !== void 0 ? _m : (() => { }), "f");
         __classPrivateFieldSet(this, _Wilson_useP3ColorSpace, (_o = options.useP3ColorSpace) !== null && _o !== void 0 ? _o : true, "f");
@@ -399,7 +402,7 @@ class Wilson {
             __classPrivateFieldGet(this, _Wilson_onResizeCanvasCallback, "f").call(this);
         }
     }
-    resizeWorld({ width, height, centerX, centerY }) {
+    resizeWorld({ width, height, centerX, centerY, minWidth, maxWidth, minHeight, maxHeight, minX, maxX, minY, maxY, }) {
         const aspectRatio = (__classPrivateFieldGet(this, _Wilson_currentlyFullscreen, "f") && __classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f"))
             ? window.innerWidth / window.innerHeight
             : __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f");
@@ -432,6 +435,24 @@ class Wilson {
         this.worldCenterX = __classPrivateFieldGet(this, _Wilson_worldCenterX, "f");
         __classPrivateFieldSet(this, _Wilson_worldCenterY, centerY !== null && centerY !== void 0 ? centerY : __classPrivateFieldGet(this, _Wilson_worldCenterY, "f"), "f");
         this.worldCenterY = __classPrivateFieldGet(this, _Wilson_worldCenterY, "f");
+        __classPrivateFieldSet(this, _Wilson_minWorldX, minX !== null && minX !== void 0 ? minX : __classPrivateFieldGet(this, _Wilson_minWorldX, "f"), "f");
+        __classPrivateFieldSet(this, _Wilson_maxWorldX, maxX !== null && maxX !== void 0 ? maxX : __classPrivateFieldGet(this, _Wilson_maxWorldX, "f"), "f");
+        __classPrivateFieldSet(this, _Wilson_minWorldY, minY !== null && minY !== void 0 ? minY : __classPrivateFieldGet(this, _Wilson_minWorldY, "f"), "f");
+        __classPrivateFieldSet(this, _Wilson_maxWorldY, maxY !== null && maxY !== void 0 ? maxY : __classPrivateFieldGet(this, _Wilson_maxWorldY, "f"), "f");
+        __classPrivateFieldSet(this, _Wilson_maxWorldWidth, (minX !== undefined && maxX !== undefined)
+            ? maxX - minX
+            : maxWidth !== null && maxWidth !== void 0 ? maxWidth : __classPrivateFieldGet(this, _Wilson_maxWorldWidth, "f"), "f");
+        __classPrivateFieldSet(this, _Wilson_minWorldWidth, minWidth !== null && minWidth !== void 0 ? minWidth : __classPrivateFieldGet(this, _Wilson_minWorldWidth, "f"), "f");
+        __classPrivateFieldSet(this, _Wilson_maxWorldHeight, (minY !== undefined && maxY !== undefined)
+            ? maxY - minY
+            : maxHeight !== null && maxHeight !== void 0 ? maxHeight : __classPrivateFieldGet(this, _Wilson_maxWorldHeight, "f"), "f");
+        __classPrivateFieldSet(this, _Wilson_minWorldHeight, minHeight !== null && minHeight !== void 0 ? minHeight : __classPrivateFieldGet(this, _Wilson_minWorldHeight, "f"), "f");
+        if (__classPrivateFieldGet(this, _Wilson_minWorldX, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldX, "f")
+            || __classPrivateFieldGet(this, _Wilson_minWorldY, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldY, "f")
+            || __classPrivateFieldGet(this, _Wilson_minWorldWidth, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldWidth, "f")
+            || __classPrivateFieldGet(this, _Wilson_minWorldHeight, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldHeight, "f")) {
+            throw new Error("[Wilson] minWorldX and minWorldY must be less than maxWorldX and maxWorldY, repsectively");
+        }
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_clampWorldCoordinates).call(this);
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesLocation).call(this);
         if (this.useInteractionForPanAndZoom) {
