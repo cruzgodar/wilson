@@ -4,6 +4,8 @@ type InteractionCallbacks = {
 
 	mouseup: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
 
+	mouseleave: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
+
 	mousemove: ({
 		x,
 		y,
@@ -66,6 +68,7 @@ type InteractionCallbacks = {
 const defaultInteractionCallbacks: InteractionCallbacks = {
 	mousedown: ({ x, y, event }) => {},
 	mouseup: ({ x, y, event }) => {},
+	mouseleave: ({ x, y, event }) => {},
 	mousemove: ({ x, y, xDelta, yDelta, event }) => {},
 	mousedrag: ({ x, y, xDelta, yDelta, event }) => {},
 	touchstart: ({ x, y, event }) => {},
@@ -916,7 +919,6 @@ class Wilson
 
 	#clampWorldCoordinates(hardnessFactor: number = 1)
 	{
-		console.log(this.#worldCenterX, this.#worldCenterY);
 		this.#atMaxWorldSize = false;
 		this.#atMinWorldSize = false;
 
@@ -1052,8 +1054,6 @@ class Wilson
 				this.#needPanAndZoomUpdate = true;
 			}
 		}
-
-		console.log(this.#worldCenterX, this.#worldCenterY);
 	}
 
 	#onMousedown(e: MouseEvent)
@@ -1107,6 +1107,33 @@ class Wilson
 		this.#lastInteractionCol = e.clientX;
 		
 		this.#interactionCallbacks.mouseup({ x, y, event: e });
+	}
+
+	#onMouseleave(e: MouseEvent)
+	{
+		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
+		{
+			return;
+		}
+
+		if (this.useInteractionForPanAndZoom)
+		{
+			e.preventDefault();
+		}
+
+		if (this.useInteractionForPanAndZoom && this.#currentlyDragging)
+		{
+			this.#setPanVelocity();
+			this.#needPanAndZoomUpdate = true;
+		}
+
+		this.#currentlyDragging = false;
+
+		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
+		this.#lastInteractionRow = e.clientY;
+		this.#lastInteractionCol = e.clientX;
+		
+		this.#interactionCallbacks.mouseleave({ x, y, event: e });
 	}
 
 	#onMousemove(e: MouseEvent)
@@ -1629,7 +1656,7 @@ class Wilson
 			canvas.addEventListener("touchmove", (e) => this.#onTouchmove(e as TouchEvent));
 			canvas.addEventListener("wheel", (e) => this.#onWheel(e as WheelEvent));
 
-			canvas.addEventListener("mouseleave", (e) => this.#onMouseup(e as MouseEvent));
+			canvas.addEventListener("mouseleave", (e) => this.#onMouseleave(e as MouseEvent));
 		}
 	}
 

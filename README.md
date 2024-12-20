@@ -110,6 +110,7 @@ Wilson provides callbacks for mouse and touch events on the canvas, specified in
 ```js
 mousedown: ({ x, y, event }) => {}
 mouseup: ({ x, y, event }) => {}
+mouseleave: ({ x, y, event }) => {}
 mousemove: ({ x, y, xDelta, yDelta, event }) => {}
 mousedrag: ({ x, y, xDelta, yDelta, event }) => {}
 
@@ -218,6 +219,7 @@ The above guide, along with the example project, are a great way to get started 
 	- `callbacks`: an object with some or all of the following fields:
 		- `mousedown: ({ x, y, event }) => void`: a function called when a cursor is pressed down on the canvas.
 		- `mouseup: ({ x, y, event }) => void`: a function called when a cursor is released on the canvas.
+		- `mouseleave: ({ x, y, event }) => void`: a function called when a cursor leaves the canvas.
 		- `mousemove: ({ x, y, xDelta, yDelta, event }) => void`: a function called when a cursor is moved while hovering on the canvas.
 		- `mousedrag: ({ x, y, xDelta, yDelta, event }) => void`: a function called when a cursor is moved while dragging on the canvas.
 		- `touchstart: ({ x, y, event }) => void`: a function called when a touch is pressed down on the canvas.
