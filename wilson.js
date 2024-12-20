@@ -648,6 +648,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         __classPrivateFieldSet(this, _Wilson_panVelocityY, 0, "f");
     }
 }, _Wilson_clampWorldCoordinates = function _Wilson_clampWorldCoordinates(hardnessFactor = 1) {
+    console.log(__classPrivateFieldGet(this, _Wilson_worldCenterX, "f"), __classPrivateFieldGet(this, _Wilson_worldCenterY, "f"));
     __classPrivateFieldSet(this, _Wilson_atMaxWorldSize, false, "f");
     __classPrivateFieldSet(this, _Wilson_atMinWorldSize, false, "f");
     const applyFactor = (factor) => {
@@ -720,6 +721,8 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
             xAdjust /= this.rubberbandingPanSoftness * hardnessFactor;
             yAdjust /= this.rubberbandingPanSoftness * hardnessFactor;
         }
+        xAdjust = isNaN(xAdjust) ? 0 : xAdjust;
+        yAdjust = isNaN(yAdjust) ? 0 : yAdjust;
         __classPrivateFieldSet(this, _Wilson_worldCenterX, __classPrivateFieldGet(this, _Wilson_worldCenterX, "f") + xAdjust, "f");
         this.worldCenterX = __classPrivateFieldGet(this, _Wilson_worldCenterX, "f");
         __classPrivateFieldSet(this, _Wilson_worldCenterY, __classPrivateFieldGet(this, _Wilson_worldCenterY, "f") + yAdjust, "f");
@@ -731,6 +734,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
             __classPrivateFieldSet(this, _Wilson_needPanAndZoomUpdate, true, "f");
         }
     }
+    console.log(__classPrivateFieldGet(this, _Wilson_worldCenterX, "f"), __classPrivateFieldGet(this, _Wilson_worldCenterY, "f"));
 }, _Wilson_onMousedown = function _Wilson_onMousedown(e) {
     if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable")) {
         return;

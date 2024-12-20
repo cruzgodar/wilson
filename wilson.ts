@@ -916,6 +916,7 @@ class Wilson
 
 	#clampWorldCoordinates(hardnessFactor: number = 1)
 	{
+		console.log(this.#worldCenterX, this.#worldCenterY);
 		this.#atMaxWorldSize = false;
 		this.#atMinWorldSize = false;
 
@@ -1032,6 +1033,9 @@ class Wilson
 				yAdjust /= this.rubberbandingPanSoftness * hardnessFactor;
 			}
 
+			xAdjust = isNaN(xAdjust) ? 0 : xAdjust;
+			yAdjust = isNaN(yAdjust) ? 0 : yAdjust;
+
 			this.#worldCenterX += xAdjust;
 			this.worldCenterX = this.#worldCenterX;
 
@@ -1048,6 +1052,8 @@ class Wilson
 				this.#needPanAndZoomUpdate = true;
 			}
 		}
+
+		console.log(this.#worldCenterX, this.#worldCenterY);
 	}
 
 	#onMousedown(e: MouseEvent)
