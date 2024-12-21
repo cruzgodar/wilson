@@ -237,6 +237,7 @@ The above guide, along with the example project, are a great way to get started 
 - `fullscreenOptions`: an object with the following fields:
 	- `fillScreen`: a boolean for whether to resize the canvas and world to fill the entire screen. Defaults to `false`.
 	- `animate`: a boolean for whether to animate the transition to fullscreen. Defaults to `true`.
+	- `closeWithEscape`: a boolean for whether to close fullscreen when the escape key is pressed. Defaults to `true`.
 	- `useFullscreenButton`: a boolean for whether to use a button to enter and exit fullscreen. Defaults to `false`.
 	- `enterFullscreenButtonIconPath`: a string for the path to the enter fullscreen button image. Required (and only allowed) if `useFullscreenButton` is `true`.
 	- `exitFullscreenButtonIconPath`: a string for the path to the exit fullscreen button image. Required (and only allowed) if `useFullscreenButton` is `true`.
@@ -259,6 +260,7 @@ The above guide, along with the example project, are a great way to get started 
 - `usePanAndZoomRubberbanding`, `rubberbandingPanSoftness`, `rubberbandingZoomSoftness`: parameters for the experimental rubberbanding feature. Can be changed dynamically.
 - `currentlyFullscreen`: a boolean for whether the canvas is currently in fullscreen mode. Readonly; to change the fullscreen mode, use `enterFullscreen` or `exitFullscreen`.
 - `animateFullscreen`: a boolean for whether the fullscreen transition is animated. Can be changed dynamically.
+- `closeFullscreenWithEscape`: a boolean for whether to close fullscreen when the escape key is pressed. Can be changed dynamically.
 - `draggables`: a readonly object containing the current draggables, of the form
 ```ts
 {

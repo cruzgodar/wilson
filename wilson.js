@@ -28,7 +28,7 @@ const defaultDraggableCallbacks = {
 };
 class Wilson {
     constructor(canvas, options) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25;
         _Wilson_instances.add(this);
         _Wilson_destroyed.set(this, false);
         // Duplicated properties like this are effectively readonly. Whenever we
@@ -129,7 +129,7 @@ class Wilson {
             setTimeout(update, 50);
         });
         _Wilson_handleKeydownEvent.set(this, (e) => {
-            if (e.key === "Escape" && __classPrivateFieldGet(this, _Wilson_currentlyFullscreen, "f")) {
+            if (e.key === "Escape" && __classPrivateFieldGet(this, _Wilson_currentlyFullscreen, "f") && this.closeFullscreenWithEscape) {
                 e.preventDefault();
                 e.stopPropagation();
                 this.exitFullscreen();
@@ -335,10 +335,11 @@ class Wilson {
         __classPrivateFieldSet(this, _Wilson_draggableCallbacks, { ...defaultDraggableCallbacks, ...(_13 = options.draggableOptions) === null || _13 === void 0 ? void 0 : _13.callbacks }, "f");
         __classPrivateFieldSet(this, _Wilson_fullscreenFillScreen, (_15 = (_14 = options.fullscreenOptions) === null || _14 === void 0 ? void 0 : _14.fillScreen) !== null && _15 !== void 0 ? _15 : false, "f");
         this.animateFullscreen = (_17 = (_16 = options.fullscreenOptions) === null || _16 === void 0 ? void 0 : _16.animate) !== null && _17 !== void 0 ? _17 : true;
-        __classPrivateFieldSet(this, _Wilson_fullscreenUseButton, (_19 = (_18 = options.fullscreenOptions) === null || _18 === void 0 ? void 0 : _18.useFullscreenButton) !== null && _19 !== void 0 ? _19 : false, "f");
-        if ((_20 = options.fullscreenOptions) === null || _20 === void 0 ? void 0 : _20.useFullscreenButton) {
-            __classPrivateFieldSet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, (_21 = options.fullscreenOptions) === null || _21 === void 0 ? void 0 : _21.enterFullscreenButtonIconPath, "f");
-            __classPrivateFieldSet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, (_22 = options.fullscreenOptions) === null || _22 === void 0 ? void 0 : _22.exitFullscreenButtonIconPath, "f");
+        this.closeFullscreenWithEscape = (_19 = (_18 = options.fullscreenOptions) === null || _18 === void 0 ? void 0 : _18.closeWithEscape) !== null && _19 !== void 0 ? _19 : true;
+        __classPrivateFieldSet(this, _Wilson_fullscreenUseButton, (_21 = (_20 = options.fullscreenOptions) === null || _20 === void 0 ? void 0 : _20.useFullscreenButton) !== null && _21 !== void 0 ? _21 : false, "f");
+        if ((_22 = options.fullscreenOptions) === null || _22 === void 0 ? void 0 : _22.useFullscreenButton) {
+            __classPrivateFieldSet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, (_23 = options.fullscreenOptions) === null || _23 === void 0 ? void 0 : _23.enterFullscreenButtonIconPath, "f");
+            __classPrivateFieldSet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, (_24 = options.fullscreenOptions) === null || _24 === void 0 ? void 0 : _24.exitFullscreenButtonIconPath, "f");
         }
         // Initialize the container structure.
         __classPrivateFieldSet(this, _Wilson_appletContainer, document.createElement("div"), "f");
@@ -379,7 +380,7 @@ class Wilson {
         requestAnimationFrame(__classPrivateFieldGet(this, _Wilson_animationFrameLoop, "f"));
         window.addEventListener("resize", __classPrivateFieldGet(this, _Wilson_onResizeWindow, "f"));
         document.documentElement.addEventListener("keydown", __classPrivateFieldGet(this, _Wilson_handleKeydownEvent, "f"));
-        if ((_23 = options.draggableOptions) === null || _23 === void 0 ? void 0 : _23.draggables) {
+        if ((_25 = options.draggableOptions) === null || _25 === void 0 ? void 0 : _25.draggables) {
             this.setDraggables(options.draggableOptions.draggables);
         }
         console.log(`[Wilson] Initialized a ${__classPrivateFieldGet(this, _Wilson_canvasWidth, "f")}x${__classPrivateFieldGet(this, _Wilson_canvasHeight, "f")} canvas`

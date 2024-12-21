@@ -133,6 +133,7 @@ type DraggableOptions = {
 type FullscreenOptions = {
 	fillScreen?: boolean,
 	animate?: boolean,
+	closeWithEscape?: boolean,
 } & (
 	{
 		useFullscreenButton?: true,
@@ -278,6 +279,7 @@ class Wilson
 	currentlyFullscreen: boolean = false;
 
 	animateFullscreen: boolean;
+	closeFullscreenWithEscape: boolean;
 	#fullscreenOldScroll: number = 0;
 	#fullscreenFillScreen: boolean;
 	#fullscreenUseButton: boolean;
@@ -452,6 +454,7 @@ class Wilson
 
 		this.#fullscreenFillScreen = options.fullscreenOptions?.fillScreen ?? false;
 		this.animateFullscreen = options.fullscreenOptions?.animate ?? true;
+		this.closeFullscreenWithEscape = options.fullscreenOptions?.closeWithEscape ?? true;
 		this.#fullscreenUseButton = options.fullscreenOptions?.useFullscreenButton ?? false;
 
 		if (options.fullscreenOptions?.useFullscreenButton)
@@ -634,7 +637,7 @@ class Wilson
 
 	#handleKeydownEvent = (e: KeyboardEvent) =>
 	{
-		if (e.key === "Escape" && this.#currentlyFullscreen)
+		if (e.key === "Escape" && this.#currentlyFullscreen && this.closeFullscreenWithEscape)
 		{
 			e.preventDefault();
 			e.stopPropagation();
