@@ -134,6 +134,7 @@ type FullscreenOptions = {
 	fillScreen?: boolean,
 	animate?: boolean,
 	closeWithEscape?: boolean,
+	onSwitch?: (isFullscreen: boolean) => void,
 } & (
 	{
 		useFullscreenButton?: true,
@@ -280,6 +281,7 @@ class Wilson
 
 	animateFullscreen: boolean;
 	closeFullscreenWithEscape: boolean;
+	onSwitchFullscreen: (isFullscreen: boolean) => void;
 	#fullscreenOldScroll: number = 0;
 	#fullscreenFillScreen: boolean;
 	#fullscreenUseButton: boolean;
@@ -455,6 +457,7 @@ class Wilson
 		this.#fullscreenFillScreen = options.fullscreenOptions?.fillScreen ?? false;
 		this.animateFullscreen = options.fullscreenOptions?.animate ?? true;
 		this.closeFullscreenWithEscape = options.fullscreenOptions?.closeWithEscape ?? true;
+		this.onSwitchFullscreen = options.fullscreenOptions?.onSwitch ?? (() => {});
 		this.#fullscreenUseButton = options.fullscreenOptions?.useFullscreenButton ?? false;
 
 		if (options.fullscreenOptions?.useFullscreenButton)
@@ -2179,6 +2182,7 @@ class Wilson
 		}
 
 		this.#onResizeWindow();
+		this.onSwitchFullscreen(true);
 	}
 
 	enterFullscreen()
@@ -2294,6 +2298,7 @@ class Wilson
 		this.canvas.style.height = this.#canvasOldHeightStyle;
 
 		this.#onResizeWindow();
+		this.onSwitchFullscreen(false);
 
 		window.scrollTo(0, this.#fullscreenOldScroll);
 		setTimeout(() => window.scrollTo(0, this.#fullscreenOldScroll), 10);
