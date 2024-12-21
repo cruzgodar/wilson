@@ -299,6 +299,8 @@ class Wilson
 	#metaThemeColorElement: HTMLMetaElement | null = document.querySelector("meta[name='theme-color']");
 	#oldMetaThemeColor: string | null = null;
 
+	#salt = Date.now().toString(36) + Math.random().toString(36).slice(2);
+
 
 
 	constructor(canvas: HTMLCanvasElement, options: WilsonOptions)
@@ -2187,27 +2189,31 @@ class Wilson
 
 	enterFullscreen()
 	{
-		// @ts-ignore
-		if (document.startViewTransition && this.animateFullscreen)
+		const elements = [
+			this.#fullscreenEnterFullscreenButton,
+			this.#fullscreenExitFullscreenButton,
+			this.canvas,
+			...(Object.values(this.#draggables).map(draggable => draggable.element))
+		];
+
+		for (const element of elements)
 		{
-			document.body.querySelectorAll<HTMLElement>(
-				".WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button"
-			)
-				.forEach(button => button.style.removeProperty("view-transition-name"));
+			if (element)
+			{
+				element.style.removeProperty("view-transition-name");
+			}
+		}
 
-			document.body.querySelectorAll<HTMLElement>(".WILSON_canvas-container > canvas")
-				.forEach(container => container.style.removeProperty("view-transition-name"));
-
-			document.body.querySelectorAll<HTMLElement>(".WILSON_draggable")
-				.forEach(container => container.style.removeProperty("view-transition-name"));
-
+		// @ts-ignore
+		if (document.startViewTransition)
+		{
 			if (!this.#fullscreenFillScreen && !this.reduceMotion)
 			{
 				if (this.#fullscreenEnterFullscreenButton)
 				{
 					this.#fullscreenEnterFullscreenButton.style.setProperty(
 						"view-transition-name",
-						"WILSON_fullscreen-button"
+						`WILSON_fullscreen-button-${this.#salt}`
 					)
 				}
 
@@ -2215,22 +2221,28 @@ class Wilson
 				{
 					this.#fullscreenExitFullscreenButton.style.setProperty(
 						"view-transition-name",
-						"WILSON_fullscreen-button"
+						`WILSON_fullscreen-button-${this.#salt}`
 					)
 				}
 				
-				this.canvas.style.setProperty("view-transition-name", "WILSON_canvas");
+				this.canvas.style.setProperty("view-transition-name", `WILSON_canvas-${this.#salt}`);
 
 				for (const [id, data] of Object.entries(this.#draggables))
 				{
-					data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}`);
+					data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}-${this.#salt}`);
 				}
 			}
+			
+			if (this.animateFullscreen)
+			{
+				// @ts-ignore
+				document.startViewTransition(() => this.#enterFullscreen());
+			}
 
-
-
-			// @ts-ignore
-			document.startViewTransition(() => this.#enterFullscreen());
+			else
+			{
+				this.#enterFullscreen();
+			}
 		}
 
 		else
@@ -2307,15 +2319,23 @@ class Wilson
 	exitFullscreen()
 	{
 		// @ts-ignore
-		if (document.startViewTransition && this.animateFullscreen)
+		if (document.startViewTransition)
 		{
 			if (!this.#fullscreenFillScreen && !this.reduceMotion)
 			{
-				this.canvas.style.setProperty("view-transition-name", "WILSON_canvas");
+				this.canvas.style.setProperty("view-transition-name", `WILSON_canvas-${this.#salt}`);
 			}
 
-			// @ts-ignore
-			document.startViewTransition(() => this.#exitFullscreen());
+			if (this.animateFullscreen)
+			{
+				// @ts-ignore
+				document.startViewTransition(() => this.#exitFullscreen());
+			}
+
+			else
+			{
+				this.#exitFullscreen();
+			}
 		}
 		
 		else
