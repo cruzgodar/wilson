@@ -2796,6 +2796,11 @@ export class WilsonGPU extends Wilson
 		
 		for (const [name, value] of Object.entries(uniforms))
 		{
+			if (this.#uniforms[shader][name] === undefined)
+			{
+				throw new Error(`Uniform ${name} not found in shader ${shader}`);
+			}
+			
 			const { location, type } = this.#uniforms[shader][name];
 			const uniformFunction = uniformFunctions[type];
 			uniformFunction(this.gl, location, value);
