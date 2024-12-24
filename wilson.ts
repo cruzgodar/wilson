@@ -2848,6 +2848,11 @@ export class WilsonGPU extends Wilson
 		height?: number,
 		textureType: "unsignedByte" | "float"
 	}) {
+		if (textureType !== "unsignedByte" && textureType !== "float")
+		{
+			throw new Error(`[Wilson] Invalid texture type "${textureType}".`);
+		}
+		
 		const framebuffer = this.gl.createFramebuffer();
 
 		if (!framebuffer)

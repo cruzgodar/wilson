@@ -1516,6 +1516,9 @@ export class WilsonGPU extends Wilson {
         this.gl.useProgram(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id]);
     }
     createFramebufferTexturePair({ id, width = this.canvasWidth, height = this.canvasHeight, textureType }) {
+        if (textureType !== "unsignedByte" && textureType !== "float") {
+            throw new Error(`[Wilson] Invalid texture type "${textureType}".`);
+        }
         const framebuffer = this.gl.createFramebuffer();
         if (!framebuffer) {
             throw new Error(`[Wilson] Couldn't create a framebuffer with id ${id}.`);
