@@ -735,6 +735,11 @@ class Wilson
 		minY?: number,
 		maxY?: number,
 	}) {
+		const lastWorldWidth = this.#worldWidth;
+		const lastWorldHeight = this.#worldHeight;
+		const lastWorldCenterX = this.#worldCenterX;
+		const lastWorldCenterY = this.#worldCenterY;
+
 		const aspectRatio = (this.#currentlyFullscreen && this.#fullscreenFillScreen)
 			? window.innerWidth / window.innerHeight
 			: this.#canvasAspectRatio;
@@ -814,8 +819,13 @@ class Wilson
 		this.#clampWorldCoordinates();
 		this.#updateDraggablesLocation();
 
-		if (this.useInteractionForPanAndZoom)
-		{
+		if (
+			this.useInteractionForPanAndZoom && (
+				this.#worldWidth !== lastWorldWidth
+				|| this.#worldHeight !== lastWorldHeight
+				|| this.#worldCenterX !== lastWorldCenterX
+				|| this.#worldCenterY !== lastWorldCenterY
+		)) {
 			this.#interactionOnPanAndZoom();
 		}
 	}

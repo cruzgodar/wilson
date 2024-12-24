@@ -407,6 +407,10 @@ class Wilson {
         }
     }
     resizeWorld({ width, height, centerX, centerY, minWidth, maxWidth, minHeight, maxHeight, minX, maxX, minY, maxY, }) {
+        const lastWorldWidth = __classPrivateFieldGet(this, _Wilson_worldWidth, "f");
+        const lastWorldHeight = __classPrivateFieldGet(this, _Wilson_worldHeight, "f");
+        const lastWorldCenterX = __classPrivateFieldGet(this, _Wilson_worldCenterX, "f");
+        const lastWorldCenterY = __classPrivateFieldGet(this, _Wilson_worldCenterY, "f");
         const aspectRatio = (__classPrivateFieldGet(this, _Wilson_currentlyFullscreen, "f") && __classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f"))
             ? window.innerWidth / window.innerHeight
             : __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f");
@@ -459,7 +463,10 @@ class Wilson {
         }
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_clampWorldCoordinates).call(this);
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesLocation).call(this);
-        if (this.useInteractionForPanAndZoom) {
+        if (this.useInteractionForPanAndZoom && (__classPrivateFieldGet(this, _Wilson_worldWidth, "f") !== lastWorldWidth
+            || __classPrivateFieldGet(this, _Wilson_worldHeight, "f") !== lastWorldHeight
+            || __classPrivateFieldGet(this, _Wilson_worldCenterX, "f") !== lastWorldCenterX
+            || __classPrivateFieldGet(this, _Wilson_worldCenterY, "f") !== lastWorldCenterY)) {
             __classPrivateFieldGet(this, _Wilson_interactionOnPanAndZoom, "f").call(this);
         }
     }
