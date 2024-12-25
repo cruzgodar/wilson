@@ -134,6 +134,7 @@ type FullscreenOptions = {
 	fillScreen?: boolean,
 	animate?: boolean,
 	closeWithEscape?: boolean,
+	beforeSwitch?: (isFullscreen: boolean) => void,
 	onSwitch?: (isFullscreen: boolean) => void,
 } & (
 	{
@@ -281,6 +282,7 @@ class Wilson
 
 	animateFullscreen: boolean;
 	closeFullscreenWithEscape: boolean;
+	beforeSwitchFullscreen: (isFullscreen: boolean) => void;
 	onSwitchFullscreen: (isFullscreen: boolean) => void;
 	#fullscreenOldScroll: number = 0;
 	#fullscreenFillScreen: boolean;
@@ -476,6 +478,7 @@ class Wilson
 		this.#fullscreenFillScreen = options.fullscreenOptions?.fillScreen ?? false;
 		this.animateFullscreen = options.fullscreenOptions?.animate ?? true;
 		this.closeFullscreenWithEscape = options.fullscreenOptions?.closeWithEscape ?? true;
+		this.beforeSwitchFullscreen = options.fullscreenOptions?.beforeSwitch ?? (() => {});
 		this.onSwitchFullscreen = options.fullscreenOptions?.onSwitch ?? (() => {});
 		this.#fullscreenUseButton = options.fullscreenOptions?.useFullscreenButton ?? false;
 
@@ -598,8 +601,11 @@ class Wilson
 		document.removeEventListener("gesturechange", this.#preventGestures);
 		document.removeEventListener("gestureend", this.#preventGestures);
 
-		this.#fullscreenContainerLocation.parentElement
-			&& this.#fullscreenContainerLocation.parentElement.insertBefore(this.canvas, this.#fullscreenContainerLocation);
+		if (this.#fullscreenContainerLocation && this.#fullscreenContainerLocation.parentElement)
+		{
+			this.#fullscreenContainerLocation.parentElement.insertBefore(this.canvas, this.#fullscreenContainerLocation);
+		}
+
 		this.#fullscreenContainerLocation.remove();
 	}
 
@@ -724,7 +730,7 @@ class Wilson
 			const computedStyle = getComputedStyle(this.canvas);
 			this.#canvasAspectRatio = parseFloat(computedStyle.width) / parseFloat(computedStyle.height);
 		}
-		
+
 		if (this.#resizeCanvas(dimensions))
 		{
 			this.#onResizeCanvasCallback();
@@ -2220,8 +2226,10 @@ class Wilson
 		this.onSwitchFullscreen(true);
 	}
 
-	enterFullscreen()
+	async enterFullscreen()
 	{
+		await this.beforeSwitchFullscreen(true);
+
 		const elements = [
 			this.#fullscreenEnterFullscreenButton,
 			this.#fullscreenExitFullscreenButton,
@@ -2305,7 +2313,15 @@ class Wilson
 
 		if (this.#metaThemeColorElement)
 		{
-			this.#metaThemeColorElement.setAttribute("content", this.#oldMetaThemeColor ?? "");
+			if (!this.#oldMetaThemeColor)
+			{
+				this.#metaThemeColorElement.removeAttribute("content");
+			}
+
+			else if (this.#oldMetaThemeColor !== "#000000")
+			{
+				this.#metaThemeColorElement.setAttribute("content", this.#oldMetaThemeColor);
+			}
 		}
 
 		this.#fullscreenContainerLocation.appendChild(this.#fullscreenContainer);
@@ -2345,12 +2361,19 @@ class Wilson
 		this.#onResizeWindow();
 		this.onSwitchFullscreen(false);
 
-		window.scrollTo(0, this.#fullscreenOldScroll);
-		setTimeout(() => window.scrollTo(0, this.#fullscreenOldScroll), 10);
+		// When there are multiple Wilson instances on the same page,
+		// one of them might incorrectly try to scroll back to 0.
+		if (this.#fullscreenOldScroll)
+		{
+			window.scrollTo(0, this.#fullscreenOldScroll);
+			setTimeout(() => window.scrollTo(0, this.#fullscreenOldScroll), 10);
+		}
 	}
 
-	exitFullscreen()
+	async exitFullscreen()
 	{
+		await this.beforeSwitchFullscreen(false);
+
 		// @ts-ignore
 		if (document.startViewTransition)
 		{

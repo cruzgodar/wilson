@@ -238,7 +238,8 @@ The above guide, along with the example project, are a great way to get started 
 	- `fillScreen`: a boolean for whether to resize the canvas and world to fill the entire screen. Defaults to `false`.
 	- `animate`: a boolean for whether to animate the transition to fullscreen. Defaults to `true`.
 	- `closeWithEscape`: a boolean for whether to close fullscreen when the escape key is pressed. Defaults to `true`.
-	- `onSwitch: (isFullscreen: boolean) => void`: a function that is called whenever the canvas enters or exits fullscreen mode.
+	- `onSwitch: (isFullscreen: boolean) => void`: a function that is called after the canvas enters or exits fullscreen mode and is included in the page transition.
+	- `beforeSwitch: async (isFullscreen: boolean) => void`: a function that is called before the canvas enters or exits fullscreen mode and is not included in the page transition. It is awaited before the page transition begins. A typical use for this is to briefly pause a canvas animating every frame before entering fullscreen — Safari often produces a glitchy transition if animations are not paused.
 	- `useFullscreenButton`: a boolean for whether to use a button to enter and exit fullscreen. Defaults to `false`.
 	- `enterFullscreenButtonIconPath`: a string for the path to the enter fullscreen button image. Required (and only allowed) if `useFullscreenButton` is `true`.
 	- `exitFullscreenButtonIconPath`: a string for the path to the exit fullscreen button image. Required (and only allowed) if `useFullscreenButton` is `true`.

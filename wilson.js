@@ -28,7 +28,7 @@ const defaultDraggableCallbacks = {
 };
 class Wilson {
     constructor(canvas, options) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29;
         _Wilson_instances.add(this);
         _Wilson_destroyed.set(this, false);
         // Duplicated properties like this are effectively readonly. Whenever we
@@ -347,11 +347,12 @@ class Wilson {
         __classPrivateFieldSet(this, _Wilson_fullscreenFillScreen, (_15 = (_14 = options.fullscreenOptions) === null || _14 === void 0 ? void 0 : _14.fillScreen) !== null && _15 !== void 0 ? _15 : false, "f");
         this.animateFullscreen = (_17 = (_16 = options.fullscreenOptions) === null || _16 === void 0 ? void 0 : _16.animate) !== null && _17 !== void 0 ? _17 : true;
         this.closeFullscreenWithEscape = (_19 = (_18 = options.fullscreenOptions) === null || _18 === void 0 ? void 0 : _18.closeWithEscape) !== null && _19 !== void 0 ? _19 : true;
-        this.onSwitchFullscreen = (_21 = (_20 = options.fullscreenOptions) === null || _20 === void 0 ? void 0 : _20.onSwitch) !== null && _21 !== void 0 ? _21 : (() => { });
-        __classPrivateFieldSet(this, _Wilson_fullscreenUseButton, (_23 = (_22 = options.fullscreenOptions) === null || _22 === void 0 ? void 0 : _22.useFullscreenButton) !== null && _23 !== void 0 ? _23 : false, "f");
-        if ((_24 = options.fullscreenOptions) === null || _24 === void 0 ? void 0 : _24.useFullscreenButton) {
-            __classPrivateFieldSet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, (_25 = options.fullscreenOptions) === null || _25 === void 0 ? void 0 : _25.enterFullscreenButtonIconPath, "f");
-            __classPrivateFieldSet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, (_26 = options.fullscreenOptions) === null || _26 === void 0 ? void 0 : _26.exitFullscreenButtonIconPath, "f");
+        this.beforeSwitchFullscreen = (_21 = (_20 = options.fullscreenOptions) === null || _20 === void 0 ? void 0 : _20.beforeSwitch) !== null && _21 !== void 0 ? _21 : (() => { });
+        this.onSwitchFullscreen = (_23 = (_22 = options.fullscreenOptions) === null || _22 === void 0 ? void 0 : _22.onSwitch) !== null && _23 !== void 0 ? _23 : (() => { });
+        __classPrivateFieldSet(this, _Wilson_fullscreenUseButton, (_25 = (_24 = options.fullscreenOptions) === null || _24 === void 0 ? void 0 : _24.useFullscreenButton) !== null && _25 !== void 0 ? _25 : false, "f");
+        if ((_26 = options.fullscreenOptions) === null || _26 === void 0 ? void 0 : _26.useFullscreenButton) {
+            __classPrivateFieldSet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, (_27 = options.fullscreenOptions) === null || _27 === void 0 ? void 0 : _27.enterFullscreenButtonIconPath, "f");
+            __classPrivateFieldSet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, (_28 = options.fullscreenOptions) === null || _28 === void 0 ? void 0 : _28.exitFullscreenButtonIconPath, "f");
         }
         // Initialize the container structure.
         __classPrivateFieldSet(this, _Wilson_appletContainer, document.createElement("div"), "f");
@@ -392,7 +393,7 @@ class Wilson {
         requestAnimationFrame(__classPrivateFieldGet(this, _Wilson_animationFrameLoop, "f"));
         window.addEventListener("resize", __classPrivateFieldGet(this, _Wilson_onResizeWindow, "f"));
         document.documentElement.addEventListener("keydown", __classPrivateFieldGet(this, _Wilson_handleKeydownEvent, "f"));
-        if ((_27 = options.draggableOptions) === null || _27 === void 0 ? void 0 : _27.draggables) {
+        if ((_29 = options.draggableOptions) === null || _29 === void 0 ? void 0 : _29.draggables) {
             this.setDraggables(options.draggableOptions.draggables);
         }
         console.log(`[Wilson] Initialized a ${__classPrivateFieldGet(this, _Wilson_canvasWidth, "f")}x${__classPrivateFieldGet(this, _Wilson_canvasHeight, "f")} canvas`
@@ -407,8 +408,9 @@ class Wilson {
         document.removeEventListener("gesturestart", __classPrivateFieldGet(this, _Wilson_preventGestures, "f"));
         document.removeEventListener("gesturechange", __classPrivateFieldGet(this, _Wilson_preventGestures, "f"));
         document.removeEventListener("gestureend", __classPrivateFieldGet(this, _Wilson_preventGestures, "f"));
-        __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").parentElement
-            && __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").parentElement.insertBefore(this.canvas, __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f"));
+        if (__classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f") && __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").parentElement) {
+            __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").parentElement.insertBefore(this.canvas, __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f"));
+        }
         __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").remove();
     }
     resizeCanvas(dimensions) {
@@ -533,7 +535,8 @@ class Wilson {
             delete this.draggables[draggableId];
         }
     }
-    enterFullscreen() {
+    async enterFullscreen() {
+        await this.beforeSwitchFullscreen(true);
         const elements = [
             __classPrivateFieldGet(this, _Wilson_fullscreenEnterFullscreenButton, "f"),
             __classPrivateFieldGet(this, _Wilson_fullscreenExitFullscreenButton, "f"),
@@ -571,7 +574,8 @@ class Wilson {
             __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_enterFullscreen).call(this);
         }
     }
-    exitFullscreen() {
+    async exitFullscreen() {
+        await this.beforeSwitchFullscreen(false);
         // @ts-ignore
         if (document.startViewTransition) {
             if (!__classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f") && !this.reduceMotion) {
@@ -1292,7 +1296,6 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     __classPrivateFieldGet(this, _Wilson_onResizeWindow, "f").call(this);
     this.onSwitchFullscreen(true);
 }, _Wilson_exitFullscreen = function _Wilson_exitFullscreen() {
-    var _a;
     __classPrivateFieldSet(this, _Wilson_currentlyFullscreen, false, "f");
     this.currentlyFullscreen = __classPrivateFieldGet(this, _Wilson_currentlyFullscreen, "f");
     if (__classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f")) {
@@ -1303,7 +1306,12 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_clampWorldCoordinates).call(this);
     }
     if (__classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f")) {
-        __classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f").setAttribute("content", (_a = __classPrivateFieldGet(this, _Wilson_oldMetaThemeColor, "f")) !== null && _a !== void 0 ? _a : "");
+        if (!__classPrivateFieldGet(this, _Wilson_oldMetaThemeColor, "f")) {
+            __classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f").removeAttribute("content");
+        }
+        else if (__classPrivateFieldGet(this, _Wilson_oldMetaThemeColor, "f") !== "#000000") {
+            __classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f").setAttribute("content", __classPrivateFieldGet(this, _Wilson_oldMetaThemeColor, "f"));
+        }
     }
     __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").appendChild(__classPrivateFieldGet(this, _Wilson_fullscreenContainer, "f"));
     this.canvas.classList.remove("WILSON_fullscreen");
@@ -1327,8 +1335,12 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     this.canvas.style.height = __classPrivateFieldGet(this, _Wilson_canvasOldHeightStyle, "f");
     __classPrivateFieldGet(this, _Wilson_onResizeWindow, "f").call(this);
     this.onSwitchFullscreen(false);
-    window.scrollTo(0, __classPrivateFieldGet(this, _Wilson_fullscreenOldScroll, "f"));
-    setTimeout(() => window.scrollTo(0, __classPrivateFieldGet(this, _Wilson_fullscreenOldScroll, "f")), 10);
+    // When there are multiple Wilson instances on the same page,
+    // one of them might incorrectly try to scroll back to 0.
+    if (__classPrivateFieldGet(this, _Wilson_fullscreenOldScroll, "f")) {
+        window.scrollTo(0, __classPrivateFieldGet(this, _Wilson_fullscreenOldScroll, "f"));
+        setTimeout(() => window.scrollTo(0, __classPrivateFieldGet(this, _Wilson_fullscreenOldScroll, "f")), 10);
+    }
 }, _Wilson_interpolatePageToWorld = function _Wilson_interpolatePageToWorld([row, col]) {
     const rect = this.canvas.getBoundingClientRect();
     const computedStyle = window.getComputedStyle(this.canvas);
