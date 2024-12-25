@@ -675,11 +675,6 @@ class Wilson
 		dimensions: { width: number, height?: undefined }
 		| { height: number, width?: undefined }
 	) {
-		if (!this.#currentlyFullscreen)
-		{
-			const computedStyle = getComputedStyle(this.canvas);
-			this.#canvasAspectRatio = parseFloat(computedStyle.width) / parseFloat(computedStyle.height);
-		}
 		const aspectRatio = (this.#currentlyFullscreen && this.#fullscreenFillScreen)
 			? window.innerWidth / window.innerHeight
 			: this.#canvasAspectRatio;
@@ -724,6 +719,12 @@ class Wilson
 		dimensions: { width: number, height?: undefined }
 		| { height: number, width?: undefined }
 	) {
+		if (!this.#currentlyFullscreen)
+		{
+			const computedStyle = getComputedStyle(this.canvas);
+			this.#canvasAspectRatio = parseFloat(computedStyle.width) / parseFloat(computedStyle.height);
+		}
+		
 		if (this.#resizeCanvas(dimensions))
 		{
 			this.#onResizeCanvasCallback();
