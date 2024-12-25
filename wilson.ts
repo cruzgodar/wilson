@@ -306,8 +306,18 @@ class Wilson
 	constructor(canvas: HTMLCanvasElement, options: WilsonOptions)
 	{
 		this.canvas = canvas;
-		const computedStyle = getComputedStyle(canvas);
+		const computedStyle = getComputedStyle(this.canvas);
 		this.#canvasAspectRatio = parseFloat(computedStyle.width) / parseFloat(computedStyle.height);
+
+		if (!this.#canvasAspectRatio || this.#canvasAspectRatio <= 0 || this.#canvasAspectRatio === Infinity)
+		{
+			throw new Error("[Wilson] Could not get canvas aspect ratio. Check that the canvas has a nonzero width and height and is displayed on the page.");
+		}
+
+		if (options.canvasWidth === undefined && options.canvasHeight === undefined)
+		{
+			throw new Error("[Wilson] Exactly one of canvasWidth and canvasHeight must be specified.");
+		}
 
 		if (options.canvasWidth !== undefined)
 		{
@@ -333,6 +343,13 @@ class Wilson
 
 		this.canvas.setAttribute("width", this.#canvasWidth.toString());
 		this.canvas.setAttribute("height", this.#canvasHeight.toString());
+
+		const resizeObserver = new ResizeObserver(() =>
+		{
+			this.#needDraggablesContainerSizeUpdate = true;
+		});
+
+		resizeObserver.observe(this.canvas);
 
 		
 		
@@ -658,6 +675,11 @@ class Wilson
 		dimensions: { width: number, height?: undefined }
 		| { height: number, width?: undefined }
 	) {
+		if (!this.#currentlyFullscreen)
+		{
+			const computedStyle = getComputedStyle(this.canvas);
+			this.#canvasAspectRatio = parseFloat(computedStyle.width) / parseFloat(computedStyle.height);
+		}
 		const aspectRatio = (this.#currentlyFullscreen && this.#fullscreenFillScreen)
 			? window.innerWidth / window.innerHeight
 			: this.#canvasAspectRatio;
