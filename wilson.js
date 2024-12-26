@@ -1045,7 +1045,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     const [x, y] = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [e.clientY, e.clientX]);
     if (this.useInteractionForPanAndZoom) {
         __classPrivateFieldSet(this, _Wilson_zoomFixedPoint, [x, y], "f");
-        if (Math.abs(e.deltaY) < 50 || __classPrivateFieldGet(this, _Wilson_currentlyWheeling, "f")) {
+        if (Math.abs(e.deltaY) < 40 || __classPrivateFieldGet(this, _Wilson_currentlyWheeling, "f")) {
             const sigmoided = 60 * (2 / (1 + Math.pow(1.035, -e.deltaY)) - 1);
             const scale = 1 + sigmoided * 0.005;
             __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_zoomCanvas).call(this, scale);

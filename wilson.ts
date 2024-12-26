@@ -1546,7 +1546,7 @@ class Wilson
 		{
 			this.#zoomFixedPoint = [x, y];
 
-			if (Math.abs(e.deltaY) < 50 || this.#currentlyWheeling)
+			if (Math.abs(e.deltaY) < 40 || this.#currentlyWheeling)
 			{
 				const sigmoided = 60 * (
 					2 / (1 + Math.pow(1.035, -e.deltaY)) - 1
