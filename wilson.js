@@ -1439,15 +1439,15 @@ export class WilsonGPU extends Wilson {
         }
         if ("shader" in options) {
             this.loadShader({
-                source: options.shader,
+                shader: options.shader,
                 uniforms: options.uniforms,
             });
         }
         else if ("shaders" in options) {
-            for (const [id, source] of Object.entries(options.shaders)) {
+            for (const [id, shader] of Object.entries(options.shaders)) {
                 this.loadShader({
                     id,
-                    source,
+                    shader,
                     uniforms: (_c = options.uniforms) === null || _c === void 0 ? void 0 : _c[id],
                 });
             }
@@ -1459,7 +1459,7 @@ export class WilsonGPU extends Wilson {
     drawFrame() {
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
     }
-    loadShader({ id = __classPrivateFieldGet(this, _WilsonGPU_numShaders, "f").toString(), source, uniforms = {} }) {
+    loadShader({ id = __classPrivateFieldGet(this, _WilsonGPU_numShaders, "f").toString(), shader, uniforms = {} }) {
         const vertexShaderSource = /* glsl*/ `
 			attribute vec3 position;
 			varying vec2 uv;
@@ -1473,22 +1473,22 @@ export class WilsonGPU extends Wilson {
 			}
 		`;
         const vertexShader = __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_loadShaderInternal).call(this, this.gl.VERTEX_SHADER, vertexShaderSource);
-        const fragShader = __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_loadShaderInternal).call(this, this.gl.FRAGMENT_SHADER, source);
+        const fragShader = __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_loadShaderInternal).call(this, this.gl.FRAGMENT_SHADER, shader);
         const shaderProgram = this.gl.createProgram();
         if (!shaderProgram) {
-            throw new Error(`[Wilson] Couldn't create shader program. Full shader source: ${source}`);
+            throw new Error(`[Wilson] Couldn't create shader program. Full shader source: ${shader}`);
         }
         __classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id] = shaderProgram;
         this.gl.attachShader(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], vertexShader);
         this.gl.attachShader(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], fragShader);
         this.gl.linkProgram(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id]);
         if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS)) {
-            throw new Error(`[Wilson] Couldn't link shader program: ${this.gl.getProgramInfoLog(shaderProgram)}. Full shader source: ${source}`);
+            throw new Error(`[Wilson] Couldn't link shader program: ${this.gl.getProgramInfoLog(shaderProgram)}. Full shader source: ${shader}`);
         }
         this.useShader(id);
         const positionBuffer = this.gl.createBuffer();
         if (!positionBuffer) {
-            throw new Error(`[Wilson] Couldn't create position buffer. Full shader source: ${source}`);
+            throw new Error(`[Wilson] Couldn't create position buffer. Full shader source: ${shader}`);
         }
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
         const quad = [
@@ -1500,7 +1500,7 @@ export class WilsonGPU extends Wilson {
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(quad), this.gl.STATIC_DRAW);
         const positionAttribute = this.gl.getAttribLocation(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], "position");
         if (positionAttribute === -1) {
-            throw new Error(`[Wilson] Couldn't get position attribute. Full shader source: ${source}`);
+            throw new Error(`[Wilson] Couldn't get position attribute. Full shader source: ${shader}`);
         }
         this.gl.enableVertexAttribArray(positionAttribute);
         this.gl.vertexAttribPointer(positionAttribute, 3, this.gl.FLOAT, false, 0, 0);
@@ -1510,16 +1510,16 @@ export class WilsonGPU extends Wilson {
         for (const [name, value] of Object.entries(uniforms)) {
             const location = this.gl.getUniformLocation(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], name);
             if (location === null) {
-                throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${source}`);
+                throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${shader}`);
             }
             // Match strings like "uniform int foo;" to "int".
-            const match = source.match(new RegExp(`uniform\\s+(\\S+?)\\s+${name}(\\[\\d+\\])?\\s*;`));
+            const match = shader.match(new RegExp(`uniform\\s+(\\S+?)\\s+${name}(\\[\\d+\\])?\\s*;`));
             if (!match) {
-                throw new Error(`[Wilson] Couldn't find uniform ${name} in shader source: ${source}`);
+                throw new Error(`[Wilson] Couldn't find uniform ${name} in shader source: ${shader}`);
             }
             const type = match[1].trim() + (match[2] ? "Array" : "");
             if (!(type in uniformFunctions)) {
-                throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader source: ${source}`);
+                throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader source: ${shader}`);
             }
             __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[id][name] = { location, type: type };
             this.setUniforms({ [name]: value });

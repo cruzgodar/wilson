@@ -2686,18 +2686,18 @@ export class WilsonGPU extends Wilson
 		if ("shader" in options)
 		{
 			this.loadShader({
-				source: options.shader,
+				shader: options.shader,
 				uniforms: options.uniforms,
 			});
 		}
 
 		else if ("shaders" in options)
 		{
-			for (const [id, source] of Object.entries(options.shaders))
+			for (const [id, shader] of Object.entries(options.shaders))
 			{
 				this.loadShader({
 					id,
-					source,
+					shader,
 					uniforms: options.uniforms?.[id],
 				});
 			}
@@ -2741,11 +2741,11 @@ export class WilsonGPU extends Wilson
 
 	loadShader({
 		id = this.#numShaders.toString(),
-		source,
+		shader,
 		uniforms = {}
 	}: {
 		id?: ShaderProgramId,
-		source: string,
+		shader: string,
 		uniforms?: UniformInitializers
 	}) {
 		const vertexShaderSource = /* glsl*/`
@@ -2762,12 +2762,12 @@ export class WilsonGPU extends Wilson
 		`;
 
 		const vertexShader = this.#loadShaderInternal(this.gl.VERTEX_SHADER, vertexShaderSource);
-		const fragShader = this.#loadShaderInternal(this.gl.FRAGMENT_SHADER, source);
+		const fragShader = this.#loadShaderInternal(this.gl.FRAGMENT_SHADER, shader);
 		const shaderProgram = this.gl.createProgram();
 
 		if (!shaderProgram)
 		{
-			throw new Error(`[Wilson] Couldn't create shader program. Full shader source: ${source}`);
+			throw new Error(`[Wilson] Couldn't create shader program. Full shader source: ${shader}`);
 		}
 
 		this.#shaderPrograms[id] = shaderProgram;
@@ -2778,7 +2778,7 @@ export class WilsonGPU extends Wilson
 
 		if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS))
 		{
-			throw new Error(`[Wilson] Couldn't link shader program: ${this.gl.getProgramInfoLog(shaderProgram)}. Full shader source: ${source}`);
+			throw new Error(`[Wilson] Couldn't link shader program: ${this.gl.getProgramInfoLog(shaderProgram)}. Full shader source: ${shader}`);
 		}
 
 		this.useShader(id);
@@ -2787,7 +2787,7 @@ export class WilsonGPU extends Wilson
 
 		if (!positionBuffer)
 		{
-			throw new Error(`[Wilson] Couldn't create position buffer. Full shader source: ${source}`);
+			throw new Error(`[Wilson] Couldn't create position buffer. Full shader source: ${shader}`);
 		}
 
 		this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
@@ -2804,7 +2804,7 @@ export class WilsonGPU extends Wilson
 
 		if (positionAttribute === -1)
 		{
-			throw new Error(`[Wilson] Couldn't get position attribute. Full shader source: ${source}`);
+			throw new Error(`[Wilson] Couldn't get position attribute. Full shader source: ${shader}`);
 		}
 
 		this.gl.enableVertexAttribArray(positionAttribute);
@@ -2822,23 +2822,23 @@ export class WilsonGPU extends Wilson
 
 			if (location === null)
 			{
-				throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${source}`);
+				throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${shader}`);
 			}
 
 			// Match strings like "uniform int foo;" to "int".
-			const match = source.match(
+			const match = shader.match(
 				new RegExp(`uniform\\s+(\\S+?)\\s+${name}(\\[\\d+\\])?\\s*;`)
 			);
 			if (!match)
 			{
-				throw new Error(`[Wilson] Couldn't find uniform ${name} in shader source: ${source}`);
+				throw new Error(`[Wilson] Couldn't find uniform ${name} in shader source: ${shader}`);
 			}
 			
 			const type = match[1].trim() + (match[2] ? "Array" : "");
 
 			if (!(type in uniformFunctions))
 			{
-				throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader source: ${source}`);
+				throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader source: ${shader}`);
 			}
 
 			this.#uniforms[id][name] = { location, type: type as UniformType };

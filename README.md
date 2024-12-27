@@ -93,7 +93,7 @@ const options = {
 
 Ints and floats are initialized with numbers, vectors are initialized with 1D arrays, and matrices are initialized with 2D arrays in **row-major** order (i.e. the way you're likely used to representing them in JavaScript, but not in GLSL). Arrays of `int`s or `float`s (e.g. `uniform int foo[3];`) are initialized with 1D arrays, and arrays of vectors (e.g. `uniform vec3 foo[3];`) are initialized with 2D arrays.
 
-To draw a frame, call the `drawFrame` method on the `WilsonGPU` instance. To set a uniform, use the `setUniforms` method:
+To draw a frame, call the `drawFrame` method on the `WilsonGPU` instance. To set one or more uniforms, use the `setUniforms` method:
 
 ```js
 wilson.setUniforms({ c: [0, 1] });
@@ -179,13 +179,13 @@ const options = {
 
 	fullscreenOptions: {
 		useFullscreenButton: true,
-		enterFullscreenButtonIconPath: "/path/to/enter-fullscreen.png",
-		exitFullscreenButtonIconPath: "/path/to/exit-fullscreen.png",
+		enterFullscreenButtonIconPath: "/path/to/enter-fullscreen-icon.png",
+		exitFullscreenButtonIconPath: "/path/to/exit-fullscreen-icon.png",
 	},
 };
 ```
 
-Wilson provides a built-in button to enter and exit fullscreen that works nicely with the [Page Transition API](https://developer.mozilla.org/en-US/docs/Web/API/View_Transitions_API). Without it, you can still enter and exit fullscreen manually by calling the `enterFullscreen` and `exitFullscreen` methods. Wilson will call the `onResizeCanvas` callback when entering and exiting fullscreen, so you can update your applet to fit the new size.
+Wilson provides a built-in button to enter and exit fullscreen that works nicely with the [Page Transition API](https://developer.mozilla.org/en-US/docs/Web/API/View_Transitions_API). Without it, you can still enter and exit fullscreen manually by calling the `enterFullscreen` and `exitFullscreen` methods. Wilson will call the `onResizeCanvas` callback when entering and exiting fullscreen (if the canvas has been resized), so you can update your applet to fit the new size.
 
 By default, opening a canvas in fullscreen will preserve its aspect ratio, effectively just centering it, making it as large as possible, and providing a black background. However, many applets are independent of aspect ratio, and so Wilson allows for fullscreen applets to truly fill the entire screen. To do this, set the `fillScreen` field to `true` in the `fullscreenOptions` object. In this mode, the canvas will be resized to match the aspect ratio of the window, in a manner so that the total number of pixels rendered is preserved (to avoid narrow aspect ratios producing a very large canvas). The world width and height will also be updated to match the new aspect ratio, but always so that neither is smaller than the non-fullscreen world width and height (so that opening fullscreen never displays less content).
 
@@ -293,7 +293,7 @@ The above guide, along with the example project, are a great way to get started 
 - `gl`: the WebGL or WebGL2 context.
 - `drawFrame()`: draws a frame with the current shader program.instances.
 - `downloadFrame(filename: string, drawNewFrame?: boolean)`: downloads the current frame as a png file. For this to work properly, a new frame must be drawn immediately before downloading. Setting drawNewFrame to `false` will skip this step; only use this if you are manually drawing a frame directly before calling this method.
-- `loadShader({ id?: string, source: string, uniforms?: {[name: string]: number | number[] | number[][]} })`: loads a new shader program and sets it as the current one. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders.
+- `loadShader({ id?: string, shader: string, uniforms?: {[name: string]: number | number[] | number[][]} })`: loads a new shader program and sets it as the current one. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders.
 - `setUniforms(uniforms: {[name: string]: number | number[] | number[][]} }, shader?: string)`: sets uniforms for the shader program with the given ID. If no shader ID is specified, it defaults to that of the current shader program. As with the initializers for uniforms, ints and floats are set with numbers, vectors are set with 1D arrays, and matrices are set with 2D arrays in row-major order. Arrays of `int`s or `float`s (e.g. `uniform int foo[3];`) are set with 1D arrays, and arrays of vectors (e.g. `uniform vec3 foo[3];`) are set with 2D arrays.
 - `useShader(id: string)`: sets the current shader program.
 - `createFramebufferTexturePair({ id: string, width?: number, height?: number, textureType: "unsignedByte" | "float" })`: creates a framebuffer texture pair with a given ID and type. If width or height are unspecified, they default to the canvas width and height.
