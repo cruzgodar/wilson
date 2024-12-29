@@ -1526,28 +1526,16 @@ class Wilson
 			e.preventDefault();
 		}
 
-		this.#currentlyWheeling = true;
-
-		if (this.#currentlyWheelingTimeoutId !== -1)
-		{
-			clearTimeout(this.#currentlyWheelingTimeoutId);
-		}
-
-		this.#currentlyWheelingTimeoutId = setTimeout(() =>
-		{
-			this.#currentlyWheeling = false;
-			this.#currentlyWheelingTimeoutId = -1;
-			this.#needPanAndZoomUpdate = true;
-		}, 100) as unknown as number;
-
 		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
 
 		if (this.useInteractionForPanAndZoom)
 		{
 			this.#zoomFixedPoint = [x, y];
 
-			if (Math.abs(e.deltaY) < 40 || this.#currentlyWheeling)
-			{
+			if (
+				Math.abs(e.deltaY) < 40
+				|| this.#currentlyWheeling && Math.abs(e.deltaY) < 90
+			) {
 				const sigmoided = 60 * (
 					2 / (1 + Math.pow(1.035, -e.deltaY)) - 1
 				);
@@ -1567,6 +1555,20 @@ class Wilson
 				);
 			}
 		}
+
+		this.#currentlyWheeling = true;
+
+		if (this.#currentlyWheelingTimeoutId !== -1)
+		{
+			clearTimeout(this.#currentlyWheelingTimeoutId);
+		}
+
+		this.#currentlyWheelingTimeoutId = setTimeout(() =>
+		{
+			this.#currentlyWheeling = false;
+			this.#currentlyWheelingTimeoutId = -1;
+			this.#needPanAndZoomUpdate = true;
+		}, 50) as unknown as number;
 
 		this.#interactionCallbacks.wheel({
 			x,

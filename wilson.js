@@ -1033,19 +1033,11 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     if (this.useInteractionForPanAndZoom && !this.disallowZooming) {
         e.preventDefault();
     }
-    __classPrivateFieldSet(this, _Wilson_currentlyWheeling, true, "f");
-    if (__classPrivateFieldGet(this, _Wilson_currentlyWheelingTimeoutId, "f") !== -1) {
-        clearTimeout(__classPrivateFieldGet(this, _Wilson_currentlyWheelingTimeoutId, "f"));
-    }
-    __classPrivateFieldSet(this, _Wilson_currentlyWheelingTimeoutId, setTimeout(() => {
-        __classPrivateFieldSet(this, _Wilson_currentlyWheeling, false, "f");
-        __classPrivateFieldSet(this, _Wilson_currentlyWheelingTimeoutId, -1, "f");
-        __classPrivateFieldSet(this, _Wilson_needPanAndZoomUpdate, true, "f");
-    }, 100), "f");
     const [x, y] = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [e.clientY, e.clientX]);
     if (this.useInteractionForPanAndZoom) {
         __classPrivateFieldSet(this, _Wilson_zoomFixedPoint, [x, y], "f");
-        if (Math.abs(e.deltaY) < 40 || __classPrivateFieldGet(this, _Wilson_currentlyWheeling, "f")) {
+        if (Math.abs(e.deltaY) < 40
+            || __classPrivateFieldGet(this, _Wilson_currentlyWheeling, "f") && Math.abs(e.deltaY) < 90) {
             const sigmoided = 60 * (2 / (1 + Math.pow(1.035, -e.deltaY)) - 1);
             const scale = 1 + sigmoided * 0.005;
             __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_zoomCanvas).call(this, scale);
@@ -1054,6 +1046,15 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
             __classPrivateFieldSet(this, _Wilson_zoomVelocity, Math.min(Math.max(__classPrivateFieldGet(this, _Wilson_zoomVelocity, "f") + Math.sign(e.deltaY) * 15, -30), 30), "f");
         }
     }
+    __classPrivateFieldSet(this, _Wilson_currentlyWheeling, true, "f");
+    if (__classPrivateFieldGet(this, _Wilson_currentlyWheelingTimeoutId, "f") !== -1) {
+        clearTimeout(__classPrivateFieldGet(this, _Wilson_currentlyWheelingTimeoutId, "f"));
+    }
+    __classPrivateFieldSet(this, _Wilson_currentlyWheelingTimeoutId, setTimeout(() => {
+        __classPrivateFieldSet(this, _Wilson_currentlyWheeling, false, "f");
+        __classPrivateFieldSet(this, _Wilson_currentlyWheelingTimeoutId, -1, "f");
+        __classPrivateFieldSet(this, _Wilson_needPanAndZoomUpdate, true, "f");
+    }, 50), "f");
     __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").wheel({
         x,
         y,
