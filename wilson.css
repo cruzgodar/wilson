@@ -146,8 +146,8 @@
 {
 	position: fixed;
 	
-	right: calc(10px - env(safe-area-inset-right));
-	top: 10px;
+	right: calc(10px + env(safe-area-inset-right));
+	top: calc(10px + env(safe-area-inset-top));
 	
 	z-index: 1000;
 
