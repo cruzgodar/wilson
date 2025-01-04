@@ -2665,6 +2665,8 @@ export class WilsonGPU extends Wilson
 
 		this.gl = gl;
 
+		this.gl.getExtension("KHR_parallel_shader_compile");
+
 		if (
 			this.gl instanceof WebGL2RenderingContext
 			&& !this.gl.getExtension("EXT_color_buffer_float")
@@ -2730,11 +2732,6 @@ export class WilsonGPU extends Wilson
 		this.gl.shaderSource(shader, source);
 		this.gl.compileShader(shader);
 
-		if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS))
-		{
-			throw new Error(`[Wilson] Couldn't load shader: ${this.gl.getShaderInfoLog(shader)}. Full shader source: ${source}`);
-		}
-
 		return shader;
 	}
 
@@ -2763,8 +2760,14 @@ export class WilsonGPU extends Wilson
 			}
 		`;
 
-		const vertexShader = this.#loadShaderInternal(this.gl.VERTEX_SHADER, vertexShaderSource);
-		const fragShader = this.#loadShaderInternal(this.gl.FRAGMENT_SHADER, shader);
+		const vertexShader = this.gl.createShader(this.gl.VERTEX_SHADER);
+		const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
+
+		if (!vertexShader || !fragShader)
+		{
+			throw new Error(`[Wilson] Couldn't create shader: ${vertexShader}, ${fragShader}`);
+		}
+
 		const shaderProgram = this.gl.createProgram();
 
 		if (!shaderProgram)
@@ -2776,6 +2779,13 @@ export class WilsonGPU extends Wilson
 
 		this.gl.attachShader(this.#shaderPrograms[id], vertexShader);
 		this.gl.attachShader(this.#shaderPrograms[id], fragShader);
+
+		this.gl.shaderSource(vertexShader, vertexShaderSource);
+		this.gl.shaderSource(fragShader, shader);
+
+		this.gl.compileShader(vertexShader);
+		this.gl.compileShader(fragShader);
+
 		this.gl.linkProgram(this.#shaderPrograms[id]);
 
 		if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS))

@@ -1427,6 +1427,7 @@ export class WilsonGPU extends Wilson {
             throw new Error("[Wilson] Failed to get WebGL or WebGL2 context.");
         }
         this.gl = gl;
+        this.gl.getExtension("KHR_parallel_shader_compile");
         if (this.gl instanceof WebGL2RenderingContext
             && !this.gl.getExtension("EXT_color_buffer_float")) {
             console.warn("[Wilson] No support for float textures.");
@@ -1473,8 +1474,11 @@ export class WilsonGPU extends Wilson {
 				uv = position.xy;
 			}
 		`;
-        const vertexShader = __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_loadShaderInternal).call(this, this.gl.VERTEX_SHADER, vertexShaderSource);
-        const fragShader = __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_loadShaderInternal).call(this, this.gl.FRAGMENT_SHADER, shader);
+        const vertexShader = this.gl.createShader(this.gl.VERTEX_SHADER);
+        const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
+        if (!vertexShader || !fragShader) {
+            throw new Error(`[Wilson] Couldn't create shader: ${vertexShader}, ${fragShader}`);
+        }
         const shaderProgram = this.gl.createProgram();
         if (!shaderProgram) {
             throw new Error(`[Wilson] Couldn't create shader program. Full shader source: ${shader}`);
@@ -1482,6 +1486,10 @@ export class WilsonGPU extends Wilson {
         __classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id] = shaderProgram;
         this.gl.attachShader(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], vertexShader);
         this.gl.attachShader(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], fragShader);
+        this.gl.shaderSource(vertexShader, vertexShaderSource);
+        this.gl.shaderSource(fragShader, shader);
+        this.gl.compileShader(vertexShader);
+        this.gl.compileShader(fragShader);
         this.gl.linkProgram(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id]);
         if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS)) {
             throw new Error(`[Wilson] Couldn't link shader program: ${this.gl.getProgramInfoLog(shaderProgram)}. Full shader source: ${shader}`);
@@ -1645,8 +1653,5 @@ _WilsonGPU_useWebGL2 = new WeakMap(), _WilsonGPU_shaderPrograms = new WeakMap(),
     }
     this.gl.shaderSource(shader, source);
     this.gl.compileShader(shader);
-    if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-        throw new Error(`[Wilson] Couldn't load shader: ${this.gl.getShaderInfoLog(shader)}. Full shader source: ${source}`);
-    }
     return shader;
 };
