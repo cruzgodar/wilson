@@ -285,14 +285,7 @@ class Wilson
 	beforeSwitchFullscreen: (isFullscreen: boolean) => void;
 	onSwitchFullscreen: (isFullscreen: boolean) => void;
 	#fullscreenOldScroll: number = 0;
-	#fullscreenNewTopStart: number = 0;
-	#fullscreenNewLeftStart: number = 0;
-	#fullscreenScaleStart: number = 1;
-	#fullscreenScaleEnd: number = 1;
-	#fullscreenOldLeftStart: number = 0;
-	#fullscreenOldTopStart: number = 0;
-	#fullscreenOldLeftEnd: number = 0;
-	#fullscreenOldTopEnd: number = 0;
+	#fullscreenCanvasRect: DOMRect = new DOMRect();
 	#fullscreenFillScreen: boolean;
 	#fullscreenUseButton: boolean;
 	#fullscreenEnterFullscreenButton: HTMLElement | null = null;
@@ -2240,20 +2233,19 @@ class Wilson
 	{
 		const canvasRect = this.canvas.getBoundingClientRect();
 
-		this.#fullscreenOldLeftStart = canvasRect.left;
-		this.#fullscreenOldTopStart = canvasRect.top;
+		this.#fullscreenCanvasRect = canvasRect;
 
 		// Position the center of the new canvas over the old one.
-		this.#fullscreenNewTopStart = canvasRect.top - (window.innerHeight - canvasRect.height) / 2;
-		this.#fullscreenNewLeftStart = canvasRect.left - (window.innerWidth - canvasRect.width) / 2;
+		const newTopStart = canvasRect.top - (window.innerHeight - canvasRect.height) / 2;
+		const newLeftStart = canvasRect.left - (window.innerWidth - canvasRect.width) / 2;
 
 		// The old canvas snaps to being as large as possible, so we correct it.
 		const windowAspectRatio = window.innerWidth / window.innerHeight;
-		this.#fullscreenScaleStart = canvasRect.width / window.innerWidth;
 
-		this.#fullscreenScaleEnd = windowAspectRatio >= this.#canvasAspectRatio
+		const scaleStart = canvasRect.width / window.innerWidth;
+		const scaleEnd = windowAspectRatio >= this.#canvasAspectRatio
 			? window.innerHeight / (window.innerWidth / this.#canvasAspectRatio)
-			: 1
+			: 1;
 
 		const oldWidthEnd = Math.min(
 			window.innerWidth,
@@ -2264,8 +2256,8 @@ class Wilson
 			window.innerWidth / this.#canvasAspectRatio
 		);
 
-		this.#fullscreenOldLeftEnd = (window.innerWidth - oldWidthEnd) / 2;
-		this.#fullscreenOldTopEnd = (window.innerHeight - oldHeightEnd) / 2;
+		const oldLeftEnd = (window.innerWidth - oldWidthEnd) / 2;
+		const oldTopEnd = (window.innerHeight - oldHeightEnd) / 2;
 
 
 		const temporaryStyle = /* css */`
@@ -2273,14 +2265,14 @@ class Wilson
 			{
 				from
 				{
-					transform: translate(${this.#fullscreenOldLeftStart}px, ${this.#fullscreenOldTopStart}px) scale(${this.#fullscreenScaleStart});
+					transform: translate(${this.#fullscreenCanvasRect.left}px, ${this.#fullscreenCanvasRect.top}px) scale(${scaleStart});
 					transform-origin: top left;
 					opacity: 1;
 				}
 
 				to
 				{
-					transform: translate(${this.#fullscreenOldLeftEnd}px, ${this.#fullscreenOldTopEnd}px) scale(${this.#fullscreenScaleEnd});
+					transform: translate(${oldLeftEnd}px, ${oldTopEnd}px) scale(${scaleEnd});
 					transform-origin: top left;
 					opacity: 0;
 				}
@@ -2290,7 +2282,7 @@ class Wilson
 			{
 				from
 				{
-					transform: translate(${this.#fullscreenNewLeftStart}px, ${this.#fullscreenNewTopStart}px) scale(${this.#fullscreenScaleStart});
+					transform: translate(${newLeftStart}px, ${newTopStart}px) scale(${scaleStart});
 					opacity: 0;
 				}
 
@@ -2309,12 +2301,14 @@ class Wilson
 			::view-transition-old(WILSON_canvas-${this.#salt})
 			{
 				animation-name: move-out;
+				animation-easing: ease-out;
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${this.#salt})
 			{
 				animation-name: move-in;
+				animation-easing: cubic-bezier(0, 1, 0, 1);
 				mix-blend-mode: plus-lighter;
 			}
 		`;
@@ -2486,65 +2480,87 @@ class Wilson
 
 	#addExitFullscreenFillScreenTransitionStyle() 
 	{
-		// This one starts aligned to the shrunk canvas, so we have to undo the transforms
-		// in weird ways.
+		// // This one starts aligned to the shrunk canvas, so we have to undo the transforms
+		// // in weird ways.
 
-		const temporaryStyle = /* css */`
-			@keyframes move-out
-			{
-				from
-				{
-					transform: translate(${-this.#fullscreenOldLeftStart}px, ${-this.#fullscreenOldTopStart}px) scale(${1 / this.#fullscreenScaleEnd});
-					transform-origin: top left;
-					opacity: 1;
-				}
+		// const oldScaleStart = 1 / (this.#fullscreenCanvasRect.width / window.innerWidth);
 
-				to
-				{
-					transform: translate(${-this.#fullscreenNewLeftStart}px, ${-this.#fullscreenNewTopStart}px) scale(1);
-					transform-origin: top left;
-					opacity: 1;
-				}
-			}
+		// const oldLeftStart = -this.#fullscreenCanvasRect.left;
+		// const oldTopStart = -this.#fullscreenCanvasRect.top;
 
-			@keyframes move-in
-			{
-				from
-				{
-					transform: scale(${1 / this.#fullscreenScaleEnd}) translate(${0}px, ${0}px);
-					opacity: 0;
-				}
+		// const scaleStart = canvasRect.width / window.innerWidth;
+		// const scaleEnd = windowAspectRatio >= this.#canvasAspectRatio
+		// 	? window.innerHeight / (window.innerWidth / this.#canvasAspectRatio)
+		// 	: 1;
 
-				to
-				{
-					transform: translate(0px, 0px) scale(1);
-					opacity: 0;
-				}
-			}
+		// const oldWidthEnd = Math.min(
+		// 	window.innerWidth,
+		// 	window.innerHeight * this.#canvasAspectRatio
+		// );
+		// const oldHeightEnd = Math.min(
+		// 	window.innerHeight,
+		// 	window.innerWidth / this.#canvasAspectRatio
+		// );
+
+		// const oldLeftEnd = (window.innerWidth - oldWidthEnd) / 2;
+		// const oldTopEnd = (window.innerHeight - oldHeightEnd) / 2;
+
+		// const temporaryStyle = /* css */`
+		// 	@keyframes move-out
+		// 	{
+		// 		from
+		// 		{
+		// 			transform: translate(${oldLeftStart}px, ${oldTopStart}px) scale(${oldScaleStart});
+		// 			transform-origin: top left;
+		// 			opacity: 1;
+		// 		}
+
+		// 		to
+		// 		{
+		// 			transform: translate(0, 0) scale(1);
+		// 			transform-origin: top left;
+		// 			opacity: 1;
+		// 		}
+		// 	}
+
+		// 	@keyframes move-in
+		// 	{
+		// 		from
+		// 		{
+		// 			transform: translate(${0}px, ${0}px);
+		// 			opacity: 0;
+		// 		}
+
+		// 		to
+		// 		{
+		// 			transform: translate(0px, 0px) scale(1);
+		// 			opacity: 1;
+		// 		}
+		// 	}
 			
-			::view-transition-group(WILSON_canvas-${this.#salt})
-			{
-				animation: none;
-			}
+		// 	::view-transition-group(WILSON_canvas-${this.#salt})
+		// 	{
+		// 		animation: none;
+		// 	}
 
-			::view-transition-old(WILSON_canvas-${this.#salt})
-			{
-				animation-name: move-out;
-				mix-blend-mode: plus-lighter;
-			}
+		// 	::view-transition-old(WILSON_canvas-${this.#salt})
+		// 	{
+		// 		animation-name: move-out;
+		// 		mix-blend-mode: plus-lighter;
+		// 	}
 
-			::view-transition-new(WILSON_canvas-${this.#salt})
-			{
-				animation-name: move-in;
-				mix-blend-mode: plus-lighter;
-			}
-		`;
+		// 	::view-transition-new(WILSON_canvas-${this.#salt})
+		// 	{
+		// 		animation-name: move-in;
+		// 		mix-blend-mode: plus-lighter;
+		// 	}
+		// `;
 
-		const styleElement = document.createElement("style");
-		styleElement.innerHTML = temporaryStyle;
-		document.head.appendChild(styleElement);
+		// const styleElement = document.createElement("style");
+		// styleElement.innerHTML = temporaryStyle;
+		// document.head.appendChild(styleElement);
 
-		return styleElement;
+		// return styleElement;
 	}
 
 	async exitFullscreen()
@@ -2570,12 +2586,12 @@ class Wilson
 				{
 					await transition.finished;
 
-					styleElement?.remove();
+					// styleElement?.remove();
 				}
 
 				else
 				{
-					setTimeout(() => styleElement?.remove(), 1000);
+					// setTimeout(() => styleElement?.remove(), 1000);
 				}
 			}
 

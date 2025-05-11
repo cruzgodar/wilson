@@ -184,8 +184,3 @@
 {
 	animation-duration: 350ms;
 }
-
-::view-transition-image-pair(*)
-{
-	animation-duration: 350ms;
-}
