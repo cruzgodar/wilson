@@ -170,18 +170,22 @@
 	height: 100%;
 }
 
-::view-transition-old(*) {
-  animation-duration: 1s;
+::view-transition-old(*)
+{
+	animation-duration: 350ms;
 }
 
-::view-transition-new(*) {
-  animation-duration: 1s;
+::view-transition-new(*)
+{
+	animation-duration: 350ms;
 }
 
-::view-transition-group(*) {
-  animation-duration: 1s; /* or whatever duration you want */
+::view-transition-group(*)
+{
+	animation-duration: 350ms;
 }
 
-::view-transition-image-pair(*) {
-  animation-duration: 1s;
+::view-transition-image-pair(*)
+{
+	animation-duration: 350ms;
 }

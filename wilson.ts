@@ -285,6 +285,13 @@ class Wilson
 	beforeSwitchFullscreen: (isFullscreen: boolean) => void;
 	onSwitchFullscreen: (isFullscreen: boolean) => void;
 	#fullscreenOldScroll: number = 0;
+	#fullscreenNewTopStart: number = 0;
+	#fullscreenNewLeftStart: number = 0;
+	#fullscreenScale: number = 1;
+	#fullscreenOldLeftStart: number = 0;
+	#fullscreenOldTopStart: number = 0;
+	#fullscreenOldLeftEnd: number = 0;
+	#fullscreenOldTopEnd: number = 0;
 	#fullscreenFillScreen: boolean;
 	#fullscreenUseButton: boolean;
 	#fullscreenEnterFullscreenButton: HTMLElement | null = null;
@@ -2228,6 +2235,94 @@ class Wilson
 		this.onSwitchFullscreen(true);
 	}
 
+	#addEnterFullscreenFillScreenTransitionStyle()
+	{
+		const canvasRect = this.canvas.getBoundingClientRect();
+
+		this.#fullscreenOldLeftStart = canvasRect.left;
+		this.#fullscreenOldTopStart = canvasRect.top;
+
+		// Position the center of the new canvas over the old one.
+		this.#fullscreenNewTopStart = canvasRect.top - (window.innerHeight - canvasRect.height) / 2;
+		this.#fullscreenNewLeftStart = canvasRect.left - (window.innerWidth - canvasRect.width) / 2;
+
+		// The old canvas snaps to being as large as possible, so we correct it.
+		this.#fullscreenScale = Math.max(
+			canvasRect.width / window.innerWidth,
+			canvasRect.height / window.innerHeight
+		);
+
+		const oldWidthEnd = Math.min(
+			window.innerWidth,
+			window.innerHeight * this.#canvasAspectRatio
+		);
+		const oldHeightEnd = Math.min(
+			window.innerHeight,
+			window.innerWidth / this.#canvasAspectRatio
+		);
+
+		this.#fullscreenOldLeftEnd = (window.innerWidth - oldWidthEnd) / 2;
+		this.#fullscreenOldTopEnd = (window.innerHeight - oldHeightEnd) / 2;
+
+
+		const temporaryStyle = /* css */`
+			@keyframes move-out
+			{
+				from
+				{
+					transform: translate(${this.#fullscreenOldLeftStart}px, ${this.#fullscreenOldTopStart}px) scale(${this.#fullscreenScale});
+					transform-origin: top left;
+					opacity: 1;
+				}
+
+				to
+				{
+					transform: translate(${this.#fullscreenOldLeftEnd}px, ${this.#fullscreenOldTopEnd}px) scale(1);
+					transform-origin: top left;
+					opacity: 0;
+				}
+			}
+
+			@keyframes move-in
+			{
+				from
+				{
+					transform: translate(${this.#fullscreenNewLeftStart}px, ${this.#fullscreenNewTopStart}px) scale(${this.#fullscreenScale});
+					opacity: 0;
+				}
+
+				to
+				{
+					transform: translate(0px, 0px) scale(1);
+					opacity: 1;
+				}
+			}
+			
+			::view-transition-group(WILSON_canvas-${this.#salt})
+			{
+				animation: none;
+			}
+
+			::view-transition-old(WILSON_canvas-${this.#salt})
+			{
+				animation-name: move-out;
+				mix-blend-mode: plus-lighter;
+			}
+
+			::view-transition-new(WILSON_canvas-${this.#salt})
+			{
+				animation-name: move-in;
+				mix-blend-mode: plus-lighter;
+			}
+		`;
+
+		const styleElement = document.createElement("style");
+		styleElement.innerHTML = temporaryStyle;
+		document.head.appendChild(styleElement);
+
+		return styleElement;
+	}
+
 	async enterFullscreen()
 	{
 		await this.beforeSwitchFullscreen(true);
@@ -2250,84 +2345,7 @@ class Wilson
 		// @ts-ignore
 		if (document.startViewTransition)
 		{
-			const canvasRect = this.canvas.getBoundingClientRect();
-
-			// Position the center of the new canvas over the old one.
-			const newTopStart = canvasRect.top - (window.innerHeight - canvasRect.height) / 2;
-			const newLeftStart = canvasRect.left - (window.innerWidth - canvasRect.width) / 2;
-
-			// The old canvas snaps to being as large as possible, so we correct it.
-			const scale = Math.max(
-				canvasRect.width / window.innerWidth,
-				canvasRect.height / window.innerHeight
-			);
-
-			const oldWidthEnd = Math.min(
-				window.innerWidth,
-				window.innerHeight * this.#canvasAspectRatio
-			);
-			const oldHeightEnd = Math.min(
-				window.innerHeight,
-				window.innerWidth / this.#canvasAspectRatio
-			);
-			const oldLeftEnd = (window.innerWidth - oldWidthEnd) / 2;
-			const oldTopEnd = (window.innerHeight - oldHeightEnd) / 2;
-
-
-			const temporaryStyle = /* css */`
-				@keyframes move-out
-				{
-					from
-					{
-						transform: translate(${canvasRect.left}px, ${canvasRect.top}px) scale(${scale});
-						transform-origin: top left;
-						opacity: 1;
-					}
-
-					to
-					{
-						transform: translate(${oldLeftEnd}px, ${oldTopEnd}px) scale(1);
-						transform-origin: top left;
-						opacity: 0;
-					}
-				}
-
-				@keyframes move-in
-				{
-					from
-					{
-						transform: translate(${newLeftStart}px, ${newTopStart}px);
-						opacity: 0;
-					}
-
-					to
-					{
-						transform: translate(0px, 0px);
-						opacity: 1;
-					}
-				}
-				
-				::view-transition-group(WILSON_canvas-${this.#salt})
-				{
-					animation: none;
-				}
-
-				::view-transition-old(WILSON_canvas-${this.#salt})
-				{
-					animation: move-out 1s ease forwards;
-					transform-origin: center;
-				}
-
-				::view-transition-new(WILSON_canvas-${this.#salt})
-				{
-					animation: move-in 1s ease forwards;
-					transform-origin: center;
-				}
-			`;
-
-			const styleElement = document.createElement("style");
-			styleElement.innerHTML = temporaryStyle;
-			document.head.appendChild(styleElement);
+			const styleElement = this.#fullscreenFillScreen ? this.#addEnterFullscreenFillScreenTransitionStyle() : null;
 
 			if (!this.reduceMotion)
 			{
@@ -2358,15 +2376,25 @@ class Wilson
 			if (this.animateFullscreen)
 			{
 				// @ts-ignore
-				document.startViewTransition(() => this.#enterFullscreen());
+				const transition = document.startViewTransition(() => this.#enterFullscreen());
+
+				if (transition.finished !== undefined)
+				{
+					await transition.finished;
+
+					styleElement?.remove();
+				}
+
+				else
+				{
+					setTimeout(() => styleElement?.remove(), 1000);
+				}
 			}
 
 			else
 			{
 				this.#enterFullscreen();
 			}
-
-			setTimeout(() => styleElement.remove(), 1100);
 		}
 
 		else
@@ -2453,6 +2481,69 @@ class Wilson
 		}
 	}
 
+	#addExitFullscreenFillScreenTransitionStyle() 
+	{
+		const oldLeftStart = this.#fullscreenOldLeftEnd - this.#fullscreenOldLeftStart;
+		const oldTopStart = this.#fullscreenOldTopEnd - this.#fullscreenOldTopStart;
+
+		const temporaryStyle = /* css */`
+			@keyframes move-out
+			{
+				from
+				{
+					transform: translate(${this.#fullscreenOldLeftEnd}px, ${this.#fullscreenOldTopEnd}px) scale(1);
+					transform-origin: top left;
+					opacity: 1;
+				}
+
+				to
+				{
+					transform: translate(${this.#fullscreenOldLeftStart}px, ${this.#fullscreenOldTopStart}px) scale(${this.#fullscreenScale});
+					transform-origin: top left;
+					opacity: 1;
+				}
+			}
+
+			@keyframes move-in
+			{
+				from
+				{
+					transform: scale(${1 / this.#fullscreenScale}) translate(${0}px, ${0}px);
+					opacity: 0;
+				}
+
+				to
+				{
+					transform: translate(0px, 0px) scale(1);
+					opacity: 1;
+				}
+			}
+			
+			::view-transition-group(WILSON_canvas-${this.#salt})
+			{
+				animation: none;
+			}
+
+			::view-transition-old(WILSON_canvas-${this.#salt})
+			{
+				animation-name: move-out;
+				mix-blend-mode: plus-lighter;
+			}
+
+			::view-transition-new(WILSON_canvas-${this.#salt})
+			{
+				animation-name: move-in;
+				mix-blend-mode: plus-lighter;
+			}
+		`;
+
+		const styleElement = document.createElement("style");
+		styleElement.innerHTML = temporaryStyle;
+		document.head.appendChild(styleElement);
+
+		return styleElement;
+	}
+
 	async exitFullscreen()
 	{
 		await this.beforeSwitchFullscreen(false);
@@ -2460,6 +2551,8 @@ class Wilson
 		// @ts-ignore
 		if (document.startViewTransition)
 		{
+			const styleElement = this.#fullscreenFillScreen ? this.#addExitFullscreenFillScreenTransitionStyle() : null;
+
 			if (!this.reduceMotion)
 			{
 				this.canvas.style.setProperty("view-transition-name", `WILSON_canvas-${this.#salt}`);
@@ -2468,7 +2561,19 @@ class Wilson
 			if (this.animateFullscreen)
 			{
 				// @ts-ignore
-				document.startViewTransition(() => this.#exitFullscreen());
+				const transition = document.startViewTransition(() => this.#exitFullscreen());
+
+				if (transition.finished !== undefined)
+				{
+					await transition.finished;
+
+					styleElement?.remove();
+				}
+
+				else
+				{
+					setTimeout(() => styleElement?.remove(), 1000);
+				}
 			}
 
 			else
