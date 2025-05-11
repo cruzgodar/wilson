@@ -133,6 +133,7 @@ type DraggableOptions = {
 type FullscreenOptions = {
 	fillScreen?: boolean,
 	animate?: boolean,
+	crossfade?: boolean,
 	closeWithEscape?: boolean,
 	beforeSwitch?: (isFullscreen: boolean) => void,
 	onSwitch?: (isFullscreen: boolean) => void,
@@ -281,6 +282,7 @@ class Wilson
 	currentlyFullscreen: boolean = false;
 
 	animateFullscreen: boolean;
+	crossfadeFullscreen: boolean;
 	closeFullscreenWithEscape: boolean;
 	beforeSwitchFullscreen: (isFullscreen: boolean) => void;
 	onSwitchFullscreen: (isFullscreen: boolean) => void;
@@ -480,6 +482,7 @@ class Wilson
 
 		this.#fullscreenFillScreen = options.fullscreenOptions?.fillScreen ?? false;
 		this.animateFullscreen = options.fullscreenOptions?.animate ?? true;
+		this.crossfadeFullscreen = options.fullscreenOptions?.crossfade ?? false;
 		this.closeFullscreenWithEscape = options.fullscreenOptions?.closeWithEscape ?? true;
 		this.beforeSwitchFullscreen = options.fullscreenOptions?.beforeSwitch ?? (() => {});
 		this.onSwitchFullscreen = options.fullscreenOptions?.onSwitch ?? (() => {});
@@ -2352,7 +2355,7 @@ class Wilson
 		{
 			const styleElement = this.#fullscreenFillScreen ? this.#addEnterFullscreenFillScreenTransitionStyle() : null;
 
-			if (!this.reduceMotion)
+			if (!this.reduceMotion && !this.crossfadeFullscreen)
 			{
 				if (this.#fullscreenEnterFullscreenButton)
 				{
@@ -2606,6 +2609,7 @@ class Wilson
 
 			if (
 				!this.reduceMotion
+				&& !this.crossfadeFullscreen
 				&& window.innerWidth == this.#fullscreenInitialWindowInnerWidth
 				&& window.innerHeight == this.#fullscreenInitialWindowInnerHeight
 			) {

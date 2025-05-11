@@ -236,7 +236,8 @@ The above guide, along with the example project, are a great way to get started 
 		- `release: ({ id, x, y, event }) => void`: a function called when a draggable is released.
 - `fullscreenOptions`: an object with the following fields:
 	- `fillScreen`: a boolean for whether to resize the canvas and world to fill the entire screen. Defaults to `false`.
-	- `animate`: a boolean for whether to animate the transition to fullscreen. Defaults to `true`.
+	- `animate`: a boolean for whether to animate the transitions to and from fullscreen. Defaults to `true`.
+	- `crossfade`: a boolean for whether to always crossfade the transitions to and from fullscreen. Defaults to `false`.
 	- `closeWithEscape`: a boolean for whether to close fullscreen when the escape key is pressed. Defaults to `true`.
 	- `onSwitch: (isFullscreen: boolean) => void`: a function that is called after the canvas enters or exits fullscreen mode and is included in the page transition.
 	- `beforeSwitch: async (isFullscreen: boolean) => void`: a function that is called before the canvas enters or exits fullscreen mode and is not included in the page transition. It is awaited before the page transition begins. A typical use for this is to briefly pause a canvas animating every frame before entering fullscreen — Safari often produces a glitchy transition if animations are not paused.
@@ -262,6 +263,7 @@ The above guide, along with the example project, are a great way to get started 
 - `usePanAndZoomRubberbanding`, `rubberbandingPanSoftness`, `rubberbandingZoomSoftness`: parameters for the experimental rubberbanding feature. Can be changed dynamically.
 - `currentlyFullscreen`: a boolean for whether the canvas is currently in fullscreen mode. Readonly; to change the fullscreen mode, use `enterFullscreen` or `exitFullscreen`.
 - `animateFullscreen`: a boolean for whether the fullscreen transition is animated. Can be changed dynamically.
+- `crossfadeFullscreen`: a boolean for whether the fullscreen transition is crossfaded. Can be changed dynamically.
 - `closeFullscreenWithEscape`: a boolean for whether to close fullscreen when the escape key is pressed. Can be changed dynamically.
 - `onSwitchFullscreen: (isFullscreen: boolean) => void`: a function that is called whenever the canvas enters or exits fullscreen mode. Can be changed dynamically.
 - `draggables`: a readonly object containing the current draggables, of the form

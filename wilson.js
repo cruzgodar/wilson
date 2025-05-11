@@ -28,7 +28,7 @@ const defaultDraggableCallbacks = {
 };
 class Wilson {
     constructor(canvas, options) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31;
         _Wilson_instances.add(this);
         _Wilson_destroyed.set(this, false);
         // Duplicated properties like this are effectively readonly. Whenever we
@@ -349,13 +349,14 @@ class Wilson {
         __classPrivateFieldSet(this, _Wilson_draggableCallbacks, { ...defaultDraggableCallbacks, ...(_13 = options.draggableOptions) === null || _13 === void 0 ? void 0 : _13.callbacks }, "f");
         __classPrivateFieldSet(this, _Wilson_fullscreenFillScreen, (_15 = (_14 = options.fullscreenOptions) === null || _14 === void 0 ? void 0 : _14.fillScreen) !== null && _15 !== void 0 ? _15 : false, "f");
         this.animateFullscreen = (_17 = (_16 = options.fullscreenOptions) === null || _16 === void 0 ? void 0 : _16.animate) !== null && _17 !== void 0 ? _17 : true;
-        this.closeFullscreenWithEscape = (_19 = (_18 = options.fullscreenOptions) === null || _18 === void 0 ? void 0 : _18.closeWithEscape) !== null && _19 !== void 0 ? _19 : true;
-        this.beforeSwitchFullscreen = (_21 = (_20 = options.fullscreenOptions) === null || _20 === void 0 ? void 0 : _20.beforeSwitch) !== null && _21 !== void 0 ? _21 : (() => { });
-        this.onSwitchFullscreen = (_23 = (_22 = options.fullscreenOptions) === null || _22 === void 0 ? void 0 : _22.onSwitch) !== null && _23 !== void 0 ? _23 : (() => { });
-        __classPrivateFieldSet(this, _Wilson_fullscreenUseButton, (_25 = (_24 = options.fullscreenOptions) === null || _24 === void 0 ? void 0 : _24.useFullscreenButton) !== null && _25 !== void 0 ? _25 : false, "f");
-        if ((_26 = options.fullscreenOptions) === null || _26 === void 0 ? void 0 : _26.useFullscreenButton) {
-            __classPrivateFieldSet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, (_27 = options.fullscreenOptions) === null || _27 === void 0 ? void 0 : _27.enterFullscreenButtonIconPath, "f");
-            __classPrivateFieldSet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, (_28 = options.fullscreenOptions) === null || _28 === void 0 ? void 0 : _28.exitFullscreenButtonIconPath, "f");
+        this.crossfadeFullscreen = (_19 = (_18 = options.fullscreenOptions) === null || _18 === void 0 ? void 0 : _18.crossfade) !== null && _19 !== void 0 ? _19 : false;
+        this.closeFullscreenWithEscape = (_21 = (_20 = options.fullscreenOptions) === null || _20 === void 0 ? void 0 : _20.closeWithEscape) !== null && _21 !== void 0 ? _21 : true;
+        this.beforeSwitchFullscreen = (_23 = (_22 = options.fullscreenOptions) === null || _22 === void 0 ? void 0 : _22.beforeSwitch) !== null && _23 !== void 0 ? _23 : (() => { });
+        this.onSwitchFullscreen = (_25 = (_24 = options.fullscreenOptions) === null || _24 === void 0 ? void 0 : _24.onSwitch) !== null && _25 !== void 0 ? _25 : (() => { });
+        __classPrivateFieldSet(this, _Wilson_fullscreenUseButton, (_27 = (_26 = options.fullscreenOptions) === null || _26 === void 0 ? void 0 : _26.useFullscreenButton) !== null && _27 !== void 0 ? _27 : false, "f");
+        if ((_28 = options.fullscreenOptions) === null || _28 === void 0 ? void 0 : _28.useFullscreenButton) {
+            __classPrivateFieldSet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, (_29 = options.fullscreenOptions) === null || _29 === void 0 ? void 0 : _29.enterFullscreenButtonIconPath, "f");
+            __classPrivateFieldSet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, (_30 = options.fullscreenOptions) === null || _30 === void 0 ? void 0 : _30.exitFullscreenButtonIconPath, "f");
         }
         // Initialize the container structure.
         __classPrivateFieldSet(this, _Wilson_appletContainer, document.createElement("div"), "f");
@@ -396,7 +397,7 @@ class Wilson {
         requestAnimationFrame(__classPrivateFieldGet(this, _Wilson_animationFrameLoop, "f"));
         window.addEventListener("resize", __classPrivateFieldGet(this, _Wilson_onResizeWindow, "f"));
         document.documentElement.addEventListener("keydown", __classPrivateFieldGet(this, _Wilson_handleKeydownEvent, "f"));
-        if ((_29 = options.draggableOptions) === null || _29 === void 0 ? void 0 : _29.draggables) {
+        if ((_31 = options.draggableOptions) === null || _31 === void 0 ? void 0 : _31.draggables) {
             this.setDraggables(options.draggableOptions.draggables);
         }
         console.log(`[Wilson] Initialized a ${__classPrivateFieldGet(this, _Wilson_canvasWidth, "f")}x${__classPrivateFieldGet(this, _Wilson_canvasHeight, "f")} canvas`
@@ -554,7 +555,7 @@ class Wilson {
         // @ts-ignore
         if (document.startViewTransition) {
             const styleElement = __classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f") ? __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_addEnterFullscreenFillScreenTransitionStyle).call(this) : null;
-            if (!this.reduceMotion) {
+            if (!this.reduceMotion && !this.crossfadeFullscreen) {
                 if (__classPrivateFieldGet(this, _Wilson_fullscreenEnterFullscreenButton, "f")) {
                     __classPrivateFieldGet(this, _Wilson_fullscreenEnterFullscreenButton, "f").style.setProperty("view-transition-name", `WILSON_fullscreen-button-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`);
                 }
@@ -602,6 +603,7 @@ class Wilson {
         if (document.startViewTransition) {
             const styleElement = __classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f") ? __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_addExitFullscreenFillScreenTransitionStyle).call(this) : null;
             if (!this.reduceMotion
+                && !this.crossfadeFullscreen
                 && window.innerWidth == __classPrivateFieldGet(this, _Wilson_fullscreenInitialWindowInnerWidth, "f")
                 && window.innerHeight == __classPrivateFieldGet(this, _Wilson_fullscreenInitialWindowInnerHeight, "f")) {
                 if (__classPrivateFieldGet(this, _Wilson_fullscreenEnterFullscreenButton, "f")) {
