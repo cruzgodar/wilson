@@ -287,7 +287,8 @@ class Wilson
 	#fullscreenOldScroll: number = 0;
 	#fullscreenNewTopStart: number = 0;
 	#fullscreenNewLeftStart: number = 0;
-	#fullscreenScale: number = 1;
+	#fullscreenScaleStart: number = 1;
+	#fullscreenScaleEnd: number = 1;
 	#fullscreenOldLeftStart: number = 0;
 	#fullscreenOldTopStart: number = 0;
 	#fullscreenOldLeftEnd: number = 0;
@@ -2247,10 +2248,12 @@ class Wilson
 		this.#fullscreenNewLeftStart = canvasRect.left - (window.innerWidth - canvasRect.width) / 2;
 
 		// The old canvas snaps to being as large as possible, so we correct it.
-		this.#fullscreenScale = Math.max(
-			canvasRect.width / window.innerWidth,
-			canvasRect.height / window.innerHeight
-		);
+		const windowAspectRatio = window.innerWidth / window.innerHeight;
+		this.#fullscreenScaleStart = canvasRect.width / window.innerWidth;
+
+		this.#fullscreenScaleEnd = windowAspectRatio >= this.#canvasAspectRatio
+			? window.innerHeight / (window.innerWidth / this.#canvasAspectRatio)
+			: 1
 
 		const oldWidthEnd = Math.min(
 			window.innerWidth,
@@ -2270,14 +2273,14 @@ class Wilson
 			{
 				from
 				{
-					transform: translate(${this.#fullscreenOldLeftStart}px, ${this.#fullscreenOldTopStart}px) scale(${this.#fullscreenScale});
+					transform: translate(${this.#fullscreenOldLeftStart}px, ${this.#fullscreenOldTopStart}px) scale(${this.#fullscreenScaleStart});
 					transform-origin: top left;
 					opacity: 1;
 				}
 
 				to
 				{
-					transform: translate(${this.#fullscreenOldLeftEnd}px, ${this.#fullscreenOldTopEnd}px) scale(1);
+					transform: translate(${this.#fullscreenOldLeftEnd}px, ${this.#fullscreenOldTopEnd}px) scale(${this.#fullscreenScaleEnd});
 					transform-origin: top left;
 					opacity: 0;
 				}
@@ -2287,7 +2290,7 @@ class Wilson
 			{
 				from
 				{
-					transform: translate(${this.#fullscreenNewLeftStart}px, ${this.#fullscreenNewTopStart}px) scale(${this.#fullscreenScale});
+					transform: translate(${this.#fullscreenNewLeftStart}px, ${this.#fullscreenNewTopStart}px) scale(${this.#fullscreenScaleStart});
 					opacity: 0;
 				}
 
@@ -2483,22 +2486,22 @@ class Wilson
 
 	#addExitFullscreenFillScreenTransitionStyle() 
 	{
-		const oldLeftStart = this.#fullscreenOldLeftEnd - this.#fullscreenOldLeftStart;
-		const oldTopStart = this.#fullscreenOldTopEnd - this.#fullscreenOldTopStart;
+		// This one starts aligned to the shrunk canvas, so we have to undo the transforms
+		// in weird ways.
 
 		const temporaryStyle = /* css */`
 			@keyframes move-out
 			{
 				from
 				{
-					transform: translate(${this.#fullscreenOldLeftEnd}px, ${this.#fullscreenOldTopEnd}px) scale(1);
+					transform: translate(${-this.#fullscreenOldLeftStart}px, ${-this.#fullscreenOldTopStart}px) scale(${1 / this.#fullscreenScaleEnd});
 					transform-origin: top left;
 					opacity: 1;
 				}
 
 				to
 				{
-					transform: translate(${this.#fullscreenOldLeftStart}px, ${this.#fullscreenOldTopStart}px) scale(${this.#fullscreenScale});
+					transform: translate(${-this.#fullscreenNewLeftStart}px, ${-this.#fullscreenNewTopStart}px) scale(1);
 					transform-origin: top left;
 					opacity: 1;
 				}
@@ -2508,14 +2511,14 @@ class Wilson
 			{
 				from
 				{
-					transform: scale(${1 / this.#fullscreenScale}) translate(${0}px, ${0}px);
+					transform: scale(${1 / this.#fullscreenScaleEnd}) translate(${0}px, ${0}px);
 					opacity: 0;
 				}
 
 				to
 				{
 					transform: translate(0px, 0px) scale(1);
-					opacity: 1;
+					opacity: 0;
 				}
 			}
 			
