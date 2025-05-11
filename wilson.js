@@ -1327,25 +1327,28 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 }, _Wilson_addEnterFullscreenFillScreenTransitionStyle = function _Wilson_addEnterFullscreenFillScreenTransitionStyle() {
     const canvasRect = this.canvas.getBoundingClientRect();
     __classPrivateFieldSet(this, _Wilson_fullscreenCanvasRect, canvasRect, "f");
-    // Position the center of the new canvas over the old one.
-    const newTopStart = canvasRect.top - (window.innerHeight - canvasRect.height) / 2;
-    const newLeftStart = canvasRect.left - (window.innerWidth - canvasRect.width) / 2;
     // The old canvas snaps to being as large as possible, so we correct it.
     const windowAspectRatio = window.innerWidth / window.innerHeight;
-    const scaleStart = canvasRect.width / window.innerWidth;
+    const scaleStart = windowAspectRatio >= __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f")
+        ? canvasRect.height / window.innerHeight
+        : canvasRect.width / window.innerWidth;
     const scaleEnd = windowAspectRatio >= __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f")
         ? window.innerHeight / (window.innerWidth / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f"))
         : 1;
+    console.log(scaleStart, scaleEnd);
     const oldWidthEnd = Math.min(window.innerWidth, window.innerHeight * __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f"));
     const oldHeightEnd = Math.min(window.innerHeight, window.innerWidth / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f"));
     const oldLeftEnd = (window.innerWidth - oldWidthEnd) / 2;
     const oldTopEnd = (window.innerHeight - oldHeightEnd) / 2;
+    // Position the center of the new canvas over the old one.
+    const newTopStart = canvasRect.top - (window.innerHeight * scaleStart - canvasRect.height) / 2;
+    const newLeftStart = canvasRect.left - (window.innerWidth * scaleStart - canvasRect.width) / 2;
     const temporaryStyle = /* css */ `
 			@keyframes WILSON_move-out
 			{
 				from
 				{
-					transform: translate(${__classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").left}px, ${__classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").top}px) scale(${scaleStart});
+					transform: translate(${__classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").left}px, ${__classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").top}px) scale(${scaleStart * scaleEnd});
 					transform-origin: top left;
 					opacity: 1;
 				}
@@ -1363,12 +1366,14 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 				from
 				{
 					transform: translate(${newLeftStart}px, ${newTopStart}px) scale(${scaleStart});
+					transform-origin: top left;
 					opacity: 0;
 				}
 
 				to
 				{
 					transform: translate(0px, 0px) scale(1);
+					transform-origin: top left;
 					opacity: 1;
 				}
 			}
@@ -1503,15 +1508,14 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 
 			::view-transition-old(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
-				animation-name: WILSON_move-out;
-				animation-easing: ease-out;
+				animation-name: WILSON_move-out;				animation-easing: cubic-bezier(0, 1, 0, 1);
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
 				animation-name: WILSON_move-in;
-				animation-easing: cubic-bezier(0, 1, 0, 1);
+				animation-easing: ease-out;
 				mix-blend-mode: plus-lighter;
 			}
 		`;

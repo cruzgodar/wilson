@@ -2235,17 +2235,17 @@ class Wilson
 
 		this.#fullscreenCanvasRect = canvasRect;
 
-		// Position the center of the new canvas over the old one.
-		const newTopStart = canvasRect.top - (window.innerHeight - canvasRect.height) / 2;
-		const newLeftStart = canvasRect.left - (window.innerWidth - canvasRect.width) / 2;
-
 		// The old canvas snaps to being as large as possible, so we correct it.
 		const windowAspectRatio = window.innerWidth / window.innerHeight;
 
-		const scaleStart = canvasRect.width / window.innerWidth;
+		const scaleStart = windowAspectRatio >= this.#canvasAspectRatio
+			? canvasRect.height / window.innerHeight
+			: canvasRect.width / window.innerWidth;
 		const scaleEnd = windowAspectRatio >= this.#canvasAspectRatio
 			? window.innerHeight / (window.innerWidth / this.#canvasAspectRatio)
 			: 1;
+
+		console.log(scaleStart, scaleEnd)
 
 		const oldWidthEnd = Math.min(
 			window.innerWidth,
@@ -2259,13 +2259,17 @@ class Wilson
 		const oldLeftEnd = (window.innerWidth - oldWidthEnd) / 2;
 		const oldTopEnd = (window.innerHeight - oldHeightEnd) / 2;
 
+		// Position the center of the new canvas over the old one.
+		const newTopStart = canvasRect.top - (window.innerHeight * scaleStart - canvasRect.height) / 2;
+		const newLeftStart = canvasRect.left - (window.innerWidth * scaleStart - canvasRect.width) / 2;
+
 
 		const temporaryStyle = /* css */`
 			@keyframes WILSON_move-out
 			{
 				from
 				{
-					transform: translate(${this.#fullscreenCanvasRect.left}px, ${this.#fullscreenCanvasRect.top}px) scale(${scaleStart});
+					transform: translate(${this.#fullscreenCanvasRect.left}px, ${this.#fullscreenCanvasRect.top}px) scale(${scaleStart * scaleEnd});
 					transform-origin: top left;
 					opacity: 1;
 				}
@@ -2283,12 +2287,14 @@ class Wilson
 				from
 				{
 					transform: translate(${newLeftStart}px, ${newTopStart}px) scale(${scaleStart});
+					transform-origin: top left;
 					opacity: 0;
 				}
 
 				to
 				{
 					transform: translate(0px, 0px) scale(1);
+					transform-origin: top left;
 					opacity: 1;
 				}
 			}
@@ -2555,15 +2561,14 @@ class Wilson
 
 			::view-transition-old(WILSON_canvas-${this.#salt})
 			{
-				animation-name: WILSON_move-out;
-				animation-easing: ease-out;
+				animation-name: WILSON_move-out;				animation-easing: cubic-bezier(0, 1, 0, 1);
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${this.#salt})
 			{
 				animation-name: WILSON_move-in;
-				animation-easing: cubic-bezier(0, 1, 0, 1);
+				animation-easing: ease-out;
 				mix-blend-mode: plus-lighter;
 			}
 		`;
