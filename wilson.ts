@@ -2234,6 +2234,12 @@ class Wilson
 
 		this.#onResizeWindow();
 		this.onSwitchFullscreen(true);
+
+		setTimeout(() =>
+		{
+			this.#fullscreenInitialWindowInnerWidth = window.innerWidth;
+			this.#fullscreenInitialWindowInnerHeight = window.innerHeight;
+		}, 100);
 	}
 
 	#addEnterFullscreenFillScreenTransitionStyle()
@@ -2564,7 +2570,8 @@ class Wilson
 
 			::view-transition-old(WILSON_canvas-${this.#salt})
 			{
-				animation-name: WILSON_move-out;				animation-easing: cubic-bezier(0, 1, 0, 1);
+				animation-name: WILSON_move-out;
+				animation-easing: cubic-bezier(0, 1, 0, 1);
 				mix-blend-mode: plus-lighter;
 			}
 
