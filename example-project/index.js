@@ -94,10 +94,10 @@ function initWilson2() {
         worldHeight: 3,
         minWorldWidth: 0.00001,
         minWorldHeight: 0.00001,
-        minWorldX: -1.5,
-        maxWorldX: 1.5,
-        minWorldY: -1.5,
-        maxWorldY: 1.5,
+        minWorldX: -2.5,
+        maxWorldX: 2.5,
+        minWorldY: -2.5,
+        maxWorldY: 2.5,
         interactionOptions: {
             useForPanAndZoom: true,
             onPanAndZoom: drawFrame

@@ -596,10 +596,10 @@ class Wilson {
                 const transition = document.startViewTransition(() => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_exitFullscreen).call(this));
                 if (transition.finished !== undefined) {
                     await transition.finished;
-                    // styleElement?.remove();
+                    styleElement === null || styleElement === void 0 ? void 0 : styleElement.remove();
                 }
                 else {
-                    // setTimeout(() => styleElement?.remove(), 1000);
+                    setTimeout(() => styleElement === null || styleElement === void 0 ? void 0 : styleElement.remove(), 1000);
                 }
             }
             else {
@@ -1330,7 +1330,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     const oldLeftEnd = (window.innerWidth - oldWidthEnd) / 2;
     const oldTopEnd = (window.innerHeight - oldHeightEnd) / 2;
     const temporaryStyle = /* css */ `
-			@keyframes move-out
+			@keyframes WILSON_move-out
 			{
 				from
 				{
@@ -1347,7 +1347,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 				}
 			}
 
-			@keyframes move-in
+			@keyframes WILSON_move-in
 			{
 				from
 				{
@@ -1369,14 +1369,14 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 
 			::view-transition-old(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
-				animation-name: move-out;
+				animation-name: WILSON_move-out;
 				animation-easing: ease-out;
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
-				animation-name: move-in;
+				animation-name: WILSON_move-in;
 				animation-easing: cubic-bezier(0, 1, 0, 1);
 				mix-blend-mode: plus-lighter;
 			}
@@ -1432,73 +1432,82 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         setTimeout(() => window.scrollTo(0, __classPrivateFieldGet(this, _Wilson_fullscreenOldScroll, "f")), 10);
     }
 }, _Wilson_addExitFullscreenFillScreenTransitionStyle = function _Wilson_addExitFullscreenFillScreenTransitionStyle() {
-    // // This one starts aligned to the shrunk canvas, so we have to undo the transforms
-    // // in weird ways.
-    // const oldScaleStart = 1 / (this.#fullscreenCanvasRect.width / window.innerWidth);
-    // const oldLeftStart = -this.#fullscreenCanvasRect.left;
-    // const oldTopStart = -this.#fullscreenCanvasRect.top;
-    // const scaleStart = canvasRect.width / window.innerWidth;
-    // const scaleEnd = windowAspectRatio >= this.#canvasAspectRatio
-    // 	? window.innerHeight / (window.innerWidth / this.#canvasAspectRatio)
-    // 	: 1;
-    // const oldWidthEnd = Math.min(
-    // 	window.innerWidth,
-    // 	window.innerHeight * this.#canvasAspectRatio
-    // );
-    // const oldHeightEnd = Math.min(
-    // 	window.innerHeight,
-    // 	window.innerWidth / this.#canvasAspectRatio
-    // );
-    // const oldLeftEnd = (window.innerWidth - oldWidthEnd) / 2;
-    // const oldTopEnd = (window.innerHeight - oldHeightEnd) / 2;
-    // const temporaryStyle = /* css */`
-    // 	@keyframes move-out
-    // 	{
-    // 		from
-    // 		{
-    // 			transform: translate(${oldLeftStart}px, ${oldTopStart}px) scale(${oldScaleStart});
-    // 			transform-origin: top left;
-    // 			opacity: 1;
-    // 		}
-    // 		to
-    // 		{
-    // 			transform: translate(0, 0) scale(1);
-    // 			transform-origin: top left;
-    // 			opacity: 1;
-    // 		}
-    // 	}
-    // 	@keyframes move-in
-    // 	{
-    // 		from
-    // 		{
-    // 			transform: translate(${0}px, ${0}px);
-    // 			opacity: 0;
-    // 		}
-    // 		to
-    // 		{
-    // 			transform: translate(0px, 0px) scale(1);
-    // 			opacity: 1;
-    // 		}
-    // 	}
-    // 	::view-transition-group(WILSON_canvas-${this.#salt})
-    // 	{
-    // 		animation: none;
-    // 	}
-    // 	::view-transition-old(WILSON_canvas-${this.#salt})
-    // 	{
-    // 		animation-name: move-out;
-    // 		mix-blend-mode: plus-lighter;
-    // 	}
-    // 	::view-transition-new(WILSON_canvas-${this.#salt})
-    // 	{
-    // 		animation-name: move-in;
-    // 		mix-blend-mode: plus-lighter;
-    // 	}
-    // `;
-    // const styleElement = document.createElement("style");
-    // styleElement.innerHTML = temporaryStyle;
-    // document.head.appendChild(styleElement);
-    // return styleElement;
+    // This one starts aligned to the shrunk canvas, so we have to undo the transforms
+    // in weird ways.
+    const oldLeftStart = -__classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").left;
+    const oldTopStart = -__classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").top;
+    const windowAspectRatio = window.innerWidth / window.innerHeight;
+    const scaleStart = __classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").width / window.innerWidth;
+    const scaleEnd = windowAspectRatio >= __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f")
+        ? window.innerHeight / (window.innerWidth / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f"))
+        : 1;
+    const oldWidthEnd = window.innerWidth * scaleStart / scaleEnd;
+    const oldHeightEnd = window.innerHeight * scaleStart / scaleEnd;
+    const oldLeftEnd = (__classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").width - oldWidthEnd) / 2;
+    const oldTopEnd = (__classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").height - oldHeightEnd) / 2;
+    const newWidthStart = Math.min(window.innerWidth, window.innerHeight * __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f"));
+    const newHeightStart = Math.min(window.innerHeight, window.innerWidth / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f"));
+    const newLeftStart = (window.innerWidth - newWidthStart) / 2 - __classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").left;
+    const newTopStart = (window.innerHeight - newHeightStart) / 2 - __classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").top;
+    console.log(newWidthStart, newHeightStart, newLeftStart, newTopStart);
+    const temporaryStyle = /* css */ `
+			@keyframes WILSON_move-out
+			{
+				from
+				{
+					transform: translate(${oldLeftStart}px, ${oldTopStart}px) scale(${1 / scaleStart});
+					transform-origin: top left;
+					opacity: 1;
+				}
+
+				to
+				{
+					transform: translate(${oldLeftEnd}px, ${oldTopEnd}px) scale(${1 / scaleEnd});
+					transform-origin: top left;
+					opacity: 0;
+				}
+			}
+
+			@keyframes WILSON_move-in
+			{
+				from
+				{
+					transform: translate(${newLeftStart}px, ${newTopStart}px) scale(${scaleEnd / scaleStart});
+					transform-origin: top left;
+					opacity: 0;
+				}
+
+				to
+				{
+					transform: translate(0px, 0px) scale(1);
+					transform-origin: top left;
+					opacity: 1;
+				}
+			}
+			
+			::view-transition-group(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
+			{
+				animation: none;
+			}
+
+			::view-transition-old(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
+			{
+				animation-name: WILSON_move-out;
+				animation-easing: ease-out;
+				mix-blend-mode: plus-lighter;
+			}
+
+			::view-transition-new(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
+			{
+				animation-name: WILSON_move-in;
+				animation-easing: cubic-bezier(0, 1, 0, 1);
+				mix-blend-mode: plus-lighter;
+			}
+		`;
+    const styleElement = document.createElement("style");
+    styleElement.innerHTML = temporaryStyle;
+    document.head.appendChild(styleElement);
+    return styleElement;
 }, _Wilson_interpolatePageToWorld = function _Wilson_interpolatePageToWorld([row, col]) {
     const rect = this.canvas.getBoundingClientRect();
     const computedStyle = window.getComputedStyle(this.canvas);
