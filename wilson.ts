@@ -2611,6 +2611,21 @@ class Wilson
 			{
 				this.#exitFullscreen();
 			}
+
+			const elements = [
+				this.#fullscreenEnterFullscreenButton,
+				this.#fullscreenExitFullscreenButton,
+				this.canvas,
+				...(Object.values(this.#draggables).map(draggable => draggable.element))
+			];
+
+			for (const element of elements)
+			{
+				if (element)
+				{
+					element.style.removeProperty("view-transition-name");
+				}
+			}
 		}
 		
 		else

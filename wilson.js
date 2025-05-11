@@ -605,6 +605,17 @@ class Wilson {
             else {
                 __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_exitFullscreen).call(this);
             }
+            const elements = [
+                __classPrivateFieldGet(this, _Wilson_fullscreenEnterFullscreenButton, "f"),
+                __classPrivateFieldGet(this, _Wilson_fullscreenExitFullscreenButton, "f"),
+                this.canvas,
+                ...(Object.values(__classPrivateFieldGet(this, _Wilson_draggables, "f")).map(draggable => draggable.element))
+            ];
+            for (const element of elements) {
+                if (element) {
+                    element.style.removeProperty("view-transition-name");
+                }
+            }
         }
         else {
             __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_exitFullscreen).call(this);
