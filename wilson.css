@@ -172,15 +172,15 @@
 
 ::view-transition-old(*)
 {
-	animation-duration: 350ms;
+	animation-duration: 300ms;
 }
 
 ::view-transition-new(*)
 {
-	animation-duration: 350ms;
+	animation-duration: 300ms;
 }
 
 ::view-transition-group(*)
 {
-	animation-duration: 350ms;
+	animation-duration: 300ms;
 }

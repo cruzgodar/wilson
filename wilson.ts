@@ -286,6 +286,8 @@ class Wilson
 	onSwitchFullscreen: (isFullscreen: boolean) => void;
 	#fullscreenOldScroll: number = 0;
 	#fullscreenCanvasRect: DOMRect = new DOMRect();
+	#fullscreenInitialWindowInnerWidth: number = window.innerWidth;
+	#fullscreenInitialWindowInnerHeight: number = window.innerHeight;
 	#fullscreenFillScreen: boolean;
 	#fullscreenUseButton: boolean;
 	#fullscreenEnterFullscreenButton: HTMLElement | null = null;
@@ -2154,6 +2156,8 @@ class Wilson
 	{
 		this.#currentlyFullscreen = true;
 		this.currentlyFullscreen = this.#currentlyFullscreen;
+		this.#fullscreenInitialWindowInnerWidth = window.innerWidth;
+		this.#fullscreenInitialWindowInnerHeight = window.innerHeight;
 
 		this.#fullscreenOldScroll = window.scrollY;
 
@@ -2244,8 +2248,6 @@ class Wilson
 		const scaleEnd = windowAspectRatio >= this.#canvasAspectRatio
 			? window.innerHeight / (window.innerWidth / this.#canvasAspectRatio)
 			: 1;
-
-		console.log(scaleStart, scaleEnd)
 
 		const oldWidthEnd = Math.min(
 			window.innerWidth,
@@ -2517,8 +2519,6 @@ class Wilson
 		const newLeftStart = (window.innerWidth - newWidthStart) / 2 - this.#fullscreenCanvasRect.left;
 		const newTopStart = (window.innerHeight - newHeightStart) / 2 - this.#fullscreenCanvasRect.top;
 
-		console.log(newWidthStart, newHeightStart, newLeftStart, newTopStart);
-
 		const temporaryStyle = /* css */`
 			@keyframes WILSON_move-out
 			{
@@ -2584,14 +2584,53 @@ class Wilson
 	{
 		await this.beforeSwitchFullscreen(false);
 
+		const elements = [
+			this.#fullscreenEnterFullscreenButton,
+			this.#fullscreenExitFullscreenButton,
+			this.canvas,
+			...(Object.values(this.#draggables).map(draggable => draggable.element))
+		];
+
+		for (const element of elements)
+		{
+			if (element)
+			{
+				element.style.removeProperty("view-transition-name");
+			}
+		}
+
 		// @ts-ignore
 		if (document.startViewTransition)
 		{
 			const styleElement = this.#fullscreenFillScreen ? this.#addExitFullscreenFillScreenTransitionStyle() : null;
 
-			if (!this.reduceMotion)
-			{
+			if (
+				!this.reduceMotion
+				&& window.innerWidth == this.#fullscreenInitialWindowInnerWidth
+				&& window.innerHeight == this.#fullscreenInitialWindowInnerHeight
+			) {
+				if (this.#fullscreenEnterFullscreenButton)
+				{
+					this.#fullscreenEnterFullscreenButton.style.setProperty(
+						"view-transition-name",
+						`WILSON_fullscreen-button-${this.#salt}`
+					)
+				}
+
+				if (this.#fullscreenExitFullscreenButton)
+				{
+					this.#fullscreenExitFullscreenButton.style.setProperty(
+						"view-transition-name",
+						`WILSON_fullscreen-button-${this.#salt}`
+					)
+				}
+				
 				this.canvas.style.setProperty("view-transition-name", `WILSON_canvas-${this.#salt}`);
+
+				for (const [id, data] of Object.entries(this.#draggables))
+				{
+					data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}-${this.#salt}`);
+				}
 			}
 
 			if (this.animateFullscreen)
@@ -2616,26 +2655,19 @@ class Wilson
 			{
 				this.#exitFullscreen();
 			}
-
-			const elements = [
-				this.#fullscreenEnterFullscreenButton,
-				this.#fullscreenExitFullscreenButton,
-				this.canvas,
-				...(Object.values(this.#draggables).map(draggable => draggable.element))
-			];
-
-			for (const element of elements)
-			{
-				if (element)
-				{
-					element.style.removeProperty("view-transition-name");
-				}
-			}
 		}
 		
 		else
 		{
 			this.#exitFullscreen();
+		}
+
+		for (const element of elements)
+		{
+			if (element)
+			{
+				element.style.removeProperty("view-transition-name");
+			}
 		}
 	}
 
