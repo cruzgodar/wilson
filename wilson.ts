@@ -633,8 +633,6 @@ class Wilson
 				// A sketchy hack to make rotating on iOS work properly.
 				requestAnimationFrame(() => this.canvas.style.height = "100%");
 
-				window.scroll(0, 0);
-
 				this.#worldWidth = Math.max(
 					this.#nonFullscreenWorldWidth * aspectRatioChange,
 					this.#nonFullscreenWorldWidth
@@ -2185,11 +2183,11 @@ class Wilson
 
 
 
-		document.documentElement.style.overflowY = "hidden";
-		document.body.style.overflowY = "hidden";
+		// document.documentElement.style.overflowY = "hidden";
+		// document.body.style.overflowY = "hidden";
 
-		document.body.style.width = "100vw";
-		document.body.style.height = "100%";
+		// document.body.style.width = "100vw";
+		// document.body.style.height = "100%";
 
 		document.documentElement.style.userSelect = "none";
 
@@ -2210,8 +2208,6 @@ class Wilson
 
 			this.canvas.style.width = "100vw";
 			this.canvas.style.height = "100%";
-
-			window.scroll(0, 0);
 
 			const windowAspectRatio = window.innerWidth / window.innerHeight;
 
@@ -2457,11 +2453,11 @@ class Wilson
 
 
 
-		document.documentElement.style.overflowY = "scroll";
-		document.body.style.overflowY = "visible";
+		// document.documentElement.style.overflowY = "scroll";
+		// document.body.style.overflowY = "visible";
 
-		document.body.style.width = "";
-		document.body.style.height = "";
+		// document.body.style.width = "";
+		// document.body.style.height = "";
 
 		document.documentElement.style.userSelect = "auto";
 

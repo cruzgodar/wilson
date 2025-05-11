@@ -115,7 +115,6 @@ class Wilson {
                     this.canvas.style.height = "100vh";
                     // A sketchy hack to make rotating on iOS work properly.
                     requestAnimationFrame(() => this.canvas.style.height = "100%");
-                    window.scroll(0, 0);
                     __classPrivateFieldSet(this, _Wilson_worldWidth, Math.max(__classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f") * aspectRatioChange, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f")), "f");
                     this.worldWidth = __classPrivateFieldGet(this, _Wilson_worldWidth, "f");
                     __classPrivateFieldSet(this, _Wilson_worldHeight, Math.max(__classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f") / aspectRatioChange, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f")), "f");
@@ -1316,10 +1315,10 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     this.canvas.classList.add("WILSON_fullscreen");
     __classPrivateFieldGet(this, _Wilson_canvasContainer, "f").classList.add("WILSON_fullscreen");
     __classPrivateFieldGet(this, _Wilson_fullscreenContainer, "f").classList.add("WILSON_fullscreen");
-    document.documentElement.style.overflowY = "hidden";
-    document.body.style.overflowY = "hidden";
-    document.body.style.width = "100vw";
-    document.body.style.height = "100%";
+    // document.documentElement.style.overflowY = "hidden";
+    // document.body.style.overflowY = "hidden";
+    // document.body.style.width = "100vw";
+    // document.body.style.height = "100%";
     document.documentElement.style.userSelect = "none";
     document.addEventListener("gesturestart", __classPrivateFieldGet(this, _Wilson_preventGestures, "f"));
     document.addEventListener("gesturechange", __classPrivateFieldGet(this, _Wilson_preventGestures, "f"));
@@ -1331,7 +1330,6 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         __classPrivateFieldGet(this, _Wilson_fullscreenContainer, "f").classList.add("WILSON_fullscreen-fill-screen");
         this.canvas.style.width = "100vw";
         this.canvas.style.height = "100%";
-        window.scroll(0, 0);
         const windowAspectRatio = window.innerWidth / window.innerHeight;
         const aspectRatioChange = windowAspectRatio / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f");
         __classPrivateFieldSet(this, _Wilson_worldWidth, Math.max(__classPrivateFieldGet(this, _Wilson_worldWidth, "f") * aspectRatioChange, __classPrivateFieldGet(this, _Wilson_worldWidth, "f")), "f");
@@ -1448,10 +1446,10 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     this.canvas.classList.remove("WILSON_fullscreen");
     __classPrivateFieldGet(this, _Wilson_canvasContainer, "f").classList.remove("WILSON_fullscreen");
     __classPrivateFieldGet(this, _Wilson_fullscreenContainer, "f").classList.remove("WILSON_fullscreen");
-    document.documentElement.style.overflowY = "scroll";
-    document.body.style.overflowY = "visible";
-    document.body.style.width = "";
-    document.body.style.height = "";
+    // document.documentElement.style.overflowY = "scroll";
+    // document.body.style.overflowY = "visible";
+    // document.body.style.width = "";
+    // document.body.style.height = "";
     document.documentElement.style.userSelect = "auto";
     document.removeEventListener("gesturestart", __classPrivateFieldGet(this, _Wilson_preventGestures, "f"));
     document.removeEventListener("gesturechange", __classPrivateFieldGet(this, _Wilson_preventGestures, "f"));
