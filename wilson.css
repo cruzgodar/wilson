@@ -169,3 +169,19 @@
 	width: 100%;
 	height: 100%;
 }
+
+::view-transition-old(*) {
+  animation-duration: 1s;
+}
+
+::view-transition-new(*) {
+  animation-duration: 1s;
+}
+
+::view-transition-group(*) {
+  animation-duration: 1s; /* or whatever duration you want */
+}
+
+::view-transition-image-pair(*) {
+  animation-duration: 1s;
+}

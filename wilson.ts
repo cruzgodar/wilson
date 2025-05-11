@@ -2250,7 +2250,86 @@ class Wilson
 		// @ts-ignore
 		if (document.startViewTransition)
 		{
-			if (!this.#fullscreenFillScreen && !this.reduceMotion)
+			const canvasRect = this.canvas.getBoundingClientRect();
+
+			// Position the center of the new canvas over the old one.
+			const newTopStart = canvasRect.top - (window.innerHeight - canvasRect.height) / 2;
+			const newLeftStart = canvasRect.left - (window.innerWidth - canvasRect.width) / 2;
+
+			// The old canvas snaps to being as large as possible, so we correct it.
+			const scale = Math.max(
+				canvasRect.width / window.innerWidth,
+				canvasRect.height / window.innerHeight
+			);
+
+			const oldWidthEnd = Math.min(
+				window.innerWidth,
+				window.innerHeight * this.#canvasAspectRatio
+			);
+			const oldHeightEnd = Math.min(
+				window.innerHeight,
+				window.innerWidth / this.#canvasAspectRatio
+			);
+			const oldLeftEnd = (window.innerWidth - oldWidthEnd) / 2;
+			const oldTopEnd = (window.innerHeight - oldHeightEnd) / 2;
+
+
+			const temporaryStyle = /* css */`
+				@keyframes move-out
+				{
+					from
+					{
+						transform: translate(${canvasRect.left}px, ${canvasRect.top}px) scale(${scale});
+						transform-origin: top left;
+						opacity: 1;
+					}
+
+					to
+					{
+						transform: translate(${oldLeftEnd}px, ${oldTopEnd}px) scale(1);
+						transform-origin: top left;
+						opacity: 0;
+					}
+				}
+
+				@keyframes move-in
+				{
+					from
+					{
+						transform: translate(${newLeftStart}px, ${newTopStart}px);
+						opacity: 0;
+					}
+
+					to
+					{
+						transform: translate(0px, 0px);
+						opacity: 1;
+					}
+				}
+				
+				::view-transition-group(WILSON_canvas-${this.#salt})
+				{
+					animation: none;
+				}
+
+				::view-transition-old(WILSON_canvas-${this.#salt})
+				{
+					animation: move-out 1s ease forwards;
+					transform-origin: center;
+				}
+
+				::view-transition-new(WILSON_canvas-${this.#salt})
+				{
+					animation: move-in 1s ease forwards;
+					transform-origin: center;
+				}
+			`;
+
+			const styleElement = document.createElement("style");
+			styleElement.innerHTML = temporaryStyle;
+			document.head.appendChild(styleElement);
+
+			if (!this.reduceMotion)
 			{
 				if (this.#fullscreenEnterFullscreenButton)
 				{
@@ -2286,6 +2365,8 @@ class Wilson
 			{
 				this.#enterFullscreen();
 			}
+
+			setTimeout(() => styleElement.remove(), 1100);
 		}
 
 		else
@@ -2379,7 +2460,7 @@ class Wilson
 		// @ts-ignore
 		if (document.startViewTransition)
 		{
-			if (!this.#fullscreenFillScreen && !this.reduceMotion)
+			if (!this.reduceMotion)
 			{
 				this.canvas.style.setProperty("view-transition-name", `WILSON_canvas-${this.#salt}`);
 			}

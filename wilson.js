@@ -550,7 +550,70 @@ class Wilson {
         }
         // @ts-ignore
         if (document.startViewTransition) {
-            if (!__classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f") && !this.reduceMotion) {
+            const canvasRect = this.canvas.getBoundingClientRect();
+            // Position the center of the new canvas over the old one.
+            const newTopStart = canvasRect.top - (window.innerHeight - canvasRect.height) / 2;
+            const newLeftStart = canvasRect.left - (window.innerWidth - canvasRect.width) / 2;
+            // The old canvas snaps to being as large as possible, so we correct it.
+            const scale = Math.max(canvasRect.width / window.innerWidth, canvasRect.height / window.innerHeight);
+            const oldWidthEnd = Math.min(window.innerWidth, window.innerHeight * __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f"));
+            const oldHeightEnd = Math.min(window.innerHeight, window.innerWidth / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f"));
+            const oldLeftEnd = (window.innerWidth - oldWidthEnd) / 2;
+            const oldTopEnd = (window.innerHeight - oldHeightEnd) / 2;
+            const temporaryStyle = /* css */ `
+				@keyframes move-out
+				{
+					from
+					{
+						transform: translate(${canvasRect.left}px, ${canvasRect.top}px) scale(${scale});
+						transform-origin: top left;
+						opacity: 1;
+					}
+
+					to
+					{
+						transform: translate(${oldLeftEnd}px, ${oldTopEnd}px) scale(1);
+						transform-origin: top left;
+						opacity: 0;
+					}
+				}
+
+				@keyframes move-in
+				{
+					from
+					{
+						transform: translate(${newLeftStart}px, ${newTopStart}px);
+						opacity: 0;
+					}
+
+					to
+					{
+						transform: translate(0px, 0px);
+						opacity: 1;
+					}
+				}
+				
+				::view-transition-group(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
+				{
+					animation: none;
+				}
+
+				::view-transition-old(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
+				{
+					animation: move-out 1s ease forwards;
+					transform-origin: center;
+				}
+
+				::view-transition-new(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
+				{
+					animation: move-in 1s ease forwards;
+					transform-origin: center;
+				}
+			`;
+            const styleElement = document.createElement("style");
+            styleElement.innerHTML = temporaryStyle;
+            document.head.appendChild(styleElement);
+            if (!this.reduceMotion) {
                 if (__classPrivateFieldGet(this, _Wilson_fullscreenEnterFullscreenButton, "f")) {
                     __classPrivateFieldGet(this, _Wilson_fullscreenEnterFullscreenButton, "f").style.setProperty("view-transition-name", `WILSON_fullscreen-button-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`);
                 }
@@ -569,6 +632,7 @@ class Wilson {
             else {
                 __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_enterFullscreen).call(this);
             }
+            setTimeout(() => styleElement.remove(), 1100);
         }
         else {
             __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_enterFullscreen).call(this);
@@ -578,7 +642,7 @@ class Wilson {
         await this.beforeSwitchFullscreen(false);
         // @ts-ignore
         if (document.startViewTransition) {
-            if (!__classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f") && !this.reduceMotion) {
+            if (!this.reduceMotion) {
                 this.canvas.style.setProperty("view-transition-name", `WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`);
             }
             if (this.animateFullscreen) {
