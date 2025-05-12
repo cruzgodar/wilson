@@ -2609,8 +2609,13 @@ class Wilson
 			if (
 				!this.reduceMotion
 				&& !this.crossfadeFullscreen
-				&& window.innerWidth == this.#fullscreenInitialWindowInnerWidth
-				&& window.innerHeight == this.#fullscreenInitialWindowInnerHeight
+				&& (
+					!this.#fullscreenFillScreen
+					|| (
+						window.innerWidth == this.#fullscreenInitialWindowInnerWidth
+						&& window.innerHeight == this.#fullscreenInitialWindowInnerHeight
+					)
+				)
 			) {
 				if (this.#fullscreenEnterFullscreenButton)
 				{
