@@ -2314,14 +2314,12 @@ class Wilson
 			::view-transition-old(WILSON_canvas-${this.#salt})
 			{
 				animation-name: WILSON_move-out;
-				animation-easing: ease-out;
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${this.#salt})
 			{
 				animation-name: WILSON_move-in;
-				animation-easing: cubic-bezier(0, 1, 0, 1);
 				mix-blend-mode: plus-lighter;
 			}
 		`;
@@ -2567,14 +2565,12 @@ class Wilson
 			::view-transition-old(WILSON_canvas-${this.#salt})
 			{
 				animation-name: WILSON_move-out;
-				animation-easing: cubic-bezier(0, 1, 0, 1);
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${this.#salt})
 			{
 				animation-name: WILSON_move-in;
-				animation-easing: ease-out;
 				mix-blend-mode: plus-lighter;
 			}
 		`;

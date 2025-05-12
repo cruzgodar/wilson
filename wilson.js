@@ -1409,14 +1409,12 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 			::view-transition-old(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
 				animation-name: WILSON_move-out;
-				animation-easing: ease-out;
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
 				animation-name: WILSON_move-in;
-				animation-easing: cubic-bezier(0, 1, 0, 1);
 				mix-blend-mode: plus-lighter;
 			}
 		`;
@@ -1531,14 +1529,12 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 			::view-transition-old(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
 				animation-name: WILSON_move-out;
-				animation-easing: cubic-bezier(0, 1, 0, 1);
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
 				animation-name: WILSON_move-in;
-				animation-easing: ease-out;
 				mix-blend-mode: plus-lighter;
 			}
 		`;
