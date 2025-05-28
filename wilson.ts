@@ -4,6 +4,8 @@ type InteractionCallbacks = {
 
 	mouseup: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
 
+	mouseenter: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
+
 	mouseleave: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
 
 	mousemove: ({
@@ -68,6 +70,7 @@ type InteractionCallbacks = {
 const defaultInteractionCallbacks: InteractionCallbacks = {
 	mousedown: ({ x, y, event }) => {},
 	mouseup: ({ x, y, event }) => {},
+	mouseenter: ({ x, y, event }) => {},
 	mouseleave: ({ x, y, event }) => {},
 	mousemove: ({ x, y, xDelta, yDelta, event }) => {},
 	mousedrag: ({ x, y, xDelta, yDelta, event }) => {},
@@ -1160,6 +1163,20 @@ class Wilson
 		this.#interactionCallbacks.mouseup({ x, y, event: e });
 	}
 
+	#onMouseenter(e: MouseEvent)
+	{
+		if (this.useInteractionForPanAndZoom)
+		{
+			e.preventDefault();
+		}
+
+		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
+		this.#lastInteractionRow = e.clientY;
+		this.#lastInteractionCol = e.clientX;
+		
+		this.#interactionCallbacks.mouseenter({ x, y, event: e });
+	}
+
 	#onMouseleave(e: MouseEvent)
 	{
 		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
@@ -1709,6 +1726,7 @@ class Wilson
 			canvas.addEventListener("touchmove", (e) => this.#onTouchmove(e as TouchEvent));
 			canvas.addEventListener("wheel", (e) => this.#onWheel(e as WheelEvent));
 
+			canvas.addEventListener("mouseenter", (e) => this.#onMouseenter(e as MouseEvent));
 			canvas.addEventListener("mouseleave", (e) => this.#onMouseleave(e as MouseEvent));
 		}
 	}
@@ -3271,7 +3289,7 @@ export class WilsonGPU extends Wilson
 		data,
 	}: {
 		id: string,
-		data: Uint8Array | Float32Array | null
+		data: Uint8Array | Float32Array | TexImageSource | null
 	}) {
 		if (!this.#textures[id])
 		{
@@ -3287,21 +3305,36 @@ export class WilsonGPU extends Wilson
 
 		this.gl.bindTexture(this.gl.TEXTURE_2D, this.#textures[id].texture);
 
-		this.gl.texImage2D(
-			this.gl.TEXTURE_2D,
-			0,
-			(this.#textures[id].type === "float" && this.gl instanceof WebGL2RenderingContext)
-				? this.gl.RGBA32F
-				: this.gl.RGBA,
-			this.#textures[id].width,
-			this.#textures[id].height,
-			0,
-			this.gl.RGBA,
-			this.#textures[id].type === "float"
-				? this.gl.FLOAT
-				: this.gl.UNSIGNED_BYTE,
-			data
-		);
+		if (data === null || data instanceof Uint8Array || data instanceof Float32Array)
+		{
+			this.gl.texImage2D(
+				this.gl.TEXTURE_2D,
+				0,
+				(this.#textures[id].type === "float" && this.gl instanceof WebGL2RenderingContext)
+					? this.gl.RGBA32F
+					: this.gl.RGBA,
+				this.#textures[id].width,
+				this.#textures[id].height,
+				0,
+				this.gl.RGBA,
+				this.#textures[id].type === "float"
+					? this.gl.FLOAT
+					: this.gl.UNSIGNED_BYTE,
+				data
+			);
+		}
+
+		else
+		{
+			this.gl.texImage2D(
+				this.gl.TEXTURE_2D,
+				0,
+				this.gl.RGBA,
+				this.gl.RGBA,
+				this.gl.UNSIGNED_BYTE,
+				data
+			);
+		}
 	}
 
 	readPixels(options: ReadPixelsOptions)

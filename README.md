@@ -110,6 +110,7 @@ Wilson provides callbacks for mouse and touch events on the canvas, specified in
 ```js
 mousedown: ({ x, y, event }) => {}
 mouseup: ({ x, y, event }) => {}
+mouseenter: ({ x, y, event }) => {}
 mouseleave: ({ x, y, event }) => {}
 mousemove: ({ x, y, xDelta, yDelta, event }) => {}
 mousedrag: ({ x, y, xDelta, yDelta, event }) => {}
@@ -219,6 +220,7 @@ The above guide, along with the example project, are a great way to get started 
 	- `callbacks`: an object with some or all of the following fields:
 		- `mousedown: ({ x, y, event }) => void`: a function called when a cursor is pressed down on the canvas.
 		- `mouseup: ({ x, y, event }) => void`: a function called when a cursor is released on the canvas.
+		- `mouseenter: ({ x, y, event }) => void`: a function called when a cursor enters the canvas.
 		- `mouseleave: ({ x, y, event }) => void`: a function called when a cursor leaves the canvas.
 		- `mousemove: ({ x, y, xDelta, yDelta, event }) => void`: a function called when a cursor is moved while hovering on the canvas.
 		- `mousedrag: ({ x, y, xDelta, yDelta, event }) => void`: a function called when a cursor is moved while dragging on the canvas.
@@ -301,5 +303,5 @@ The above guide, along with the example project, are a great way to get started 
 - `createFramebufferTexturePair({ id: string, width?: number, height?: number, textureType: "unsignedByte" | "float" })`: creates a framebuffer texture pair with a given ID and type. If width or height are unspecified, they default to the canvas width and height.
 - `useFramebuffer(id: string | null)`: sets the current framebuffer.
 - `useTexture(id: string | null)`: sets the current texture.
-- `setTexture({ id: string, data: Float32Array | Uint8Array | null })`: writes `data` to the texture with the given ID. The type of `data` must match the texture type (i.e. if the texture is of type `float`, the data must be a `Float32Array`), and the length of `data` must be equal to the texture's width times its height, times 4.
+- `setTexture({ id: string, data: Float32Array | Uint8Array | TexImageSource | null })`: writes `data` to the texture with the given ID. The type of `data` must match the texture type if it is an array (i.e. if the texture is of type `float`, the data must be a `Float32Array`), and the length of `data` must be equal to the texture's width times its height, times 4.
 - `readPixels({ row: number, col: number, height: number, width: number, format: "unsignedByte" | "float", includeAlpha: boolean })`: reads the a rectangle of pixels out of the current frame as either  a `Uint8Array` or `Float32Array`, depending on the format. `row` and `col` default to `0`, and `height` and `width` default to the canvas height and width, respectively. The size of the returned array is `width * height * 4`.
