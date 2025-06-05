@@ -2742,7 +2742,9 @@ class Wilson
 
 
 
-export type WilsonCPUOptions = WilsonOptions;
+export type WilsonCPUOptions = WilsonOptions & {
+	willReadFrequently?: boolean,
+};
 
 export class WilsonCPU extends Wilson
 {
@@ -2756,7 +2758,12 @@ export class WilsonCPU extends Wilson
 			? "display-p3"
 			: "srgb";
 
-		const ctx = this.canvas.getContext("2d", { colorSpace });
+		const willReadFrequently = options.willReadFrequently ?? false;
+
+		const ctx = this.canvas.getContext("2d", {
+			colorSpace,
+			willReadFrequently,
+		});
 
 		if (!ctx)
 		{

@@ -1572,11 +1572,16 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 };
 export class WilsonCPU extends Wilson {
     constructor(canvas, options) {
+        var _a;
         super(canvas, options);
         const colorSpace = (this.useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
             ? "display-p3"
             : "srgb";
-        const ctx = this.canvas.getContext("2d", { colorSpace });
+        const willReadFrequently = (_a = options.willReadFrequently) !== null && _a !== void 0 ? _a : false;
+        const ctx = this.canvas.getContext("2d", {
+            colorSpace,
+            willReadFrequently,
+        });
         if (!ctx) {
             throw new Error(`[Wilson] Could not get 2d context for canvas: ${ctx}`);
         }
