@@ -1780,17 +1780,14 @@ class Wilson
 			const [x, y] = location;
 
 			//First convert to page coordinates.
-			const uncappedRow = Math.floor(
-				this.#draggablesContainerRestrictedHeight * (
-					1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
-				)
+			const uncappedRow = this.#draggablesContainerRestrictedHeight * (
+				1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
 			) + this.#draggablesRadius;
 
-			const uncappedCol = Math.floor(
-				this.#draggablesContainerRestrictedWidth * (
+			const uncappedCol = this.#draggablesContainerRestrictedWidth * (
 					(x - this.#worldCenterX) / this.#worldWidth + .5
 				)
-			) + this.#draggablesRadius;
+			+ this.#draggablesRadius;
 
 			const row = Math.min(
 				Math.max(this.#draggablesRadius, uncappedRow),
@@ -2092,16 +2089,12 @@ class Wilson
 			const y = this.#draggables[id].location[1];
 			const element = this.#draggables[id].element;
 
-			const uncappedRow = Math.floor(
-				this.#draggablesContainerRestrictedHeight * (
-					1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
-				)
+			const uncappedRow = this.#draggablesContainerRestrictedHeight * (
+				1 - ((y - this.#worldCenterY) / this.#worldHeight + .5)
 			) + this.#draggablesRadius;
 
-			const uncappedCol = Math.floor(
-				this.#draggablesContainerRestrictedWidth * (
-					(x - this.#worldCenterX) / this.#worldWidth + .5
-				)
+			const uncappedCol = this.#draggablesContainerRestrictedWidth * (
+				(x - this.#worldCenterX) / this.#worldWidth + .5
 			) + this.#draggablesRadius;
 
 			const row = Math.min(
