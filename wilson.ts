@@ -169,6 +169,7 @@ type WilsonOptions = (
 	minWorldY?: number,
 	maxWorldY?: number,
 	clampWorldCoordinatesMode?: "one" | "both",
+	verbose?: boolean,
 
 	onResizeCanvas?: () => void,
 
@@ -184,6 +185,7 @@ type WilsonOptions = (
 class Wilson
 {
 	#destroyed: boolean = false;
+	verbose: boolean = false;
 
 	canvas: HTMLCanvasElement;
 
@@ -360,6 +362,8 @@ class Wilson
 		});
 
 		resizeObserver.observe(this.canvas);
+
+		this.verbose = options.verbose ?? false;
 
 		
 		
@@ -582,11 +586,14 @@ class Wilson
 		}
 
 
-
-		console.log(
-			`[Wilson] Initialized a ${this.#canvasWidth}x${this.#canvasHeight} canvas`
-			+ (this.canvas.id ? ` with ID ${this.canvas.id}` : "")
-		);
+		
+		if (this.verbose)
+		{
+			console.log(
+				`[Wilson] Initialized a ${this.#canvasWidth}x${this.#canvasHeight} canvas`
+				+ (this.canvas.id ? ` with ID ${this.canvas.id}` : "")
+			);
+		}
 	}
 
 	destroy()
@@ -2790,7 +2797,11 @@ export class WilsonCPU extends Wilson
 		{
 			if (!blob)
 			{
-				console.error(`[Wilson] Could not create a blob from a canvas with ID ${this.canvas.id}`);
+				if (this.verbose)
+				{
+					console.error(`[Wilson] Could not create a blob from a canvas with ID ${this.canvas.id}`);
+				}
+
 				return;
 			}
 
@@ -2972,6 +2983,7 @@ export class WilsonGPU extends Wilson
 		if (
 			this.gl instanceof WebGL2RenderingContext
 			&& !this.gl.getExtension("EXT_color_buffer_float")
+			&& this.verbose
 		) {
 			console.warn("[Wilson] No support for float textures.");
 		}
@@ -2979,6 +2991,7 @@ export class WilsonGPU extends Wilson
 		else if (
 			this.gl instanceof WebGLRenderingContext
 			&& !this.gl.getExtension("OES_texture_float")
+			&& this.verbose
 		) {
 			console.warn("[Wilson] No support for float textures.");
 		}
@@ -3121,7 +3134,12 @@ export class WilsonGPU extends Wilson
 
 			if (location === null)
 			{
-				throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${shader}`);
+				if (this.verbose)
+				{
+					console.warn(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${shader}`);
+				}
+
+				continue;
 			}
 
 			// Match strings like "uniform int foo;" to "int".
@@ -3153,7 +3171,7 @@ export class WilsonGPU extends Wilson
 		{
 			if (this.#uniforms[shader][name] === undefined)
 			{
-				throw new Error(`Uniform ${name} not found in shader ${shader}`);
+				continue;
 			}
 			
 			const { location, type } = this.#uniforms[shader][name];
@@ -3614,7 +3632,11 @@ export class WilsonGPU extends Wilson
 
 				if (!ctx)
 				{
-					console.error("[Wilson] Could not get 2d context for canvas");
+					if (this.verbose)
+					{
+						console.error("[Wilson] Could not get 2d context for canvas");
+					}
+
 					return;
 				}
 
@@ -3624,7 +3646,11 @@ export class WilsonGPU extends Wilson
 				{
 					if (!blob)
 					{
-						console.error("[Wilson] Could not create a canvas blob");
+						if (this.verbose)
+						{
+							console.error("[Wilson] Could not create a canvas blob");
+						}
+						
 						return;
 					}
 

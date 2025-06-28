@@ -29,9 +29,10 @@ const defaultDraggableCallbacks = {
 };
 class Wilson {
     constructor(canvas, options) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32;
         _Wilson_instances.add(this);
         _Wilson_destroyed.set(this, false);
+        this.verbose = false;
         // Duplicated properties like this are effectively readonly. Whenever we
         // change the private version, we also change the public one.
         // Writing to the public version does nothing.
@@ -268,6 +269,7 @@ class Wilson {
             __classPrivateFieldSet(this, _Wilson_needDraggablesContainerSizeUpdate, true, "f");
         });
         resizeObserver.observe(this.canvas);
+        this.verbose = (_a = options.verbose) !== null && _a !== void 0 ? _a : false;
         if (options.worldWidth !== undefined && options.worldHeight !== undefined) {
             __classPrivateFieldSet(this, _Wilson_worldWidth, options.worldWidth, "f");
             this.worldWidth = __classPrivateFieldGet(this, _Wilson_worldWidth, "f");
@@ -294,69 +296,69 @@ class Wilson {
         }
         __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldWidth, __classPrivateFieldGet(this, _Wilson_worldWidth, "f"), "f");
         __classPrivateFieldSet(this, _Wilson_nonFullscreenWorldHeight, __classPrivateFieldGet(this, _Wilson_worldHeight, "f"), "f");
-        __classPrivateFieldSet(this, _Wilson_worldCenterX, (_a = options.worldCenterX) !== null && _a !== void 0 ? _a : 0, "f");
+        __classPrivateFieldSet(this, _Wilson_worldCenterX, (_b = options.worldCenterX) !== null && _b !== void 0 ? _b : 0, "f");
         this.worldCenterX = __classPrivateFieldGet(this, _Wilson_worldCenterX, "f");
-        __classPrivateFieldSet(this, _Wilson_worldCenterY, (_b = options.worldCenterY) !== null && _b !== void 0 ? _b : 0, "f");
+        __classPrivateFieldSet(this, _Wilson_worldCenterY, (_c = options.worldCenterY) !== null && _c !== void 0 ? _c : 0, "f");
         this.worldCenterY = __classPrivateFieldGet(this, _Wilson_worldCenterY, "f");
-        __classPrivateFieldSet(this, _Wilson_minWorldX, (_c = options.minWorldX) !== null && _c !== void 0 ? _c : -Infinity, "f");
-        __classPrivateFieldSet(this, _Wilson_maxWorldX, (_d = options.maxWorldX) !== null && _d !== void 0 ? _d : Infinity, "f");
-        __classPrivateFieldSet(this, _Wilson_minWorldY, (_e = options.minWorldY) !== null && _e !== void 0 ? _e : -Infinity, "f");
-        __classPrivateFieldSet(this, _Wilson_maxWorldY, (_f = options.maxWorldY) !== null && _f !== void 0 ? _f : Infinity, "f");
+        __classPrivateFieldSet(this, _Wilson_minWorldX, (_d = options.minWorldX) !== null && _d !== void 0 ? _d : -Infinity, "f");
+        __classPrivateFieldSet(this, _Wilson_maxWorldX, (_e = options.maxWorldX) !== null && _e !== void 0 ? _e : Infinity, "f");
+        __classPrivateFieldSet(this, _Wilson_minWorldY, (_f = options.minWorldY) !== null && _f !== void 0 ? _f : -Infinity, "f");
+        __classPrivateFieldSet(this, _Wilson_maxWorldY, (_g = options.maxWorldY) !== null && _g !== void 0 ? _g : Infinity, "f");
         __classPrivateFieldSet(this, _Wilson_maxWorldWidth, (options.minWorldX !== undefined && options.maxWorldX !== undefined)
             ? options.maxWorldX - options.minWorldX
-            : (_g = options.maxWorldWidth) !== null && _g !== void 0 ? _g : Infinity, "f");
-        __classPrivateFieldSet(this, _Wilson_minWorldWidth, (_h = options.minWorldWidth) !== null && _h !== void 0 ? _h : 0, "f");
+            : (_h = options.maxWorldWidth) !== null && _h !== void 0 ? _h : Infinity, "f");
+        __classPrivateFieldSet(this, _Wilson_minWorldWidth, (_j = options.minWorldWidth) !== null && _j !== void 0 ? _j : 0, "f");
         __classPrivateFieldSet(this, _Wilson_maxWorldHeight, (options.minWorldY !== undefined && options.maxWorldY !== undefined)
             ? options.maxWorldY - options.minWorldY
-            : (_j = options.maxWorldHeight) !== null && _j !== void 0 ? _j : Infinity, "f");
-        __classPrivateFieldSet(this, _Wilson_minWorldHeight, (_k = options.minWorldHeight) !== null && _k !== void 0 ? _k : 0, "f");
+            : (_k = options.maxWorldHeight) !== null && _k !== void 0 ? _k : Infinity, "f");
+        __classPrivateFieldSet(this, _Wilson_minWorldHeight, (_l = options.minWorldHeight) !== null && _l !== void 0 ? _l : 0, "f");
         if (__classPrivateFieldGet(this, _Wilson_minWorldX, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldX, "f")
             || __classPrivateFieldGet(this, _Wilson_minWorldY, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldY, "f")
             || __classPrivateFieldGet(this, _Wilson_minWorldWidth, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldWidth, "f")
             || __classPrivateFieldGet(this, _Wilson_minWorldHeight, "f") >= __classPrivateFieldGet(this, _Wilson_maxWorldHeight, "f")) {
             throw new Error("[Wilson] minWorldX and minWorldY must be less than maxWorldX and maxWorldY, repsectively");
         }
-        this.clampWorldCoordinatesMode = (_l = options.clampWorldCoordinatesMode) !== null && _l !== void 0 ? _l : "one";
-        __classPrivateFieldSet(this, _Wilson_onResizeCanvasCallback, (_m = options === null || options === void 0 ? void 0 : options.onResizeCanvas) !== null && _m !== void 0 ? _m : (() => { }), "f");
-        __classPrivateFieldSet(this, _Wilson_useP3ColorSpace, (_o = options.useP3ColorSpace) !== null && _o !== void 0 ? _o : true, "f");
+        this.clampWorldCoordinatesMode = (_m = options.clampWorldCoordinatesMode) !== null && _m !== void 0 ? _m : "one";
+        __classPrivateFieldSet(this, _Wilson_onResizeCanvasCallback, (_o = options === null || options === void 0 ? void 0 : options.onResizeCanvas) !== null && _o !== void 0 ? _o : (() => { }), "f");
+        __classPrivateFieldSet(this, _Wilson_useP3ColorSpace, (_p = options.useP3ColorSpace) !== null && _p !== void 0 ? _p : true, "f");
         this.useP3ColorSpace = __classPrivateFieldGet(this, _Wilson_useP3ColorSpace, "f");
-        this.reduceMotion = (_p = options.reduceMotion) !== null && _p !== void 0 ? _p : matchMedia("(prefers-reduced-motion: reduce)").matches;
-        __classPrivateFieldSet(this, _Wilson_interactionCallbacks, { ...defaultInteractionCallbacks, ...(_q = options.interactionOptions) === null || _q === void 0 ? void 0 : _q.callbacks }, "f");
-        this.useInteractionForPanAndZoom = (_s = (_r = options.interactionOptions) === null || _r === void 0 ? void 0 : _r.useForPanAndZoom) !== null && _s !== void 0 ? _s : false;
+        this.reduceMotion = (_q = options.reduceMotion) !== null && _q !== void 0 ? _q : matchMedia("(prefers-reduced-motion: reduce)").matches;
+        __classPrivateFieldSet(this, _Wilson_interactionCallbacks, { ...defaultInteractionCallbacks, ...(_r = options.interactionOptions) === null || _r === void 0 ? void 0 : _r.callbacks }, "f");
+        this.useInteractionForPanAndZoom = (_t = (_s = options.interactionOptions) === null || _s === void 0 ? void 0 : _s.useForPanAndZoom) !== null && _t !== void 0 ? _t : false;
         __classPrivateFieldSet(this, _Wilson_panFriction, 0.875, "f");
         __classPrivateFieldSet(this, _Wilson_zoomFriction, 0.85, "f");
-        if ((_t = options.interactionOptions) === null || _t === void 0 ? void 0 : _t.useForPanAndZoom) {
-            __classPrivateFieldSet(this, _Wilson_interactionOnPanAndZoom, (_v = (_u = options.interactionOptions) === null || _u === void 0 ? void 0 : _u.onPanAndZoom) !== null && _v !== void 0 ? _v : (() => { }), "f");
-            __classPrivateFieldSet(this, _Wilson_panFriction, (_x = (_w = options.interactionOptions) === null || _w === void 0 ? void 0 : _w.panFriction) !== null && _x !== void 0 ? _x : __classPrivateFieldGet(this, _Wilson_panFriction, "f"), "f");
-            __classPrivateFieldSet(this, _Wilson_zoomFriction, (_z = (_y = options.interactionOptions) === null || _y === void 0 ? void 0 : _y.zoomFriction) !== null && _z !== void 0 ? _z : __classPrivateFieldGet(this, _Wilson_zoomFriction, "f"), "f");
-            if (((_0 = options.interactionOptions) === null || _0 === void 0 ? void 0 : _0.inertia) === false) {
+        if ((_u = options.interactionOptions) === null || _u === void 0 ? void 0 : _u.useForPanAndZoom) {
+            __classPrivateFieldSet(this, _Wilson_interactionOnPanAndZoom, (_w = (_v = options.interactionOptions) === null || _v === void 0 ? void 0 : _v.onPanAndZoom) !== null && _w !== void 0 ? _w : (() => { }), "f");
+            __classPrivateFieldSet(this, _Wilson_panFriction, (_y = (_x = options.interactionOptions) === null || _x === void 0 ? void 0 : _x.panFriction) !== null && _y !== void 0 ? _y : __classPrivateFieldGet(this, _Wilson_panFriction, "f"), "f");
+            __classPrivateFieldSet(this, _Wilson_zoomFriction, (_0 = (_z = options.interactionOptions) === null || _z === void 0 ? void 0 : _z.zoomFriction) !== null && _0 !== void 0 ? _0 : __classPrivateFieldGet(this, _Wilson_zoomFriction, "f"), "f");
+            if (((_1 = options.interactionOptions) === null || _1 === void 0 ? void 0 : _1.inertia) === false) {
                 __classPrivateFieldSet(this, _Wilson_panFriction, 0, "f");
                 __classPrivateFieldSet(this, _Wilson_zoomFriction, 0, "f");
                 __classPrivateFieldSet(this, _Wilson_panVelocityThreshold, Infinity, "f");
                 __classPrivateFieldSet(this, _Wilson_zoomVelocityThreshold, Infinity, "f");
             }
-            this.usePanAndZoomRubberbanding = (_2 = (_1 = options.interactionOptions) === null || _1 === void 0 ? void 0 : _1.rubberbanding) !== null && _2 !== void 0 ? _2 : false;
-            this.rubberbandingPanSoftness = (_4 = (_3 = options.interactionOptions) === null || _3 === void 0 ? void 0 : _3.rubberbandingPanSoftness) !== null && _4 !== void 0 ? _4 : 3.5;
-            this.rubberbandingZoomSoftness = (_6 = (_5 = options.interactionOptions) === null || _5 === void 0 ? void 0 : _5.rubberbandingZoomSoftness) !== null && _6 !== void 0 ? _6 : 2;
-            this.disallowZooming = (_8 = (_7 = options.interactionOptions) === null || _7 === void 0 ? void 0 : _7.disallowZooming) !== null && _8 !== void 0 ? _8 : false;
+            this.usePanAndZoomRubberbanding = (_3 = (_2 = options.interactionOptions) === null || _2 === void 0 ? void 0 : _2.rubberbanding) !== null && _3 !== void 0 ? _3 : false;
+            this.rubberbandingPanSoftness = (_5 = (_4 = options.interactionOptions) === null || _4 === void 0 ? void 0 : _4.rubberbandingPanSoftness) !== null && _5 !== void 0 ? _5 : 3.5;
+            this.rubberbandingZoomSoftness = (_7 = (_6 = options.interactionOptions) === null || _6 === void 0 ? void 0 : _6.rubberbandingZoomSoftness) !== null && _7 !== void 0 ? _7 : 2;
+            this.disallowZooming = (_9 = (_8 = options.interactionOptions) === null || _8 === void 0 ? void 0 : _8.disallowZooming) !== null && _9 !== void 0 ? _9 : false;
             __classPrivateFieldSet(this, _Wilson_lastVelocityFactors, Array(__classPrivateFieldGet(this, _Wilson_numPreviousVelocities, "f")).fill(1), "f");
             __classPrivateFieldSet(this, _Wilson_lastPanVelocitiesX, Array(__classPrivateFieldGet(this, _Wilson_numPreviousVelocities, "f")).fill(0), "f");
             __classPrivateFieldSet(this, _Wilson_lastPanVelocitiesY, Array(__classPrivateFieldGet(this, _Wilson_numPreviousVelocities, "f")).fill(0), "f");
             __classPrivateFieldSet(this, _Wilson_lastZoomVelocities, Array(__classPrivateFieldGet(this, _Wilson_numPreviousVelocities, "f")).fill(0), "f");
         }
-        __classPrivateFieldSet(this, _Wilson_draggablesRadius, (_10 = (_9 = options.draggableOptions) === null || _9 === void 0 ? void 0 : _9.radius) !== null && _10 !== void 0 ? _10 : 12, "f");
-        __classPrivateFieldSet(this, _Wilson_draggablesStatic, (_12 = (_11 = options.draggableOptions) === null || _11 === void 0 ? void 0 : _11.static) !== null && _12 !== void 0 ? _12 : false, "f");
-        __classPrivateFieldSet(this, _Wilson_draggableCallbacks, { ...defaultDraggableCallbacks, ...(_13 = options.draggableOptions) === null || _13 === void 0 ? void 0 : _13.callbacks }, "f");
-        __classPrivateFieldSet(this, _Wilson_fullscreenFillScreen, (_15 = (_14 = options.fullscreenOptions) === null || _14 === void 0 ? void 0 : _14.fillScreen) !== null && _15 !== void 0 ? _15 : false, "f");
-        this.animateFullscreen = (_17 = (_16 = options.fullscreenOptions) === null || _16 === void 0 ? void 0 : _16.animate) !== null && _17 !== void 0 ? _17 : true;
-        this.crossfadeFullscreen = (_19 = (_18 = options.fullscreenOptions) === null || _18 === void 0 ? void 0 : _18.crossfade) !== null && _19 !== void 0 ? _19 : false;
-        this.closeFullscreenWithEscape = (_21 = (_20 = options.fullscreenOptions) === null || _20 === void 0 ? void 0 : _20.closeWithEscape) !== null && _21 !== void 0 ? _21 : true;
-        this.beforeSwitchFullscreen = (_23 = (_22 = options.fullscreenOptions) === null || _22 === void 0 ? void 0 : _22.beforeSwitch) !== null && _23 !== void 0 ? _23 : (() => { });
-        this.onSwitchFullscreen = (_25 = (_24 = options.fullscreenOptions) === null || _24 === void 0 ? void 0 : _24.onSwitch) !== null && _25 !== void 0 ? _25 : (() => { });
-        __classPrivateFieldSet(this, _Wilson_fullscreenUseButton, (_27 = (_26 = options.fullscreenOptions) === null || _26 === void 0 ? void 0 : _26.useFullscreenButton) !== null && _27 !== void 0 ? _27 : false, "f");
-        if ((_28 = options.fullscreenOptions) === null || _28 === void 0 ? void 0 : _28.useFullscreenButton) {
-            __classPrivateFieldSet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, (_29 = options.fullscreenOptions) === null || _29 === void 0 ? void 0 : _29.enterFullscreenButtonIconPath, "f");
-            __classPrivateFieldSet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, (_30 = options.fullscreenOptions) === null || _30 === void 0 ? void 0 : _30.exitFullscreenButtonIconPath, "f");
+        __classPrivateFieldSet(this, _Wilson_draggablesRadius, (_11 = (_10 = options.draggableOptions) === null || _10 === void 0 ? void 0 : _10.radius) !== null && _11 !== void 0 ? _11 : 12, "f");
+        __classPrivateFieldSet(this, _Wilson_draggablesStatic, (_13 = (_12 = options.draggableOptions) === null || _12 === void 0 ? void 0 : _12.static) !== null && _13 !== void 0 ? _13 : false, "f");
+        __classPrivateFieldSet(this, _Wilson_draggableCallbacks, { ...defaultDraggableCallbacks, ...(_14 = options.draggableOptions) === null || _14 === void 0 ? void 0 : _14.callbacks }, "f");
+        __classPrivateFieldSet(this, _Wilson_fullscreenFillScreen, (_16 = (_15 = options.fullscreenOptions) === null || _15 === void 0 ? void 0 : _15.fillScreen) !== null && _16 !== void 0 ? _16 : false, "f");
+        this.animateFullscreen = (_18 = (_17 = options.fullscreenOptions) === null || _17 === void 0 ? void 0 : _17.animate) !== null && _18 !== void 0 ? _18 : true;
+        this.crossfadeFullscreen = (_20 = (_19 = options.fullscreenOptions) === null || _19 === void 0 ? void 0 : _19.crossfade) !== null && _20 !== void 0 ? _20 : false;
+        this.closeFullscreenWithEscape = (_22 = (_21 = options.fullscreenOptions) === null || _21 === void 0 ? void 0 : _21.closeWithEscape) !== null && _22 !== void 0 ? _22 : true;
+        this.beforeSwitchFullscreen = (_24 = (_23 = options.fullscreenOptions) === null || _23 === void 0 ? void 0 : _23.beforeSwitch) !== null && _24 !== void 0 ? _24 : (() => { });
+        this.onSwitchFullscreen = (_26 = (_25 = options.fullscreenOptions) === null || _25 === void 0 ? void 0 : _25.onSwitch) !== null && _26 !== void 0 ? _26 : (() => { });
+        __classPrivateFieldSet(this, _Wilson_fullscreenUseButton, (_28 = (_27 = options.fullscreenOptions) === null || _27 === void 0 ? void 0 : _27.useFullscreenButton) !== null && _28 !== void 0 ? _28 : false, "f");
+        if ((_29 = options.fullscreenOptions) === null || _29 === void 0 ? void 0 : _29.useFullscreenButton) {
+            __classPrivateFieldSet(this, _Wilson_fullscreenEnterFullscreenButtonIconPath, (_30 = options.fullscreenOptions) === null || _30 === void 0 ? void 0 : _30.enterFullscreenButtonIconPath, "f");
+            __classPrivateFieldSet(this, _Wilson_fullscreenExitFullscreenButtonIconPath, (_31 = options.fullscreenOptions) === null || _31 === void 0 ? void 0 : _31.exitFullscreenButtonIconPath, "f");
         }
         // Initialize the container structure.
         __classPrivateFieldSet(this, _Wilson_appletContainer, document.createElement("div"), "f");
@@ -397,11 +399,13 @@ class Wilson {
         requestAnimationFrame(__classPrivateFieldGet(this, _Wilson_animationFrameLoop, "f"));
         window.addEventListener("resize", __classPrivateFieldGet(this, _Wilson_onResizeWindow, "f"));
         document.documentElement.addEventListener("keydown", __classPrivateFieldGet(this, _Wilson_handleKeydownEvent, "f"));
-        if ((_31 = options.draggableOptions) === null || _31 === void 0 ? void 0 : _31.draggables) {
+        if ((_32 = options.draggableOptions) === null || _32 === void 0 ? void 0 : _32.draggables) {
             this.setDraggables(options.draggableOptions.draggables);
         }
-        console.log(`[Wilson] Initialized a ${__classPrivateFieldGet(this, _Wilson_canvasWidth, "f")}x${__classPrivateFieldGet(this, _Wilson_canvasHeight, "f")} canvas`
-            + (this.canvas.id ? ` with ID ${this.canvas.id}` : ""));
+        if (this.verbose) {
+            console.log(`[Wilson] Initialized a ${__classPrivateFieldGet(this, _Wilson_canvasWidth, "f")}x${__classPrivateFieldGet(this, _Wilson_canvasHeight, "f")} canvas`
+                + (this.canvas.id ? ` with ID ${this.canvas.id}` : ""));
+        }
     }
     destroy() {
         __classPrivateFieldSet(this, _Wilson_destroyed, true, "f");
@@ -1596,7 +1600,9 @@ export class WilsonCPU extends Wilson {
     downloadFrame(filename) {
         this.canvas.toBlob((blob) => {
             if (!blob) {
-                console.error(`[Wilson] Could not create a blob from a canvas with ID ${this.canvas.id}`);
+                if (this.verbose) {
+                    console.error(`[Wilson] Could not create a blob from a canvas with ID ${this.canvas.id}`);
+                }
                 return;
             }
             const link = document.createElement("a");
@@ -1647,11 +1653,13 @@ export class WilsonGPU extends Wilson {
         this.gl = gl;
         this.gl.getExtension("KHR_parallel_shader_compile");
         if (this.gl instanceof WebGL2RenderingContext
-            && !this.gl.getExtension("EXT_color_buffer_float")) {
+            && !this.gl.getExtension("EXT_color_buffer_float")
+            && this.verbose) {
             console.warn("[Wilson] No support for float textures.");
         }
         else if (this.gl instanceof WebGLRenderingContext
-            && !this.gl.getExtension("OES_texture_float")) {
+            && !this.gl.getExtension("OES_texture_float")
+            && this.verbose) {
             console.warn("[Wilson] No support for float textures.");
         }
         if ("drawingBufferColorSpace" in this.gl && this.useP3ColorSpace) {
@@ -1738,7 +1746,10 @@ export class WilsonGPU extends Wilson {
         for (const [name, value] of Object.entries(uniforms)) {
             const location = this.gl.getUniformLocation(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], name);
             if (location === null) {
-                throw new Error(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${shader}`);
+                if (this.verbose) {
+                    console.warn(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${shader}`);
+                }
+                continue;
             }
             // Match strings like "uniform int foo;" to "int".
             const match = shader.match(new RegExp(`uniform\\s+(\\S+?)\\s+${name}(\\[\\d+\\])?\\s*;`));
@@ -1757,7 +1768,7 @@ export class WilsonGPU extends Wilson {
         this.gl.useProgram(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[shader]);
         for (const [name, value] of Object.entries(uniforms)) {
             if (__classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[shader][name] === undefined) {
-                throw new Error(`Uniform ${name} not found in shader ${shader}`);
+                continue;
             }
             const { location, type } = __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[shader][name];
             const uniformFunction = uniformFunctions[type];
@@ -2072,13 +2083,17 @@ export class WilsonGPU extends Wilson {
                 canvas.height = canvasHeight;
                 const ctx = canvas.getContext("2d");
                 if (!ctx) {
-                    console.error("[Wilson] Could not get 2d context for canvas");
+                    if (this.verbose) {
+                        console.error("[Wilson] Could not get 2d context for canvas");
+                    }
                     return;
                 }
                 ctx.putImageData(imageData, 0, 0);
                 canvas.toBlob((blob) => {
                     if (!blob) {
-                        console.error("[Wilson] Could not create a canvas blob");
+                        if (this.verbose) {
+                            console.error("[Wilson] Could not create a canvas blob");
+                        }
                         return;
                     }
                     const link = document.createElement("a");

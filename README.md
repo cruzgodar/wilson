@@ -203,6 +203,7 @@ The above guide, along with the example project, are a great way to get started 
 - `worldCenterX`, `worldCenterY`: the world coordinates of the center of the canvas. Both default to `0`.
 - `minWorldWidth`, `maxWorldWidth`, `minWorldHeight`, `maxWorldHeight`: bounds on the width and height of the world coordinates that are enforced by all methods that change them (panning, zooming, and entering fullscreen). If unspecified, no bounds are enforced.
 - `minWorldX`, `maxWorldX`, `minWorldY`, `maxWorldY`: bounds on the world coordinates that are visible on screen. If both a minimum and maximum value are specified for a coordinate, the difference between the two will be used for the maximum width/height of the world, regardless of whether that value was set. If unspecified, no bounds are enforced.
+- `verbose`: a boolean for whether to print verbose messages. Defaults to `false`.
 - `clampWorldCoordinatesMode: "one" | "both"`: a string that determines how the world coordinates are clamped when both the `x` and `y` values are constrained. `"both"` clamps the coordinates so that neither `x` nor `y` is ever outside the specified bounds, while `"one"` clamps the coordinates so that at most one of `x` or `y` is outside the specified bounds. The typical interaction with fullscreen is that `"one"` allows the amount of visible world to increase, while `"both"` crops into the world that was visible when not in fullscreen. Can be changed dynamically; defaults to `"one"`.
 - `onResizeCanvas: () => void`: a function that is called whenever the canvas is resized.
 - `useP3ColorSpace`: a boolean for whether to use the wider P3 color space for the canvas. Even if this is `true`, Wilson will check for hardware P3 support before using it. Note that drawing in a 2D context with P3 colors *also* requires a different color syntax, e.g. `wilson.ctx.fillStyle = "color(display-p3 1 0 0)";`. Defaults to `true`.
@@ -262,6 +263,7 @@ The above guide, along with the example project, are a great way to get started 
 - `canvas`: the canvas element.
 - `canvasWidth`, `canvasHeight`: the width and height of the canvas, in pixels. Readonly; to change the canvas size, use `resizeCanvas`.
 - `worldWidth`, `worldHeight`, `worldCenterX`, `worldCenterY`: the current world coordinates. Readonly; to change the world size, center, or bounds, use `resizeWorld`.
+- `verbose`: a boolean for whether to print verbose messages. Can be changed dynamically.
 - `reduceMotion`: a boolean for whether reduced motion animations are enabled. Can be changed dynamically.
 - `useInteractionForPanAndZoom`: a boolean for whether to use pan and zoom interactions. Can be changed dynamically.
 - `clampWorldCoordinatesMode`: a string that determines how the world coordinates are clamped when both the `x` and `y` values are constrained (see the interaction options). Can be changed dynamically.
