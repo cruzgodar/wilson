@@ -2046,6 +2046,8 @@ export class WilsonGPU extends Wilson {
 
 				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
+				gl.finish();
+
 				const pixels = new Uint8Array(canvasWidth * canvasHeight * 4);
 				gl.readPixels(0, 0, canvasWidth, canvasHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
