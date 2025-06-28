@@ -3136,7 +3136,7 @@ export class WilsonGPU extends Wilson
 			{
 				if (this.verbose)
 				{
-					console.warn(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${shader}`);
+					console.warn(`[Wilson] Couldn't get uniform location for ${name} in shader "${id}". Check that it is used in the shader (so that it is not compiled away).`);
 				}
 
 				continue;
@@ -3650,7 +3650,7 @@ export class WilsonGPU extends Wilson
 						{
 							console.error("[Wilson] Could not create a canvas blob");
 						}
-						
+
 						return;
 					}
 

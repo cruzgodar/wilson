@@ -1747,7 +1747,7 @@ export class WilsonGPU extends Wilson {
             const location = this.gl.getUniformLocation(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], name);
             if (location === null) {
                 if (this.verbose) {
-                    console.warn(`[Wilson] Couldn't get uniform location for ${name}. Check that it is used in the shader (so that it is not compiled away). Full shader source: ${shader}`);
+                    console.warn(`[Wilson] Couldn't get uniform location for ${name} in shader "${id}". Check that it is used in the shader (so that it is not compiled away).`);
                 }
                 continue;
             }
