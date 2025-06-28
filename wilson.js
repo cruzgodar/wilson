@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Wilson_instances, _Wilson_destroyed, _Wilson_canvasWidth, _Wilson_canvasHeight, _Wilson_lastCanvasWidth, _Wilson_lastCanvasHeight, _Wilson_canvasAspectRatio, _Wilson_worldWidth, _Wilson_worldHeight, _Wilson_worldCenterX, _Wilson_worldCenterY, _Wilson_nonFullscreenWorldWidth, _Wilson_nonFullscreenWorldHeight, _Wilson_minWorldWidth, _Wilson_maxWorldWidth, _Wilson_minWorldHeight, _Wilson_maxWorldHeight, _Wilson_minWorldX, _Wilson_maxWorldX, _Wilson_minWorldY, _Wilson_maxWorldY, _Wilson_onResizeCanvasCallback, _Wilson_useP3ColorSpace, _Wilson_needDraggablesContainerSizeUpdate, _Wilson_interactionCallbacks, _Wilson_needPanAndZoomUpdate, _Wilson_interactionOnPanAndZoom, _Wilson_numPreviousVelocities, _Wilson_lastVelocityFactors, _Wilson_lastPanVelocityX, _Wilson_lastPanVelocityY, _Wilson_lastZoomVelocity, _Wilson_lastPanVelocitiesX, _Wilson_lastPanVelocitiesY, _Wilson_lastZoomVelocities, _Wilson_panVelocityX, _Wilson_panVelocityY, _Wilson_zoomVelocity, _Wilson_panFriction, _Wilson_zoomFriction, _Wilson_panVelocityThreshold, _Wilson_zoomVelocityThreshold, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_currentlyFullscreen, _Wilson_fullscreenOldScroll, _Wilson_fullscreenCanvasRect, _Wilson_fullscreenInitialWindowInnerWidth, _Wilson_fullscreenInitialWindowInnerHeight, _Wilson_fullscreenFillScreen, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButton, _Wilson_fullscreenExitFullscreenButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_salt, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_resizeCanvas, _Wilson_zeroVelocities, _Wilson_setLastZoomVelocity, _Wilson_setLastPanVelocity, _Wilson_setZoomVelocity, _Wilson_setPanVelocity, _Wilson_currentlyDragging, _Wilson_currentlyPinching, _Wilson_currentlyWheeling, _Wilson_currentlyWheelingTimeoutId, _Wilson_ignoreTouchendCooldown, _Wilson_atMaxWorldSize, _Wilson_atMinWorldSize, _Wilson_lastInteractionRow, _Wilson_lastInteractionCol, _Wilson_lastInteractionRow2, _Wilson_lastInteractionCol2, _Wilson_clampWorldCoordinates, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMouseenter, _Wilson_onMouseleave, _Wilson_onMousemove, _Wilson_updateFromPinching, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_zoomFixedPoint, _Wilson_zoomCanvas, _Wilson_onWheel, _Wilson_lastPanAndZoomTimestamp, _Wilson_animationFrameLoop, _Wilson_initInteraction, _Wilson_draggables, _Wilson_draggableDefaultId, _Wilson_currentMouseDraggableId, _Wilson_documentDraggableMousemoveListener, _Wilson_documentDraggableMouseupListener, _Wilson_initDraggables, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_updateDraggablesLocation, _Wilson_initFullscreen, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_enterFullscreen, _Wilson_addEnterFullscreenFillScreenTransitionStyle, _Wilson_exitFullscreen, _Wilson_addExitFullscreenFillScreenTransitionStyle, _Wilson_interpolatePageToWorld, _WilsonGPU_instances, _WilsonGPU_useWebGL2, _WilsonGPU_shaderPrograms, _WilsonGPU_uniforms, _WilsonGPU_loadShaderInternal, _WilsonGPU_numShaders, _WilsonGPU_currentShaderId, _WilsonGPU_framebuffers, _WilsonGPU_textures;
+var _Wilson_instances, _Wilson_destroyed, _Wilson_canvasWidth, _Wilson_canvasHeight, _Wilson_lastCanvasWidth, _Wilson_lastCanvasHeight, _Wilson_canvasAspectRatio, _Wilson_worldWidth, _Wilson_worldHeight, _Wilson_worldCenterX, _Wilson_worldCenterY, _Wilson_nonFullscreenWorldWidth, _Wilson_nonFullscreenWorldHeight, _Wilson_minWorldWidth, _Wilson_maxWorldWidth, _Wilson_minWorldHeight, _Wilson_maxWorldHeight, _Wilson_minWorldX, _Wilson_maxWorldX, _Wilson_minWorldY, _Wilson_maxWorldY, _Wilson_onResizeCanvasCallback, _Wilson_useP3ColorSpace, _Wilson_needDraggablesContainerSizeUpdate, _Wilson_interactionCallbacks, _Wilson_needPanAndZoomUpdate, _Wilson_interactionOnPanAndZoom, _Wilson_numPreviousVelocities, _Wilson_lastVelocityFactors, _Wilson_lastPanVelocityX, _Wilson_lastPanVelocityY, _Wilson_lastZoomVelocity, _Wilson_lastPanVelocitiesX, _Wilson_lastPanVelocitiesY, _Wilson_lastZoomVelocities, _Wilson_panVelocityX, _Wilson_panVelocityY, _Wilson_zoomVelocity, _Wilson_panFriction, _Wilson_zoomFriction, _Wilson_panVelocityThreshold, _Wilson_zoomVelocityThreshold, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_currentlyFullscreen, _Wilson_fullscreenOldScroll, _Wilson_fullscreenCanvasRect, _Wilson_fullscreenInitialWindowInnerWidth, _Wilson_fullscreenInitialWindowInnerHeight, _Wilson_fullscreenFillScreen, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButton, _Wilson_fullscreenExitFullscreenButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_salt, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_resizeCanvas, _Wilson_zeroVelocities, _Wilson_setLastZoomVelocity, _Wilson_setLastPanVelocity, _Wilson_setZoomVelocity, _Wilson_setPanVelocity, _Wilson_currentlyDragging, _Wilson_currentlyPinching, _Wilson_currentlyWheeling, _Wilson_currentlyWheelingTimeoutId, _Wilson_ignoreTouchendCooldown, _Wilson_atMaxWorldSize, _Wilson_atMinWorldSize, _Wilson_lastInteractionRow, _Wilson_lastInteractionCol, _Wilson_lastInteractionRow2, _Wilson_lastInteractionCol2, _Wilson_clampWorldCoordinates, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMouseenter, _Wilson_onMouseleave, _Wilson_onMousemove, _Wilson_updateFromPinching, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_zoomFixedPoint, _Wilson_zoomCanvas, _Wilson_onWheel, _Wilson_lastPanAndZoomTimestamp, _Wilson_animationFrameLoop, _Wilson_initInteraction, _Wilson_draggables, _Wilson_draggableDefaultId, _Wilson_currentMouseDraggableId, _Wilson_documentDraggableMousemoveListener, _Wilson_documentDraggableMouseupListener, _Wilson_initDraggables, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_updateDraggablesLocation, _Wilson_initFullscreen, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_enterFullscreen, _Wilson_addEnterFullscreenFillScreenTransitionStyle, _Wilson_exitFullscreen, _Wilson_addExitFullscreenFillScreenTransitionStyle, _Wilson_interpolatePageToWorld, _WilsonGPU_useWebGL2, _WilsonGPU_shaderPrograms, _WilsonGPU_shaderProgramSources, _WilsonGPU_uniforms, _WilsonGPU_numShaders, _WilsonGPU_currentShaderId, _WilsonGPU_framebuffers, _WilsonGPU_textures;
 const defaultInteractionCallbacks = {
     mousedown: ({ x, y, event }) => { },
     mouseup: ({ x, y, event }) => { },
@@ -412,7 +412,8 @@ class Wilson {
         document.removeEventListener("gesturestart", __classPrivateFieldGet(this, _Wilson_preventGestures, "f"));
         document.removeEventListener("gesturechange", __classPrivateFieldGet(this, _Wilson_preventGestures, "f"));
         document.removeEventListener("gestureend", __classPrivateFieldGet(this, _Wilson_preventGestures, "f"));
-        if (__classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f") && __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").parentElement) {
+        if (__classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f")
+            && __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").parentElement) {
             __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").parentElement.insertBefore(this.canvas, __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f"));
         }
         __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").remove();
@@ -1625,9 +1626,9 @@ export class WilsonGPU extends Wilson {
     constructor(canvas, options) {
         var _a, _b, _c;
         super(canvas, options);
-        _WilsonGPU_instances.add(this);
         _WilsonGPU_useWebGL2.set(this, void 0);
         _WilsonGPU_shaderPrograms.set(this, {});
+        _WilsonGPU_shaderProgramSources.set(this, {});
         _WilsonGPU_uniforms.set(this, {});
         _WilsonGPU_numShaders.set(this, 0);
         _WilsonGPU_currentShaderId.set(this, "0");
@@ -1701,6 +1702,7 @@ export class WilsonGPU extends Wilson {
             throw new Error(`[Wilson] Couldn't create shader program. Full shader source: ${shader}`);
         }
         __classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id] = shaderProgram;
+        __classPrivateFieldGet(this, _WilsonGPU_shaderProgramSources, "f")[id] = shader;
         this.gl.attachShader(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], vertexShader);
         this.gl.attachShader(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], fragShader);
         this.gl.shaderSource(vertexShader, vertexShaderSource);
@@ -1759,6 +1761,7 @@ export class WilsonGPU extends Wilson {
             }
             const { location, type } = __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[shader][name];
             const uniformFunction = uniformFunctions[type];
+            __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[shader][name].value = value;
             uniformFunction(this.gl, location, value);
         }
         this.gl.useProgram(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[__classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f")]);
@@ -1857,7 +1860,7 @@ export class WilsonGPU extends Wilson {
         }
         this.canvas.toBlob((blob) => {
             if (!blob) {
-                console.error(`[Wilson] Could not create a blob from a canvas with ID ${this.canvas.id}`);
+                console.error("[Wilson] Could not create a canvas blob");
                 return;
             }
             const link = document.createElement("a");
@@ -1867,13 +1870,247 @@ export class WilsonGPU extends Wilson {
             link.remove();
         });
     }
-}
-_WilsonGPU_useWebGL2 = new WeakMap(), _WilsonGPU_shaderPrograms = new WeakMap(), _WilsonGPU_uniforms = new WeakMap(), _WilsonGPU_numShaders = new WeakMap(), _WilsonGPU_currentShaderId = new WeakMap(), _WilsonGPU_framebuffers = new WeakMap(), _WilsonGPU_textures = new WeakMap(), _WilsonGPU_instances = new WeakSet(), _WilsonGPU_loadShaderInternal = function _WilsonGPU_loadShaderInternal(type, source) {
-    const shader = this.gl.createShader(type);
-    if (!shader) {
-        throw new Error(`[Wilson] Couldn't create shader: ${shader}`);
+    downloadHighResFrame(filename, resolution = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight)), uniforms = {}) {
+        const workerCode = `${""}
+			const uniformFunctions = {
+				int: (
+					gl,
+					location,
+					value,
+				) => gl.uniform1i(location, value),
+				
+				float: (
+					gl,
+					location,
+					value,
+				) => gl.uniform1f(location, value),
+				
+				vec2: (
+					gl,
+					location,
+					value,
+				) => gl.uniform2fv(location, value),
+
+				vec3: (
+					gl,
+					location,
+					value,
+				) => gl.uniform3fv(location, value),
+				
+				vec4: (
+					gl,
+					location,
+					value,
+				) => gl.uniform4fv(location, value),
+
+				intArray: (
+					gl,
+					location,
+					value,
+				) => gl.uniform1iv(location, value),
+				
+				floatArray: (
+					gl,
+					location,
+					value,
+				) => gl.uniform1fv(location, value),
+				
+				vec2Array: (
+					gl,
+					location,
+					value,
+				) => gl.uniform2fv(location, value.flat()),
+
+				vec3Array: (
+					gl,
+					location,
+					value,
+				) => gl.uniform3fv(location, value.flat()),
+				
+				vec4Array: (
+					gl,
+					location,
+					value,
+				) => gl.uniform4fv(location, value.flat()),
+
+				mat2: (
+					gl,
+					location,
+					value,
+				) => gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]]),
+				
+				mat3: (
+					gl,
+					location,
+					value,
+				) => gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]]),
+				
+				mat4: (
+					gl,
+					location,
+					value,
+				) => gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]),
+			};
+
+			self.addEventListener("message", (event) => 
+			{
+				const { offscreen, canvasWidth, canvasHeight, shader, uniforms, options } = event.data;
+
+				const gl = options.useWebGL2
+					? offscreen.getContext("webgl2") ?? offscreen.getContext("webgl")
+					: offscreen.getContext("webgl");
+
+				if (!gl)
+				{
+					throw new Error("[Wilson] Failed to get WebGL or WebGL2 context.");
+				}
+
+				gl.getExtension("KHR_parallel_shader_compile");
+
+				if (
+					gl instanceof WebGL2RenderingContext
+					&& !gl.getExtension("EXT_color_buffer_float")
+				) {
+					// No support for float textures.
+				}
+
+				else if (
+					gl instanceof WebGLRenderingContext
+					&& !gl.getExtension("OES_texture_float")
+				) {
+					// No support for float textures.
+				}
+
+				if ("drawingBufferColorSpace" in gl && options.useP3ColorSpace)
+				{
+					gl.drawingBufferColorSpace = "display-p3";
+				}
+
+				const vertexShaderSource = \`
+					attribute vec3 position;
+					varying vec2 uv;
+
+					void main(void)
+					{
+						gl_Position = vec4(position, 1.0);
+
+						// !!!IMPORTANT!!!
+						// Flip the y coordinate because WebGL's coordinate system is different from the one used by ctx, and this is the fastest way to fix that.
+						uv = vec2(position.x, -position.y);
+					}
+				\`;
+
+				const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+				const fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+
+				const shaderProgram = gl.createProgram();
+
+				gl.attachShader(shaderProgram, vertexShader);
+				gl.attachShader(shaderProgram, fragShader);
+
+				gl.shaderSource(vertexShader, vertexShaderSource);
+				gl.shaderSource(fragShader, shader);
+
+				gl.compileShader(vertexShader);
+				gl.compileShader(fragShader);
+
+				gl.linkProgram(shaderProgram);
+
+				gl.useProgram(shaderProgram);
+
+				const positionBuffer = gl.createBuffer();
+
+				gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+				const quad = [
+					-1, -1, 0,
+					-1,  1, 0,
+					1, -1, 0,
+					1,  1, 0
+				];
+				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quad), gl.STATIC_DRAW);
+
+				const positionAttribute = gl.getAttribLocation(shaderProgram, "position");
+
+				gl.enableVertexAttribArray(positionAttribute);
+				gl.vertexAttribPointer(positionAttribute, 3, gl.FLOAT, false, 0, 0);
+				gl.viewport(0, 0, canvasWidth, canvasHeight);
+
+				for (const [name, data] of Object.entries(uniforms))
+				{
+					const location = gl.getUniformLocation(shaderProgram, name);
+					const type = data.type;
+					const uniformFunction = uniformFunctions[type];
+					uniformFunction(gl, location, data.value);
+				}
+
+				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+				const pixels = new Uint8Array(canvasWidth * canvasHeight * 4);
+				gl.readPixels(0, 0, canvasWidth, canvasHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+				const imageData = new ImageData(new Uint8ClampedArray(pixels), canvasWidth);
+
+				self.postMessage({
+					type: "frame-ready",
+					imageData,
+				});
+			});
+		`;
+        const blob = new Blob([workerCode], { type: "application/javascript" });
+        const workerUrl = URL.createObjectURL(blob);
+        const worker = new Worker(workerUrl);
+        const canvasWidth = Math.round(Math.sqrt(resolution * resolution * this.canvasWidth / this.canvasHeight));
+        const canvasHeight = Math.round(Math.sqrt(resolution * resolution * this.canvasHeight / this.canvasWidth));
+        worker.addEventListener("message", (event) => {
+            if (event.data.type === "frame-ready") {
+                const { imageData } = event.data;
+                const canvas = document.createElement("canvas");
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) {
+                    console.error("[Wilson] Could not get 2d context for canvas");
+                    return;
+                }
+                ctx.putImageData(imageData, 0, 0);
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        console.error("[Wilson] Could not create a canvas blob");
+                        return;
+                    }
+                    const link = document.createElement("a");
+                    link.download = filename;
+                    link.href = window.URL.createObjectURL(blob);
+                    link.click();
+                    link.remove();
+                });
+            }
+        });
+        // Clean up the blob URL
+        URL.revokeObjectURL(workerUrl);
+        const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight);
+        const uniformData = {};
+        for (const [name, data] of Object.entries(__classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[__classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f")])) {
+            uniformData[name] = {
+                type: data.type,
+                value: data.value,
+            };
+        }
+        for (const [name, value] of Object.entries(uniforms)) {
+            uniformData[name].value = value;
+        }
+        worker.postMessage({
+            offscreen,
+            shader: __classPrivateFieldGet(this, _WilsonGPU_shaderProgramSources, "f")[__classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f")],
+            uniforms: uniformData,
+            canvasWidth,
+            canvasHeight,
+            options: {
+                useWebGL2: __classPrivateFieldGet(this, _WilsonGPU_useWebGL2, "f"),
+                useP3ColorSpace: this.useP3ColorSpace,
+            }
+        }, [offscreen]);
     }
-    this.gl.shaderSource(shader, source);
-    this.gl.compileShader(shader);
-    return shader;
-};
+}
+_WilsonGPU_useWebGL2 = new WeakMap(), _WilsonGPU_shaderPrograms = new WeakMap(), _WilsonGPU_shaderProgramSources = new WeakMap(), _WilsonGPU_uniforms = new WeakMap(), _WilsonGPU_numShaders = new WeakMap(), _WilsonGPU_currentShaderId = new WeakMap(), _WilsonGPU_framebuffers = new WeakMap(), _WilsonGPU_textures = new WeakMap();
