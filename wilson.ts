@@ -137,6 +137,7 @@ type FullscreenOptions = {
 	animate?: boolean,
 	crossfade?: boolean,
 	closeWithEscape?: boolean,
+	restoreScroll?: boolean,
 	beforeSwitch?: (isFullscreen: boolean) => void,
 	onSwitch?: (isFullscreen: boolean) => void,
 } & (
@@ -288,6 +289,7 @@ class Wilson
 	animateFullscreen: boolean;
 	crossfadeFullscreen: boolean;
 	closeFullscreenWithEscape: boolean;
+	fullscreenRestoreScroll: boolean = false;
 	beforeSwitchFullscreen: (isFullscreen: boolean) => void;
 	onSwitchFullscreen: (isFullscreen: boolean) => void;
 	#fullscreenOldScroll: number = 0;
@@ -491,6 +493,7 @@ class Wilson
 		this.animateFullscreen = options.fullscreenOptions?.animate ?? true;
 		this.crossfadeFullscreen = options.fullscreenOptions?.crossfade ?? false;
 		this.closeFullscreenWithEscape = options.fullscreenOptions?.closeWithEscape ?? true;
+		this.fullscreenRestoreScroll = options.fullscreenOptions?.restoreScroll ?? true;
 		this.beforeSwitchFullscreen = options.fullscreenOptions?.beforeSwitch ?? (() => {});
 		this.onSwitchFullscreen = options.fullscreenOptions?.onSwitch ?? (() => {});
 		this.#fullscreenUseButton = options.fullscreenOptions?.useFullscreenButton ?? false;
@@ -2204,12 +2207,6 @@ class Wilson
 
 
 
-		// document.documentElement.style.overflowY = "hidden";
-		// document.body.style.overflowY = "hidden";
-
-		// document.body.style.width = "100vw";
-		// document.body.style.height = "100%";
-
 		document.documentElement.style.userSelect = "none";
 
 		document.addEventListener("gesturestart", this.#preventGestures);
@@ -2374,9 +2371,11 @@ class Wilson
 		// @ts-ignore
 		if (document.startViewTransition)
 		{
-			const styleElement = this.#fullscreenFillScreen ? this.#addEnterFullscreenFillScreenTransitionStyle() : null;
+			const styleElement = this.#fullscreenFillScreen && this.animateFullscreen && !this.crossfadeFullscreen
+				? this.#addEnterFullscreenFillScreenTransitionStyle()
+				: null;
 
-			if (!this.reduceMotion && !this.crossfadeFullscreen)
+			if (!this.reduceMotion && !this.crossfadeFullscreen && this.animateFullscreen)
 			{
 				if (this.#fullscreenEnterFullscreenButton)
 				{
@@ -2472,12 +2471,6 @@ class Wilson
 
 
 
-		// document.documentElement.style.overflowY = "scroll";
-		// document.body.style.overflowY = "visible";
-
-		// document.body.style.width = "";
-		// document.body.style.height = "";
-
 		document.documentElement.style.userSelect = "auto";
 
 		document.removeEventListener("gesturestart", this.#preventGestures);
@@ -2503,7 +2496,7 @@ class Wilson
 
 		// When there are multiple Wilson instances on the same page,
 		// one of them might incorrectly try to scroll back to 0.
-		if (this.#fullscreenOldScroll)
+		if (this.#fullscreenOldScroll && this.fullscreenRestoreScroll)
 		{
 			window.scrollTo(0, this.#fullscreenOldScroll);
 			setTimeout(() => window.scrollTo(0, this.#fullscreenOldScroll), 10);
@@ -2544,7 +2537,7 @@ class Wilson
 		const newTopStart = (window.innerHeight - newHeightStart) / 2 - this.#fullscreenCanvasRect.top;
 
 		const temporaryStyle = /* css */`
-			@keyframes WILSON_move-out
+			@keyframes WILSON_move-out-${this.#salt}
 			{
 				from
 				{
@@ -2561,7 +2554,7 @@ class Wilson
 				}
 			}
 
-			@keyframes WILSON_move-in
+			@keyframes WILSON_move-in-${this.#salt}
 			{
 				from
 				{
@@ -2585,13 +2578,13 @@ class Wilson
 
 			::view-transition-old(WILSON_canvas-${this.#salt})
 			{
-				animation-name: WILSON_move-out;
+				animation-name: WILSON_move-out-${this.#salt};
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${this.#salt})
 			{
-				animation-name: WILSON_move-in;
+				animation-name: WILSON_move-in-${this.#salt};
 				mix-blend-mode: plus-lighter;
 			}
 		`;
@@ -2625,11 +2618,14 @@ class Wilson
 		// @ts-ignore
 		if (document.startViewTransition)
 		{
-			const styleElement = this.#fullscreenFillScreen ? this.#addExitFullscreenFillScreenTransitionStyle() : null;
+			const styleElement = this.#fullscreenFillScreen && this.animateFullscreen && !this.crossfadeFullscreen
+				? this.#addExitFullscreenFillScreenTransitionStyle()
+				: null;
 
 			if (
 				!this.reduceMotion
 				&& !this.crossfadeFullscreen
+				&& this.animateFullscreen
 				&& (
 					!this.#fullscreenFillScreen
 					|| (
@@ -3413,11 +3409,19 @@ export class WilsonGPU extends Wilson
 		});
 	}
 
-	downloadHighResFrame(
-		filename: string,
-		resolution: number = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight)),
-		uniforms: UniformInitializers = {}
-	) {
+	async readHighResPixels({
+		resolution = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight)),
+		uniforms = {},
+		format = "unsignedByte",
+	}: {
+		resolution?: number,
+		uniforms?: UniformInitializers,
+		format?: "unsignedByte" | "float",
+	}): Promise<{
+		pixels: Uint8Array | Float32Array,
+		width: number,
+		height: number,
+	}> {
 		const workerCode = `${""}
 			const uniformFunctions = {
 				int: (
@@ -3594,15 +3598,13 @@ export class WilsonGPU extends Wilson
 				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
 				gl.finish();
-
-				const pixels = new Uint8Array(canvasWidth * canvasHeight * 4);
-				gl.readPixels(0, 0, canvasWidth, canvasHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-
-				const imageData = new ImageData(new Uint8ClampedArray(pixels), canvasWidth);
+			
+				const pixels = new ${format === "float" ? "Float32Array" : "Uint8Array"}(canvasWidth * canvasHeight * 4);
+				gl.readPixels(0, 0, canvasWidth, canvasHeight, gl.RGBA, ${format === "float" ? "gl.FLOAT" : "gl.UNSIGNED_BYTE"}, pixels);
 
 				self.postMessage({
 					type: "frame-ready",
-					imageData,
+					pixels,
 				});
 			});
 		`;
@@ -3619,50 +3621,32 @@ export class WilsonGPU extends Wilson
 			Math.sqrt(resolution * resolution * this.canvasHeight / this.canvasWidth)
 		);
 
+		let resolve: ({
+			pixels,
+			width,
+			height,
+		}: {
+			pixels: Uint8Array | Float32Array,
+			width: number,
+			height: number,
+		}) => void;
+
+		const promise = new Promise<{
+			pixels: Uint8Array | Float32Array,
+			width: number,
+			height: number,
+		}>((r) => (resolve = r));
+
 		worker.addEventListener("message", (event) => 
 		{
 			if (event.data.type === "frame-ready")
 			{
-				const { imageData } = event.data;
+				const { pixels } = event.data;
 
-				const canvas = document.createElement("canvas");
-				canvas.width = canvasWidth;
-				canvas.height = canvasHeight;
-				const ctx = canvas.getContext("2d");
-
-				if (!ctx)
-				{
-					if (this.verbose)
-					{
-						console.error("[Wilson] Could not get 2d context for canvas");
-					}
-
-					return;
-				}
-
-				ctx.putImageData(imageData, 0, 0);
-
-				canvas.toBlob((blob) =>
-				{
-					if (!blob)
-					{
-						if (this.verbose)
-						{
-							console.error("[Wilson] Could not create a canvas blob");
-						}
-
-						return;
-					}
-
-					const link = document.createElement("a");
-
-					link.download = filename;
-
-					link.href = window.URL.createObjectURL(blob);
-
-					link.click();
-
-					link.remove();
+				resolve({
+					pixels,
+					width: canvasWidth,
+					height: canvasHeight,
 				});
 			}
 		});
@@ -3699,5 +3683,61 @@ export class WilsonGPU extends Wilson
 				useP3ColorSpace: this.useP3ColorSpace,
 			}
 		}, [offscreen]);
+
+		return promise;
+	}
+
+	async downloadHighResFrame(
+		filename: string,
+		resolution: number = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight)),
+		uniforms: UniformInitializers = {}
+	) {
+		const { pixels, width, height } = await this.readHighResPixels({
+			resolution,
+			uniforms,
+		});
+		
+		const imageData = new ImageData(new Uint8ClampedArray(pixels), width);
+
+		const canvas = document.createElement("canvas");
+
+		canvas.width = width;
+		canvas.height = height;
+		const ctx = canvas.getContext("2d");
+
+		if (!ctx)
+		{
+			if (this.verbose)
+			{
+				console.error("[Wilson] Could not get 2d context for canvas");
+			}
+
+			return;
+		}
+
+		ctx.putImageData(imageData, 0, 0);
+
+		canvas.toBlob((blob) =>
+		{
+			if (!blob)
+			{
+				if (this.verbose)
+				{
+					console.error("[Wilson] Could not create a canvas blob");
+				}
+
+				return;
+			}
+
+			const link = document.createElement("a");
+
+			link.download = filename;
+
+			link.href = window.URL.createObjectURL(blob);
+
+			link.click();
+
+			link.remove();
+		});
 	}
 }

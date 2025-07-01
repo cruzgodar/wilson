@@ -242,6 +242,7 @@ The above guide, along with the example project, are a great way to get started 
 	- `animate`: a boolean for whether to animate the transitions to and from fullscreen. Defaults to `true`.
 	- `crossfade`: a boolean for whether to always crossfade the transitions to and from fullscreen. Defaults to `false`.
 	- `closeWithEscape`: a boolean for whether to close fullscreen when the escape key is pressed. Defaults to `true`.
+	- `restoreScroll`: a boolean for whether to restore the scroll position when exiting fullscreen. If there are multiple Wilson instanced exiting fullscreen at once, only one should have this property set to `true`. Defaults to `true`.
 	- `onSwitch: (isFullscreen: boolean) => void`: a function that is called after the canvas enters or exits fullscreen mode and is included in the page transition.
 	- `beforeSwitch: async (isFullscreen: boolean) => void`: a function that is called before the canvas enters or exits fullscreen mode and is not included in the page transition. It is awaited before the page transition begins. A typical use for this is to briefly pause a canvas animating every frame before entering fullscreen — Safari often produces a glitchy transition if animations are not paused.
 	- `useFullscreenButton`: a boolean for whether to use a button to enter and exit fullscreen. Defaults to `false`.
@@ -272,6 +273,7 @@ The above guide, along with the example project, are a great way to get started 
 - `animateFullscreen`: a boolean for whether the fullscreen transition is animated. Can be changed dynamically.
 - `crossfadeFullscreen`: a boolean for whether the fullscreen transition is crossfaded. Can be changed dynamically.
 - `closeFullscreenWithEscape`: a boolean for whether to close fullscreen when the escape key is pressed. Can be changed dynamically.
+- `fullscreenRestoreScroll`: a boolean for whether to restore the scroll position when exiting fullscreen. Can be changed dynamically.
 - `onSwitchFullscreen: (isFullscreen: boolean) => void`: a function that is called whenever the canvas enters or exits fullscreen mode. Can be changed dynamically.
 - `draggables`: a readonly object containing the current draggables, of the form
 ```ts
@@ -302,7 +304,8 @@ The above guide, along with the example project, are a great way to get started 
 - `gl`: the WebGL or WebGL2 context.
 - `drawFrame()`: draws a frame with the current shader program.
 - `downloadFrame(filename: string, drawNewFrame?: boolean)`: downloads the current frame as a png file. For this to work properly, a new frame must be drawn immediately before downloading. Setting drawNewFrame to `false` will skip this step; only use this if you are manually drawing a frame directly before calling this method.
-- `downloadHighResFrame(filename: string, resolution?: number, uniforms?: {[name: string]: number | number[] | number[][]})`: renders a frame with the current shader program on a separate thread at the given resolution. All current uniform values for the current shader program are copied over, but individual values can be overridden by passing the `uniforms` object. 
+- `async readHighResPixels({ resolution?: number, uniforms: {[name: string]: number | number[] | number[][]}, format: "unsignedByte" | "float" }): Promise<{ pixels: Uint8Array | Float32Array, width: number, height: number }>`: renders a frame with the current shader program on a separate thread at the given resolution and returns the pixels in the given format. All current uniform values for the current shader program are copied over, but individual values can be overridden by passing the `uniforms` object.
+- `async downloadHighResFrame(filename: string, resolution?: number, uniforms?: {[name: string]: number | number[] | number[][]})`: renders a frame with the current shader program on a separate thread at the given resolution and downloads it with the given filename. All current uniform values for the current shader program are copied over, but individual values can be overridden by passing the `uniforms` object. 
 - `loadShader({ id?: string, shader: string, uniforms?: {[name: string]: number | number[] | number[][]} })`: loads a new shader program and sets it as the current one. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders.
 - `setUniforms(uniforms: {[name: string]: number | number[] | number[][]} }, shader?: string)`: sets uniforms for the shader program with the given ID. If no shader ID is specified, it defaults to that of the current shader program. As with the initializers for uniforms, ints and floats are set with numbers, vectors are set with 1D arrays, and matrices are set with 2D arrays in row-major order. Arrays of `int`s or `float`s (e.g. `uniform int foo[3];`) are set with 1D arrays, and arrays of vectors (e.g. `uniform vec3 foo[3];`) are set with 2D arrays.
 - `useShader(id: string)`: sets the current shader program.
