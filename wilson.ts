@@ -3595,6 +3595,53 @@ export class WilsonGPU extends Wilson
 					uniformFunction(gl, location, data.value);
 				}
 
+
+
+				const framebuffer = gl.createFramebuffer();
+
+				const texture = gl.createTexture();
+
+				gl.bindTexture(gl.TEXTURE_2D, texture);
+
+				gl.texImage2D(
+					gl.TEXTURE_2D,
+					0,
+					(${format === "float"} && gl instanceof WebGL2RenderingContext)
+						? gl.RGBA32F
+						: gl.RGBA,
+					canvasWidth,
+					canvasHeight,
+					0,
+					gl.RGBA,
+					${format === "float"}
+						? gl.FLOAT
+						: gl.UNSIGNED_BYTE,
+					null
+				);
+
+			
+
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+				gl.disable(gl.DEPTH_TEST);
+
+				gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+
+				gl.framebufferTexture2D(
+					gl.FRAMEBUFFER,
+					gl.COLOR_ATTACHMENT0,
+					gl.TEXTURE_2D,
+					texture,
+					0
+				);
+
+				gl.bindTexture(gl.TEXTURE_2D, null);
+
+
+
 				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
 				gl.finish();
@@ -3608,6 +3655,8 @@ export class WilsonGPU extends Wilson
 				});
 			});
 		`;
+
+		console.log(workerCode);
 
 		const blob = new Blob([workerCode], { type: "application/javascript" });
 		const workerUrl = URL.createObjectURL(blob);
