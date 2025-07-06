@@ -161,6 +161,12 @@
 	display: none;
 }
 
+.WILSON_reset-button
+{
+	opacity: 0;
+	transition: opacity .15s ease-out;
+}
+
 .WILSON_fullscreen-container.WILSON_fullscreen .WILSON_enter-fullscreen-button
 {
 	display: none;

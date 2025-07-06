@@ -736,11 +736,12 @@ class Wilson
 
 		if (!animate)
 		{
-			this.resizeWorld({
+			this.#resizeWorld({
 				width,
 				height,
 				centerX: this.#defaultWorldCenterX,
 				centerY: this.#defaultWorldCenterY,
+				showResetButton: false,
 			});
 
 			return;
@@ -763,11 +764,12 @@ class Wilson
 				? 2 * progress * progress 
 				: 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
-			this.resizeWorld({
+			this.#resizeWorld({
 				width: (1 - t) * oldWorldWidth + t * width,
 				height: (1 - t) * oldWorldHeight + t * height,
 				centerX: (1 - t) * oldWorldCenterX + t * this.#defaultWorldCenterX,
 				centerY: (1 - t) * oldWorldCenterY + t * this.#defaultWorldCenterY,
+				showResetButton: false,
 			});
 			
 			if (progress < 1)
@@ -790,7 +792,7 @@ class Wilson
 
 		if (!animate)
 		{
-			this.setDraggables(this.#defaultDraggableLocations);
+			this.#setDraggables(this.#defaultDraggableLocations, false);
 
 			for (const id in this.#draggables)
 			{
@@ -828,7 +830,7 @@ class Wilson
 					(1 - t) * oldDraggableLocations[id][1] + t * this.#defaultDraggableLocations[id][1]
 				];
 
-				this.setDraggables(updatedDraggableLocations);
+				this.#setDraggables(updatedDraggableLocations, false);
 				
 				this.#draggableCallbacks.drag({
 					id,
@@ -1004,6 +1006,52 @@ class Wilson
 		minY?: number,
 		maxY?: number,
 	}) {
+		this.#resizeWorld({
+			width,
+			height,
+			centerX,
+			centerY,
+			minWidth,
+			maxWidth,
+			minHeight,
+			maxHeight,
+			minX,
+			maxX,
+			minY,
+			maxY,
+			showResetButton: true,
+		});
+	}
+
+	#resizeWorld({
+		width,
+		height,
+		centerX,
+		centerY,
+		minWidth,
+		maxWidth,
+		minHeight,
+		maxHeight,
+		minX,
+		maxX,
+		minY,
+		maxY,
+		showResetButton,
+	}: {
+		width?: number,
+		height?: number,
+		centerX?: number,
+		centerY?: number,
+		minWidth?: number,
+		maxWidth?: number,
+		minHeight?: number,
+		maxHeight?: number,
+		minX?: number,
+		maxX?: number,
+		minY?: number,
+		maxY?: number,
+		showResetButton: boolean,
+	}) {
 		const lastWorldWidth = this.#worldWidth;
 		const lastWorldHeight = this.#worldHeight;
 		const lastWorldCenterX = this.#worldCenterX;
@@ -1087,6 +1135,11 @@ class Wilson
 
 		this.#clampWorldCoordinates();
 		this.#updateDraggablesLocation();
+
+		if (showResetButton)
+		{
+			this.#showResetButton();
+		}
 
 		if (
 			this.useInteractionForPanAndZoom && (
@@ -1959,6 +2012,7 @@ class Wilson
 			this.#clampWorldCoordinates(Math.min(timeElapsed / (1000 / 60), 1));
 			this.#updateDraggablesLocation();
 			this.#interactionOnPanAndZoom();
+			this.#showResetButton();
 		}
 
 		if (this.#needDraggablesContainerSizeUpdate)
@@ -2017,6 +2071,11 @@ class Wilson
 	}
 
 	setDraggables(draggables: DraggableLocations)
+	{
+		this.#setDraggables(draggables, true);
+	}
+
+	#setDraggables(draggables: DraggableLocations, showResetButton: boolean)
 	{
 		for (const [id, location] of Object.entries(draggables))
 		{
@@ -2079,6 +2138,11 @@ class Wilson
 
 				const element = this.#draggables[id].element;
 				element.style.transform = `translate(${col - this.#draggablesRadius}px, ${row - this.#draggablesRadius}px)`;
+
+				if (showResetButton)
+				{
+					this.#showResetButton();
+				}
 			}
 		}
 	}
@@ -2179,6 +2243,8 @@ class Wilson
 
 		this.#draggables[id].location = [x, y];
 		this.draggables[id].location = [x, y];
+
+		this.#showResetButton();
 	}
 
 	#draggableOnTouchstart(e: TouchEvent, id: string)
@@ -2293,6 +2359,8 @@ class Wilson
 
 		this.#draggables[id].location = [x, y];
 		this.draggables[id].location = [x, y];
+
+		this.#showResetButton();
 	}
 
 	#updateDraggablesContainerSize()
@@ -2401,9 +2469,7 @@ class Wilson
 		if (this.#useResetButton)
 		{
 			this.#resetButton = document.createElement("div");
-
 			this.#resetButton.classList.add("WILSON_reset-button");
-
 			this.#buttonContainer.appendChild(this.#resetButton);
 
 			const img = document.createElement("img");
@@ -2414,7 +2480,20 @@ class Wilson
 			{
 				this.resetWorldCoordinates();
 				this.resetDraggables();
+
+				if (this.#resetButton)
+				{
+					this.#resetButton.style.opacity = "0";
+				}
 			});
+		}
+	}
+
+	#showResetButton()
+	{
+		if (this.#resetButton)
+		{
+			this.#resetButton.style.opacity = "1";
 		}
 	}
 
