@@ -266,7 +266,6 @@ class Wilson
 	// Used to debounce mouse/touch events on hybrid devices.
 	#lastInteractionTimes = {
 		grab: Date.now(),
-		drag: Date.now(),
 		release: Date.now(),
 	};
 
@@ -703,28 +702,51 @@ class Wilson
 
 	
 
+	setDefaultState()
+	{
+		this.#defaultWorldCenterX = this.#worldCenterX;
+		this.#defaultWorldCenterY = this.#worldCenterY;
+		this.#defaultWorldWidth = this.#nonFullscreenWorldWidth;
+		this.#defaultWorldHeight = this.#nonFullscreenWorldHeight;
+	}
+
+	#getDefaultWorldSize(): [number, number]
+	{
+		if (this.#currentlyFullscreen && this.#fullscreenFillScreen)
+		{
+			const windowAspectRatio = window.innerWidth / window.innerHeight;
+
+			const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
+
+			return [
+				Math.max(this.#defaultWorldWidth * aspectRatioChange, this.#defaultWorldWidth),
+				Math.max(this.#defaultWorldHeight / aspectRatioChange, this.#defaultWorldHeight),
+			];
+		}
+
+		return [
+			this.#defaultWorldWidth,
+			this.#defaultWorldHeight,
+		];
+	}
+
 	resetWorldCoordinates(animate: boolean = true)
 	{
+		const [width, height] = this.#getDefaultWorldSize();
+
 		if (!animate)
 		{
-			this.#worldCenterX = this.#defaultWorldCenterX;
-			this.worldCenterX = this.#worldCenterX;
-
-			this.#worldCenterY = this.#defaultWorldCenterY;
-			this.worldCenterY = this.#worldCenterY;
-
-			this.#worldWidth = this.#defaultWorldWidth;
-			this.worldWidth = this.#worldWidth;
-
-			this.#worldHeight = this.#defaultWorldHeight;
-			this.worldHeight = this.#worldHeight;
-
-			this.#interactionOnPanAndZoom();
+			this.resizeWorld({
+				width,
+				height,
+				centerX: this.#defaultWorldCenterX,
+				centerY: this.#defaultWorldCenterY,
+			});
 
 			return;
 		}
 
-		const duration = 300;
+		const duration = 350;
 		const startTime = performance.now();
 
 		const oldWorldCenterX = this.#worldCenterX;
@@ -736,22 +758,17 @@ class Wilson
 		{
 			const elapsed = currentTime - startTime;
 			const progress = Math.min(elapsed / duration, 1);
-			// Ease-out quad
-			const t = 1 - Math.pow(1 - progress, 2);
+			// Ease-in-out quad
+			const t = progress < 0.5 
+				? 2 * progress * progress 
+				: 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
-			this.#worldCenterX = (1 - t) * oldWorldCenterX + t * this.#defaultWorldCenterX;
-			this.worldCenterX = this.#worldCenterX;
-
-			this.#worldCenterY = (1 - t) * oldWorldCenterY + t * this.#defaultWorldCenterY;
-			this.worldCenterY = this.#worldCenterY;
-
-			this.#worldWidth = (1 - t) * oldWorldWidth + t * this.#defaultWorldWidth;
-			this.worldWidth = this.#worldWidth;
-
-			this.#worldHeight = (1 - t) * oldWorldHeight + t * this.#defaultWorldHeight;
-			this.worldHeight = this.#worldHeight;
-			
-			this.#interactionOnPanAndZoom();
+			this.resizeWorld({
+				width: (1 - t) * oldWorldWidth + t * width,
+				height: (1 - t) * oldWorldHeight + t * height,
+				centerX: (1 - t) * oldWorldCenterX + t * this.#defaultWorldCenterX,
+				centerY: (1 - t) * oldWorldCenterY + t * this.#defaultWorldCenterY,
+			});
 			
 			if (progress < 1)
 			{
@@ -789,7 +806,7 @@ class Wilson
 			return;
 		}
 
-		const duration = 300;
+		const duration = 350;
 		const startTime = performance.now();
 
 		const updatedDraggableLocations: DraggableLocations = {};
@@ -799,8 +816,10 @@ class Wilson
 		{
 			const elapsed = currentTime - startTime;
 			const progress = Math.min(elapsed / duration, 1);
-			// Ease-out quad
-			const t = 1 - Math.pow(1 - progress, 2);
+			// Ease-in-out quad
+			const t = progress < 0.5 
+				? 2 * progress * progress 
+				: 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
 			for (const id in this.#draggables)
 			{
@@ -1434,13 +1453,6 @@ class Wilson
 
 	#onMousemove(e: MouseEvent)
 	{
-		if (Date.now() - this.#lastInteractionTimes.drag <= 33)
-		{
-			return;
-		}
-
-		this.#lastInteractionTimes.drag = Date.now();
-
 		if (this.useInteractionForPanAndZoom)
 		{
 			e.preventDefault();
@@ -1664,13 +1676,6 @@ class Wilson
 
 	#onTouchmove(e: TouchEvent)
 	{
-		if (Date.now() - this.#lastInteractionTimes.drag <= 33)
-		{
-			return;
-		}
-
-		this.#lastInteractionTimes.drag = Date.now();
-
 		if (this.useInteractionForPanAndZoom)
 		{
 			e.preventDefault();
