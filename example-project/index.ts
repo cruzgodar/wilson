@@ -9,6 +9,9 @@ function initWilson1()
 		canvasWidth: resolution,
 		onResizeCanvas: drawFrame,
 
+		useResetButton: true,
+		resetButtonIconPath: "/reset.png",
+
 		draggableOptions: {
 			draggables: {
 				center: [0, 0],
@@ -129,6 +132,9 @@ function initWilson2()
 		maxWorldX: 2.5,
 		minWorldY: -2.5,
 		maxWorldY: 2.5,
+
+		useResetButton: true,
+		resetButtonIconPath: "/reset.png",
 
 		interactionOptions: {
 			useForPanAndZoom: true,

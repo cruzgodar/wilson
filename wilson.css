@@ -118,7 +118,31 @@
 
 
 
-.WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button
+.WILSON_button-container
+{
+	position: absolute;
+	right: 10px;
+	top: 10px;
+
+	z-index: 50;
+
+	display: flex;
+	column-gap: 10px;
+}
+
+.WILSON_fullscreen-container.WILSON_fullscreen .WILSON_button-container
+{
+	position: fixed;
+	
+	right: calc(10px + env(safe-area-inset-right));
+	top: calc(10px + env(safe-area-inset-top));
+
+	z-index: 1000;
+}
+
+
+
+.WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button, .WILSON_reset-button
 {
 	width: 15px;
 	height: 15px;
@@ -132,25 +156,8 @@
 	outline: none;
 }
 
-.WILSON_enter-fullscreen-button
-{
-	position: absolute;
-	
-	right: 10px;
-	top: 10px;
-	
-	z-index: 50;
-}
-
 .WILSON_exit-fullscreen-button
 {
-	position: fixed;
-	
-	right: calc(10px + env(safe-area-inset-right));
-	top: calc(10px + env(safe-area-inset-top));
-	
-	z-index: 1000;
-
 	display: none;
 }
 
@@ -164,7 +171,7 @@
 	display: block;
 }
 
-.WILSON_enter-fullscreen-button img, .WILSON_exit-fullscreen-button img
+.WILSON_enter-fullscreen-button img, .WILSON_exit-fullscreen-button img, .WILSON_reset-button img
 {
 	width: 100%;
 	height: 100%;

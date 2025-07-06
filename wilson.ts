@@ -95,7 +95,7 @@ type DraggableCallBacks = {
 		y: number,
 		xDelta: number,
 		yDelta: number,
-		event: Event
+		event?: Event
 	}) => void,
 
 	release: ({ id, x, y, event }: { id: string, x: number, y: number, event: Event }) => void,
@@ -123,13 +123,21 @@ type InteractionOptions = ({
 	callbacks?: Partial<InteractionCallbacks>,
 };
 
-type DraggableInitializers = {[id: string]: [number, number]};
+type DraggableLocations = {[id: string]: [number, number]};
 
 type DraggableOptions = {
-	draggables?: DraggableInitializers,
+	draggables?: DraggableLocations,
 	radius?: number,
 	static?: boolean,
 	callbacks?: Partial<DraggableCallBacks>,
+};
+
+type DraggablesData = {
+	[id: string]: {
+		element: HTMLDivElement,
+		location: [number, number],
+		currentlyDragging: boolean,
+	}
 };
 
 type FullscreenOptions = {
@@ -149,6 +157,13 @@ type FullscreenOptions = {
 		useFullscreenButton?: false,
 	}
 );
+
+type ResetButtonOptions = {
+	useResetButton?: true,
+	resetButtonIconPath?: string,
+} | {
+	useResetButton?: false,
+};
 
 
 
@@ -172,6 +187,7 @@ type WilsonOptions = (
 	clampWorldCoordinatesMode?: "one" | "both",
 	verbose?: boolean,
 
+
 	onResizeCanvas?: () => void,
 
 	useP3ColorSpace?: boolean,
@@ -181,7 +197,7 @@ type WilsonOptions = (
 	interactionOptions?: InteractionOptions,
 	draggableOptions?: DraggableOptions,
 	fullscreenOptions?: FullscreenOptions,
-};
+} & ResetButtonOptions;
 
 class Wilson
 {
@@ -240,12 +256,19 @@ class Wilson
 
 	#interactionCallbacks: InteractionCallbacks;
 	useInteractionForPanAndZoom: boolean;
-	usePanAndZoomRubberbanding: boolean = true;
+	usePanAndZoomRubberbanding: boolean = false;
 	rubberbandingPanSoftness: number = 3.5;
 	rubberbandingZoomSoftness: number = 2;
 	disallowZooming: boolean = false;
 	#needPanAndZoomUpdate: boolean = false;
 	#interactionOnPanAndZoom: () => void = () => {};
+
+	// Used to debounce mouse/touch events on hybrid devices.
+	#lastInteractionTimes = {
+		grab: Date.now(),
+		drag: Date.now(),
+		release: Date.now(),
+	};
 
 	
 
@@ -303,9 +326,29 @@ class Wilson
 	#fullscreenEnterFullscreenButtonIconPath?: string;
 	#fullscreenExitFullscreenButtonIconPath?: string;
 
+
+
+	#draggables: DraggablesData = {};
+	draggables: DraggablesData = {};
+
+	#draggableDefaultId: number = 0;
+	#currentMouseDraggableId?: string;
+
+
+
+	#useResetButton: boolean;
+	#resetButton: HTMLElement | null = null;
+	#resetButtonIconPath?: string;
+	#defaultWorldCenterX: number;
+	#defaultWorldCenterY: number;
+	#defaultWorldWidth: number;
+	#defaultWorldHeight: number;
+	#defaultDraggableLocations: DraggableLocations = {};
+
 	#appletContainer: HTMLDivElement;
 	#canvasContainer: HTMLDivElement;
 	#draggablesContainer: HTMLDivElement;
+	#buttonContainer: HTMLDivElement;
 	#fullscreenContainer: HTMLDivElement;
 	#fullscreenContainerLocation: HTMLDivElement;
 
@@ -442,6 +485,20 @@ class Wilson
 
 		this.clampWorldCoordinatesMode = options.clampWorldCoordinatesMode ?? "one";
 
+		
+
+		this.#defaultWorldCenterX = this.#worldCenterX;
+		this.#defaultWorldCenterY = this.#worldCenterY;
+		this.#defaultWorldWidth = this.#worldWidth;
+		this.#defaultWorldHeight = this.#worldHeight;
+
+		this.#useResetButton = options.useResetButton ?? false;
+
+		if (options.useResetButton)
+		{
+			this.#resetButtonIconPath = options.resetButtonIconPath;
+		}
+
 
 
 		this.#onResizeCanvasCallback = options?.onResizeCanvas ?? (() => {});
@@ -531,6 +588,12 @@ class Wilson
 
 
 
+		this.#buttonContainer = document.createElement("div");
+		this.#buttonContainer.classList.add("WILSON_button-container");
+		this.#canvasContainer.appendChild(this.#buttonContainer);
+
+
+
 		this.#fullscreenContainer = document.createElement("div");
 		this.#fullscreenContainer.classList.add("WILSON_fullscreen-container");
 
@@ -576,6 +639,7 @@ class Wilson
 
 		this.#initInteraction();
 		this.#initDraggables();
+		this.#initResetButton();
 		this.#initFullscreen();
 
 		requestAnimationFrame(this.#animationFrameLoop);
@@ -586,6 +650,11 @@ class Wilson
 		if (options.draggableOptions?.draggables)
 		{
 			this.setDraggables(options.draggableOptions.draggables);
+
+			for (const [id, data] of Object.entries(this.#draggables))
+			{
+				this.#defaultDraggableLocations[id] = data.location;
+			}
 		}
 
 
@@ -601,6 +670,8 @@ class Wilson
 
 	destroy()
 	{
+		this.#exitFullscreen();
+
 		this.#destroyed = true;
 
 		window.removeEventListener("resize", this.#onResizeWindow);
@@ -628,6 +699,136 @@ class Wilson
 		}
 
 		this.#fullscreenContainerLocation.remove();
+	}
+
+	
+
+	resetWorldCoordinates(animate: boolean = true)
+	{
+		if (!animate)
+		{
+			this.#worldCenterX = this.#defaultWorldCenterX;
+			this.worldCenterX = this.#worldCenterX;
+
+			this.#worldCenterY = this.#defaultWorldCenterY;
+			this.worldCenterY = this.#worldCenterY;
+
+			this.#worldWidth = this.#defaultWorldWidth;
+			this.worldWidth = this.#worldWidth;
+
+			this.#worldHeight = this.#defaultWorldHeight;
+			this.worldHeight = this.#worldHeight;
+
+			this.#interactionOnPanAndZoom();
+
+			return;
+		}
+
+		const duration = 300;
+		const startTime = performance.now();
+
+		const oldWorldCenterX = this.#worldCenterX;
+		const oldWorldCenterY = this.#worldCenterY;
+		const oldWorldWidth = this.#worldWidth;
+		const oldWorldHeight = this.#worldHeight;
+		
+		const update = (currentTime: number) =>
+		{
+			const elapsed = currentTime - startTime;
+			const progress = Math.min(elapsed / duration, 1);
+			// Ease-out quad
+			const t = 1 - Math.pow(1 - progress, 2);
+
+			this.#worldCenterX = (1 - t) * oldWorldCenterX + t * this.#defaultWorldCenterX;
+			this.worldCenterX = this.#worldCenterX;
+
+			this.#worldCenterY = (1 - t) * oldWorldCenterY + t * this.#defaultWorldCenterY;
+			this.worldCenterY = this.#worldCenterY;
+
+			this.#worldWidth = (1 - t) * oldWorldWidth + t * this.#defaultWorldWidth;
+			this.worldWidth = this.#worldWidth;
+
+			this.#worldHeight = (1 - t) * oldWorldHeight + t * this.#defaultWorldHeight;
+			this.worldHeight = this.#worldHeight;
+			
+			this.#interactionOnPanAndZoom();
+			
+			if (progress < 1)
+			{
+				requestAnimationFrame(update);
+			}
+		};
+		
+		requestAnimationFrame(update);
+	}
+
+	resetDraggables(animate: boolean = true)
+	{
+		const oldDraggableLocations: DraggableLocations = {};
+
+		for (const id in this.#draggables)
+		{
+			oldDraggableLocations[id] = [...this.#draggables[id].location];
+		}
+
+		if (!animate)
+		{
+			this.setDraggables(this.#defaultDraggableLocations);
+
+			for (const id in this.#draggables)
+			{
+				this.#draggableCallbacks.drag({
+					id,
+					x: this.#draggables[id].location[0],
+					y: this.#draggables[id].location[1],
+					xDelta: this.#draggables[id].location[0] - oldDraggableLocations[id][0],
+					yDelta: this.#draggables[id].location[1] - oldDraggableLocations[id][1],
+				});
+			}
+
+			return;
+		}
+
+		const duration = 300;
+		const startTime = performance.now();
+
+		const updatedDraggableLocations: DraggableLocations = {};
+		let lastDraggableLocations: DraggableLocations = structuredClone(oldDraggableLocations);
+		
+		const update = (currentTime: number) =>
+		{
+			const elapsed = currentTime - startTime;
+			const progress = Math.min(elapsed / duration, 1);
+			// Ease-out quad
+			const t = 1 - Math.pow(1 - progress, 2);
+
+			for (const id in this.#draggables)
+			{
+				updatedDraggableLocations[id] = [
+					(1 - t) * oldDraggableLocations[id][0] + t * this.#defaultDraggableLocations[id][0],
+					(1 - t) * oldDraggableLocations[id][1] + t * this.#defaultDraggableLocations[id][1]
+				];
+
+				this.setDraggables(updatedDraggableLocations);
+				
+				this.#draggableCallbacks.drag({
+					id,
+					x: this.#draggables[id].location[0],
+					y: this.#draggables[id].location[1],
+					xDelta: this.#draggables[id].location[0] - lastDraggableLocations[id][0],
+					yDelta: this.#draggables[id].location[1] - lastDraggableLocations[id][1],
+				});
+			}
+
+			lastDraggableLocations = structuredClone(updatedDraggableLocations);
+			
+			if (progress < 1)
+			{
+				requestAnimationFrame(update);
+			}
+		};
+		
+		requestAnimationFrame(update);
 	}
 
 
@@ -1125,6 +1326,13 @@ class Wilson
 
 	#onMousedown(e: MouseEvent)
 	{
+		if (Date.now() - this.#lastInteractionTimes.grab <= 33)
+		{
+			return;
+		}
+
+		this.#lastInteractionTimes.grab = Date.now();
+
 		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
 		{
 			return;
@@ -1151,6 +1359,13 @@ class Wilson
 
 	#onMouseup(e: MouseEvent)
 	{
+		if (Date.now() - this.#lastInteractionTimes.release <= 33)
+		{
+			return;
+		}
+
+		this.#lastInteractionTimes.release = Date.now();
+
 		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
 		{
 			return;
@@ -1219,6 +1434,13 @@ class Wilson
 
 	#onMousemove(e: MouseEvent)
 	{
+		if (Date.now() - this.#lastInteractionTimes.drag <= 33)
+		{
+			return;
+		}
+
+		this.#lastInteractionTimes.drag = Date.now();
+
 		if (this.useInteractionForPanAndZoom)
 		{
 			e.preventDefault();
@@ -1322,6 +1544,13 @@ class Wilson
 	
 	#onTouchstart(e: TouchEvent)
 	{
+		if (Date.now() - this.#lastInteractionTimes.grab <= 33)
+		{
+			return;
+		}
+
+		this.#lastInteractionTimes.grab = Date.now();
+
 		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
 		{
 			return;
@@ -1356,6 +1585,13 @@ class Wilson
 
 	#onTouchend(e: TouchEvent)
 	{
+		if (Date.now() - this.#lastInteractionTimes.release <= 33)
+		{
+			return;
+		}
+
+		this.#lastInteractionTimes.release = Date.now();
+
 		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
 		{
 			return;
@@ -1428,6 +1664,13 @@ class Wilson
 
 	#onTouchmove(e: TouchEvent)
 	{
+		if (Date.now() - this.#lastInteractionTimes.drag <= 33)
+		{
+			return;
+		}
+
+		this.#lastInteractionTimes.drag = Date.now();
+
 		if (this.useInteractionForPanAndZoom)
 		{
 			e.preventDefault();
@@ -1746,24 +1989,6 @@ class Wilson
 
 
 
-	#draggables: {
-		[id: string]: {
-			element: HTMLDivElement,
-			location: [number, number],
-			currentlyDragging: boolean,
-		}
-	} = {};
-	draggables: {
-		[id: string]: {
-			element: HTMLDivElement,
-			location: [number, number],
-			currentlyDragging: boolean,
-		}
-	} = {};
-
-	#draggableDefaultId: number = 0;
-	#currentMouseDraggableId?: string;
-
 	#documentDraggableMousemoveListener = (e: MouseEvent) =>
 	{
 		if (this.#currentMouseDraggableId !== undefined)
@@ -1786,7 +2011,7 @@ class Wilson
 		document.documentElement.addEventListener("mouseup", this.#documentDraggableMouseupListener);
 	}
 
-	setDraggables(draggables: DraggableInitializers)
+	setDraggables(draggables: DraggableLocations)
 	{
 		for (const [id, location] of Object.entries(draggables))
 		{
@@ -2134,7 +2359,7 @@ class Wilson
 
 			this.#fullscreenEnterFullscreenButton.classList.add("WILSON_enter-fullscreen-button");
 
-			this.#canvasContainer.appendChild(this.#fullscreenEnterFullscreenButton);
+			this.#buttonContainer.appendChild(this.#fullscreenEnterFullscreenButton);
 
 			const img = document.createElement("img");
 			img.src = this.#fullscreenEnterFullscreenButtonIconPath as string;
@@ -2151,7 +2376,7 @@ class Wilson
 
 			this.#fullscreenExitFullscreenButton.classList.add("WILSON_exit-fullscreen-button");
 
-			this.#canvasContainer.appendChild(this.#fullscreenExitFullscreenButton);
+			this.#buttonContainer.appendChild(this.#fullscreenExitFullscreenButton);
 
 			const img2 = document.createElement("img");
 			img2.src = this.#fullscreenExitFullscreenButtonIconPath as string;
@@ -2160,6 +2385,30 @@ class Wilson
 			this.#fullscreenExitFullscreenButton.addEventListener("click", () =>
 			{
 				this.exitFullscreen();
+			});
+		}
+	}
+
+
+
+	#initResetButton()
+	{
+		if (this.#useResetButton)
+		{
+			this.#resetButton = document.createElement("div");
+
+			this.#resetButton.classList.add("WILSON_reset-button");
+
+			this.#buttonContainer.appendChild(this.#resetButton);
+
+			const img = document.createElement("img");
+			img.src = this.#resetButtonIconPath as string;
+			this.#resetButton.appendChild(img);
+
+			this.#resetButton.addEventListener("click", () =>
+			{
+				this.resetWorldCoordinates();
+				this.resetDraggables();
 			});
 		}
 	}
@@ -2356,6 +2605,7 @@ class Wilson
 		const elements = [
 			this.#fullscreenEnterFullscreenButton,
 			this.#fullscreenExitFullscreenButton,
+			this.#resetButton,
 			this.canvas,
 			...(Object.values(this.#draggables).map(draggable => draggable.element))
 		];
@@ -2390,6 +2640,14 @@ class Wilson
 					this.#fullscreenExitFullscreenButton.style.setProperty(
 						"view-transition-name",
 						`WILSON_fullscreen-button-${this.#salt}`
+					)
+				}
+
+				if (this.#resetButton)
+				{
+					this.#resetButton.style.setProperty(
+						"view-transition-name",
+						`WILSON_reset-button-${this.#salt}`
 					)
 				}
 				
@@ -2603,6 +2861,7 @@ class Wilson
 		const elements = [
 			this.#fullscreenEnterFullscreenButton,
 			this.#fullscreenExitFullscreenButton,
+			this.#resetButton,
 			this.canvas,
 			...(Object.values(this.#draggables).map(draggable => draggable.element))
 		];
@@ -2647,6 +2906,14 @@ class Wilson
 					this.#fullscreenExitFullscreenButton.style.setProperty(
 						"view-transition-name",
 						`WILSON_fullscreen-button-${this.#salt}`
+					)
+				}
+
+				if (this.#resetButton)
+				{
+					this.#resetButton.style.setProperty(
+						"view-transition-name",
+						`WILSON_reset-button-${this.#salt}`
 					)
 				}
 				
