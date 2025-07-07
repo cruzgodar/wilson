@@ -161,6 +161,7 @@ type FullscreenOptions = {
 type ResetButtonOptions = {
 	useResetButton?: true,
 	resetButtonIconPath?: string,
+	onReset?: () => void,
 } | {
 	useResetButton?: false,
 };
@@ -338,6 +339,7 @@ class Wilson
 	#useResetButton: boolean;
 	#resetButton: HTMLElement | null = null;
 	#resetButtonIconPath?: string;
+	onReset: () => void = () => {};
 	#defaultWorldCenterX: number;
 	#defaultWorldCenterY: number;
 	#defaultWorldWidth: number;
@@ -496,6 +498,7 @@ class Wilson
 		if (options.useResetButton)
 		{
 			this.#resetButtonIconPath = options.resetButtonIconPath;
+			this.onReset = options.onReset ?? (() => {});
 		}
 
 
@@ -2480,6 +2483,7 @@ class Wilson
 			{
 				this.resetWorldCoordinates();
 				this.resetDraggables();
+				this.onReset();
 
 				if (this.#resetButton)
 				{

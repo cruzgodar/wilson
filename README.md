@@ -99,7 +99,7 @@ To draw a frame, call the `drawFrame` method on the `WilsonGPU` instance. To set
 wilson.setUniforms({ c: [0, 1] });
 ```
 
-Specifying the `shaders` field of the `options` object instead of the singular `shader` field allows for specifing multiple shaders, which allows for easier switching without having multiple Wilson instances. The `shaders` field is an object whose keys are the IDs of the shader programs, and whose values are strings containing the GLSL code. Similarly, when `shaders` is specified, the `uniforms` field is an object whose keys are the IDs of the shader programs, and whose values are objects with the same structure as the `uniforms` field of a single shader. Regardless of which field is used, the `loadShader` method allows for dynamically loading shaders later.
+Specifying the `shaders` field of the `options` object instead of the singular `shader` field allows for specifying multiple shaders, which allows for easier switching without having multiple Wilson instances. The `shaders` field is an object whose keys are the IDs of the shader programs, and whose values are strings containing the GLSL code. Similarly, when `shaders` is specified, the `uniforms` field is an object whose keys are the IDs of the shader programs, and whose values are objects with the same structure as the `uniforms` field of a single shader. Regardless of which field is used, the `loadShader` method allows for dynamically loading shaders later.
 
 
 
@@ -122,7 +122,7 @@ touchmove: ({ x, y, xDelta, yDelta, event }) => {}
 wheel: ({ x, y, scrollDelta, event }) => {}
 ```
 
-The only nonstandard name is `mousedrag`, which is called only when the mouse is being dragged (`mousemove` is called only when the mouse is not being dragged). However, the most common use case is to use these events to implement panning and zooming. Wilson handles these automatically, including supporting pinch-to-zoom on touchscreens and inertia for both panning and zooming. To take advantage of these features, set `useForPanAndZoom: true` in the `interactionOptions` field of the `options` object, and also prodive a callback for updating the scene when the world coordinates change:
+The only nonstandard name is `mousedrag`, which is called only when the mouse is being dragged (`mousemove` is called only when the mouse is not being dragged). However, using these may be unnecessary: the most common use for these events is panning and zooming, which Wilson handles automatically, including supporting pinch-to-zoom on touchscreens and inertia for both panning and zooming. To take advantage of these features, set `useForPanAndZoom: true` in the `interactionOptions` field of the `options` object, and also provide a callback for updating the scene when the world coordinates change:
 
 ```js
 const options = {
@@ -132,6 +132,8 @@ const options = {
 	},
 };
 ```
+
+Wilson provides a built-in button to animate the world size and center (and all draggables, mentioned in the next section) back to their default values. Without it, you can still reset manually by calling the `resetWorldCoordinates` and `resetDraggables` methods; with it, you can pass the `onReset` callback as an option, which is called when the button is pressed.
 
 
 
@@ -206,6 +208,9 @@ The above guide, along with the example project, are a great way to get started 
 - `verbose`: a boolean for whether to print verbose messages. Defaults to `false`.
 - `clampWorldCoordinatesMode: "one" | "both"`: a string that determines how the world coordinates are clamped when both the `x` and `y` values are constrained. `"both"` clamps the coordinates so that neither `x` nor `y` is ever outside the specified bounds, while `"one"` clamps the coordinates so that at most one of `x` or `y` is outside the specified bounds. The typical interaction with fullscreen is that `"one"` allows the amount of visible world to increase, while `"both"` crops into the world that was visible when not in fullscreen. Can be changed dynamically; defaults to `"one"`.
 - `onResizeCanvas: () => void`: a function that is called whenever the canvas is resized.
+- `useResetButton: boolean`: a boolean for whether to use a reset button. Defaults to `false`.
+- `resetButtonIconPath: string`: a string for the path to the reset button image. Required (and only allowed) if `useResetButton` is `true`.
+- `onReset: () => void`: a function that is called when the reset button is pressed.
 - `useP3ColorSpace`: a boolean for whether to use the wider P3 color space for the canvas. Even if this is `true`, Wilson will check for hardware P3 support before using it. Note that drawing in a 2D context with P3 colors *also* requires a different color syntax, e.g. `wilson.ctx.fillStyle = "color(display-p3 1 0 0)";`. Defaults to `true`.
 - `reduceMotion`: a boolean for whether to use reduced motion animations. If left unspecified, the user's accessibility settings will be used to determine whether reduced motion is enabled.
 - `interactionOptions`: an object with some or all of the following fields:

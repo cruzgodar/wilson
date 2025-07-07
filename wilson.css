@@ -165,6 +165,10 @@
 {
 	opacity: 0;
 	transition: opacity .15s ease-out;
+
+	width: 18px;
+	height: 18px;
+	padding: 3.5px;
 }
 
 .WILSON_fullscreen-container.WILSON_fullscreen .WILSON_enter-fullscreen-button
