@@ -144,12 +144,12 @@
 
 .WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button, .WILSON_reset-button
 {
-	width: 15px;
-	height: 15px;
+	width: 16px;
+	height: 16px;
 	
 	background: rgb(255, 255, 255);
 	border: 2px solid rgb(64, 64, 64);
-	border-radius: 25%;
+	border-radius: 8px;
 	padding: 5px;
 	
 	cursor: pointer;
@@ -166,9 +166,9 @@
 	opacity: 0;
 	transition: opacity .15s ease-out;
 
-	width: 18px;
-	height: 18px;
-	padding: 3.5px;
+	width: 20px;
+	height: 20px;
+	padding: 3px;
 }
 
 .WILSON_fullscreen-container.WILSON_fullscreen .WILSON_enter-fullscreen-button
