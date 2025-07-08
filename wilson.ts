@@ -749,7 +749,7 @@ class Wilson
 
 		if (!animate)
 		{
-			this.#resizeWorld({
+			this.resizeWorld({
 				width,
 				height,
 				centerX: this.#defaultWorldCenterX,
@@ -777,7 +777,7 @@ class Wilson
 				? 2 * progress * progress 
 				: 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
-			this.#resizeWorld({
+			this.resizeWorld({
 				width: (1 - t) * oldWorldWidth + t * width,
 				height: (1 - t) * oldWorldHeight + t * height,
 				centerX: (1 - t) * oldWorldCenterX + t * this.#defaultWorldCenterX,
@@ -1057,51 +1057,7 @@ class Wilson
 		maxX,
 		minY,
 		maxY,
-	}: {
-		width?: number,
-		height?: number,
-		centerX?: number,
-		centerY?: number,
-		minWidth?: number,
-		maxWidth?: number,
-		minHeight?: number,
-		maxHeight?: number,
-		minX?: number,
-		maxX?: number,
-		minY?: number,
-		maxY?: number,
-	}) {
-		this.#resizeWorld({
-			width,
-			height,
-			centerX,
-			centerY,
-			minWidth,
-			maxWidth,
-			minHeight,
-			maxHeight,
-			minX,
-			maxX,
-			minY,
-			maxY,
-			showResetButton: true,
-		});
-	}
-
-	#resizeWorld({
-		width,
-		height,
-		centerX,
-		centerY,
-		minWidth,
-		maxWidth,
-		minHeight,
-		maxHeight,
-		minX,
-		maxX,
-		minY,
-		maxY,
-		showResetButton,
+		showResetButton = true,
 	}: {
 		width?: number,
 		height?: number,
@@ -1201,18 +1157,18 @@ class Wilson
 		this.#clampWorldCoordinates();
 		this.#updateDraggablesLocation();
 
-		if (showResetButton)
+		const differentFromLastWorldSize = this.#worldWidth !== lastWorldWidth
+			|| this.#worldHeight !== lastWorldHeight
+			|| this.#worldCenterX !== lastWorldCenterX
+			|| this.#worldCenterY !== lastWorldCenterY;
+
+		if (showResetButton && differentFromLastWorldSize)
 		{
-			this.#showResetButton();
+			this.showResetButton();
 		}
 
-		if (
-			this.useInteractionForPanAndZoom && (
-				this.#worldWidth !== lastWorldWidth
-				|| this.#worldHeight !== lastWorldHeight
-				|| this.#worldCenterX !== lastWorldCenterX
-				|| this.#worldCenterY !== lastWorldCenterY
-		)) {
+		if (this.useInteractionForPanAndZoom && differentFromLastWorldSize)
+		{
 			this.#interactionOnPanAndZoom();
 		}
 	}
@@ -2077,7 +2033,7 @@ class Wilson
 			this.#clampWorldCoordinates(Math.min(timeElapsed / (1000 / 60), 1));
 			this.#updateDraggablesLocation();
 			this.#interactionOnPanAndZoom();
-			this.#showResetButton();
+			this.showResetButton();
 		}
 
 		if (this.#needDraggablesContainerSizeUpdate)
@@ -2219,7 +2175,7 @@ class Wilson
 
 				if (showResetButton)
 				{
-					this.#showResetButton();
+					this.showResetButton();
 				}
 			}
 		}
@@ -2322,7 +2278,7 @@ class Wilson
 		this.#draggables[id].location = [x, y];
 		this.draggables[id].location = [x, y];
 
-		this.#showResetButton();
+		this.showResetButton();
 	}
 
 	#draggableOnTouchstart(e: TouchEvent, id: string)
@@ -2438,7 +2394,7 @@ class Wilson
 		this.#draggables[id].location = [x, y];
 		this.draggables[id].location = [x, y];
 
-		this.#showResetButton();
+		this.showResetButton();
 	}
 
 	#updateDraggablesContainerSize()
@@ -2561,7 +2517,7 @@ class Wilson
 		}
 	}
 
-	#showResetButton()
+	showResetButton()
 	{
 		if (this.#resetButton)
 		{

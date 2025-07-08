@@ -292,10 +292,11 @@ The above guide, along with the example project, are a great way to get started 
 }
 ```
 - `resizeCanvas({ width?: number, height?: number })`: resizes the canvas to the given dimensions. Exactly one of `width` and `height` must be specified.
-- `resizeWorld({ width?: number, height?: number, centerX?: number, centerY?: number, minWidth?: number, maxWidth?: number, minHeight?: number, maxHeight?: number, minX?: number, maxX?: number, minY?: number, maxY?: number })`: sets the world size, center, and/or bounds. If one of `width` and `height` is unspecified, the other will be calculated automatically to match the aspect ratio; it is possible, though not recommended, to specify both.
+- `resizeWorld({ width?: number, height?: number, centerX?: number, centerY?: number, minWidth?: number, maxWidth?: number, minHeight?: number, maxHeight?: number, minX?: number, maxX?: number, minY?: number, maxY?: number, showResetButton?: boolean })`: sets the world size, center, and/or bounds. If one of `width` and `height` is unspecified, the other will be calculated automatically to match the aspect ratio; it is possible, though not recommended, to specify both. If the reset button is used, at least one value has changed, and `showResetButton` is `true`, the reset button will be shown.
 - `resetWorldCoordinates(animate?: boolean)`: resets the world coordinates to their default values.
 - `resetDraggables(animate?: boolean)`: resets the draggable locations to their default values.
 - `reset()`: resets the world coordinates and draggable locations to their default values, calls the `onReset` callback, and hides the reset button.
+- `showResetButton()`: shows the reset button if it exists. Can be called frequently.
 - `setCurrentStateAsDefault()`: sets the current world coordinates and draggable locations as the default state.
 - `setDraggables(draggables: {[id: string]: [number, number]})`: sets the world coordinates of the draggables. If a draggable with the given ID does not exist, it will be created.
 - `removeDraggables(id: string | string[])`: removes the draggable with the given ID. If an array of IDs is given, all of them will be removed.
