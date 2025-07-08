@@ -339,6 +339,7 @@ class Wilson
 
 	#useResetButton: boolean;
 	#resetButton: HTMLElement | null = null;
+	#resetButtonTimeoutId?: number;
 	#resetButtonIconPath?: string;
 	animateReset: boolean;
 	onReset: (animate: boolean) => void = () => {};
@@ -903,6 +904,16 @@ class Wilson
 		if (this.#resetButton)
 		{
 			this.#resetButton.style.opacity = "0";
+
+			clearTimeout(this.#resetButtonTimeoutId);
+
+			this.#resetButtonTimeoutId = window.setTimeout(() =>
+			{
+				if (this.#resetButton)
+				{
+					this.#resetButton.style.display = "none";
+				}
+			}, 150);
 		}
 	}
 
@@ -2554,7 +2565,17 @@ class Wilson
 	{
 		if (this.#resetButton)
 		{
-			this.#resetButton.style.opacity = "1";
+			clearTimeout(this.#resetButtonTimeoutId);
+
+			this.#resetButton.style.display = "block";
+			
+			requestAnimationFrame(() =>
+			{
+				if (this.#resetButton)
+				{
+					this.#resetButton.style.opacity = "1";
+				}
+			});
 		}
 	}
 

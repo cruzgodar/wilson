@@ -164,6 +164,7 @@
 .WILSON_reset-button
 {
 	opacity: 0;
+	display: none;
 	transition: opacity .15s ease-out;
 
 	width: 20px;
