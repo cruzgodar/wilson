@@ -1419,13 +1419,6 @@ class Wilson
 
 	#onMousedown(e: MouseEvent)
 	{
-		if (Date.now() - this.#lastInteractionTimes.grab <= 33)
-		{
-			return;
-		}
-
-		this.#lastInteractionTimes.grab = Date.now();
-
 		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
 		{
 			return;
@@ -1446,19 +1439,19 @@ class Wilson
 		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
 		this.#lastInteractionRow = e.clientY;
 		this.#lastInteractionCol = e.clientX;
+
+		if (Date.now() - this.#lastInteractionTimes.grab <= 33)
+		{
+			return;
+		}
+
+		this.#lastInteractionTimes.grab = Date.now();
 		
 		this.#interactionCallbacks.mousedown({ x, y, event: e });
 	}
 
 	#onMouseup(e: MouseEvent)
 	{
-		if (Date.now() - this.#lastInteractionTimes.release <= 33)
-		{
-			return;
-		}
-
-		this.#lastInteractionTimes.release = Date.now();
-
 		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
 		{
 			return;
@@ -1480,6 +1473,13 @@ class Wilson
 		const [x, y] = this.#interpolatePageToWorld([e.clientY, e.clientX]);
 		this.#lastInteractionRow = e.clientY;
 		this.#lastInteractionCol = e.clientX;
+
+		if (Date.now() - this.#lastInteractionTimes.release <= 33)
+		{
+			return;
+		}
+
+		this.#lastInteractionTimes.release = Date.now();
 		
 		this.#interactionCallbacks.mouseup({ x, y, event: e });
 	}
@@ -1630,13 +1630,6 @@ class Wilson
 	
 	#onTouchstart(e: TouchEvent)
 	{
-		if (Date.now() - this.#lastInteractionTimes.grab <= 33)
-		{
-			return;
-		}
-
-		this.#lastInteractionTimes.grab = Date.now();
-
 		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
 		{
 			return;
@@ -1665,19 +1658,19 @@ class Wilson
 			this.#lastInteractionRow2 = e.touches[1].clientY;
 			this.#lastInteractionCol2 = e.touches[1].clientX;
 		}
+
+		if (Date.now() - this.#lastInteractionTimes.grab <= 33)
+		{
+			return;
+		}
+
+		this.#lastInteractionTimes.grab = Date.now();
 		
 		this.#interactionCallbacks.touchstart({ x, y, event: e });
 	}
 
 	#onTouchend(e: TouchEvent)
 	{
-		if (Date.now() - this.#lastInteractionTimes.release <= 33)
-		{
-			return;
-		}
-
-		this.#lastInteractionTimes.release = Date.now();
-
 		if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable"))
 		{
 			return;
@@ -1744,6 +1737,13 @@ class Wilson
 
 			this.#currentlyPinching = false;
 		}
+
+		if (Date.now() - this.#lastInteractionTimes.release <= 33)
+		{
+			return;
+		}
+
+		this.#lastInteractionTimes.release = Date.now();
 		
 		this.#interactionCallbacks.touchend({ x, y, event: e });
 	}

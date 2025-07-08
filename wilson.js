@@ -1014,10 +1014,6 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         }
     }
 }, _Wilson_onMousedown = function _Wilson_onMousedown(e) {
-    if (Date.now() - __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").grab <= 33) {
-        return;
-    }
-    __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").grab = Date.now();
     if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable")) {
         return;
     }
@@ -1031,12 +1027,12 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     const [x, y] = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [e.clientY, e.clientX]);
     __classPrivateFieldSet(this, _Wilson_lastInteractionRow, e.clientY, "f");
     __classPrivateFieldSet(this, _Wilson_lastInteractionCol, e.clientX, "f");
-    __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").mousedown({ x, y, event: e });
-}, _Wilson_onMouseup = function _Wilson_onMouseup(e) {
-    if (Date.now() - __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").release <= 33) {
+    if (Date.now() - __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").grab <= 33) {
         return;
     }
-    __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").release = Date.now();
+    __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").grab = Date.now();
+    __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").mousedown({ x, y, event: e });
+}, _Wilson_onMouseup = function _Wilson_onMouseup(e) {
     if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable")) {
         return;
     }
@@ -1051,6 +1047,10 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     const [x, y] = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_interpolatePageToWorld).call(this, [e.clientY, e.clientX]);
     __classPrivateFieldSet(this, _Wilson_lastInteractionRow, e.clientY, "f");
     __classPrivateFieldSet(this, _Wilson_lastInteractionCol, e.clientX, "f");
+    if (Date.now() - __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").release <= 33) {
+        return;
+    }
+    __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").release = Date.now();
     __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").mouseup({ x, y, event: e });
 }, _Wilson_onMouseenter = function _Wilson_onMouseenter(e) {
     if (this.useInteractionForPanAndZoom) {
@@ -1132,10 +1132,6 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     __classPrivateFieldSet(this, _Wilson_worldCenterY, newWorldCenterY, "f");
     this.worldCenterY = __classPrivateFieldGet(this, _Wilson_worldCenterY, "f");
 }, _Wilson_onTouchstart = function _Wilson_onTouchstart(e) {
-    if (Date.now() - __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").grab <= 33) {
-        return;
-    }
-    __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").grab = Date.now();
     if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable")) {
         return;
     }
@@ -1154,12 +1150,12 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         __classPrivateFieldSet(this, _Wilson_lastInteractionRow2, e.touches[1].clientY, "f");
         __classPrivateFieldSet(this, _Wilson_lastInteractionCol2, e.touches[1].clientX, "f");
     }
-    __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").touchstart({ x, y, event: e });
-}, _Wilson_onTouchend = function _Wilson_onTouchend(e) {
-    if (Date.now() - __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").release <= 33) {
+    if (Date.now() - __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").grab <= 33) {
         return;
     }
-    __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").release = Date.now();
+    __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").grab = Date.now();
+    __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").touchstart({ x, y, event: e });
+}, _Wilson_onTouchend = function _Wilson_onTouchend(e) {
     if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable")) {
         return;
     }
@@ -1204,6 +1200,10 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         }
         __classPrivateFieldSet(this, _Wilson_currentlyPinching, false, "f");
     }
+    if (Date.now() - __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").release <= 33) {
+        return;
+    }
+    __classPrivateFieldGet(this, _Wilson_lastInteractionTimes, "f").release = Date.now();
     __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").touchend({ x, y, event: e });
 }, _Wilson_onTouchmove = function _Wilson_onTouchmove(e) {
     if (this.useInteractionForPanAndZoom) {
