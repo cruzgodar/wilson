@@ -210,6 +210,7 @@ The above guide, along with the example project, are a great way to get started 
 - `onResizeCanvas: () => void`: a function that is called whenever the canvas is resized.
 - `useResetButton: boolean`: a boolean for whether to use a reset button. Defaults to `false`.
 - `resetButtonIconPath: string`: a string for the path to the reset button image. Required (and only allowed) if `useResetButton` is `true`.
+- `animateReset: boolean`: a boolean for whether to animate by default when resetting. Defaults to `true`.
 - `onReset: () => void`: a function that is called when the reset button is pressed.
 - `useP3ColorSpace`: a boolean for whether to use the wider P3 color space for the canvas. Even if this is `true`, Wilson will check for hardware P3 support before using it. Note that drawing in a 2D context with P3 colors *also* requires a different color syntax, e.g. `wilson.ctx.fillStyle = "color(display-p3 1 0 0)";`. Defaults to `true`.
 - `reduceMotion`: a boolean for whether to use reduced motion animations. If left unspecified, the user's accessibility settings will be used to determine whether reduced motion is enabled.
@@ -292,6 +293,10 @@ The above guide, along with the example project, are a great way to get started 
 ```
 - `resizeCanvas({ width?: number, height?: number })`: resizes the canvas to the given dimensions. Exactly one of `width` and `height` must be specified.
 - `resizeWorld({ width?: number, height?: number, centerX?: number, centerY?: number, minWidth?: number, maxWidth?: number, minHeight?: number, maxHeight?: number, minX?: number, maxX?: number, minY?: number, maxY?: number })`: sets the world size, center, and/or bounds. If one of `width` and `height` is unspecified, the other will be calculated automatically to match the aspect ratio; it is possible, though not recommended, to specify both.
+- `resetWorldCoordinates(animate?: boolean)`: resets the world coordinates to their default values.
+- `resetDraggables(animate?: boolean)`: resets the draggable locations to their default values.
+- `reset()`: resets the world coordinates and draggable locations to their default values, calls the `onReset` callback, and hides the reset button.
+- `setCurrentStateAsDefault()`: sets the current world coordinates and draggable locations as the default state.
 - `setDraggables(draggables: {[id: string]: [number, number]})`: sets the world coordinates of the draggables. If a draggable with the given ID does not exist, it will be created.
 - `removeDraggables(id: string | string[])`: removes the draggable with the given ID. If an array of IDs is given, all of them will be removed.
 - `enterFullscreen()`: enters fullscreen mode.

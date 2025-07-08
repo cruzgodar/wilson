@@ -80,7 +80,7 @@ const defaultInteractionCallbacks: InteractionCallbacks = {
 };
 
 type DraggableCallBacks = {
-	grab: ({ id, x, y, event }: { id: string, x: number, y: number, event: Event }) => void,
+	grab: ({ id, x, y, event }: { id: string, x: number, y: number, event?: Event }) => void,
 
 	drag: ({
 		id,
@@ -98,7 +98,7 @@ type DraggableCallBacks = {
 		event?: Event
 	}) => void,
 
-	release: ({ id, x, y, event }: { id: string, x: number, y: number, event: Event }) => void,
+	release: ({ id, x, y, event }: { id: string, x: number, y: number, event?: Event }) => void,
 }
 
 const defaultDraggableCallbacks: DraggableCallBacks = {
@@ -187,7 +187,8 @@ type WilsonOptions = (
 	maxWorldY?: number,
 	clampWorldCoordinatesMode?: "one" | "both",
 	verbose?: boolean,
-
+	
+	animateReset?: boolean,
 
 	onResizeCanvas?: () => void,
 
@@ -339,7 +340,8 @@ class Wilson
 	#useResetButton: boolean;
 	#resetButton: HTMLElement | null = null;
 	#resetButtonIconPath?: string;
-	onReset: () => void = () => {};
+	animateReset: boolean;
+	onReset: (animate: boolean) => void = () => {};
 	#defaultWorldCenterX: number;
 	#defaultWorldCenterY: number;
 	#defaultWorldWidth: number;
@@ -494,6 +496,7 @@ class Wilson
 		this.#defaultWorldHeight = this.#worldHeight;
 
 		this.#useResetButton = options.useResetButton ?? false;
+		this.animateReset = options.animateReset ?? true;
 
 		if (options.useResetButton)
 		{
@@ -705,12 +708,18 @@ class Wilson
 
 	
 
-	setDefaultState()
+	setCurrentStateAsDefault()
 	{
 		this.#defaultWorldCenterX = this.#worldCenterX;
 		this.#defaultWorldCenterY = this.#worldCenterY;
 		this.#defaultWorldWidth = this.#nonFullscreenWorldWidth;
 		this.#defaultWorldHeight = this.#nonFullscreenWorldHeight;
+
+		this.#defaultDraggableLocations = {};
+		for (const id in this.#draggables)
+		{
+			this.#defaultDraggableLocations[id] = [...this.#draggables[id].location];
+		}
 	}
 
 	#getDefaultWorldSize(): [number, number]
@@ -733,7 +742,7 @@ class Wilson
 		];
 	}
 
-	resetWorldCoordinates(animate: boolean = true)
+	resetWorldCoordinates(animate: boolean = this.animateReset)
 	{
 		const [width, height] = this.#getDefaultWorldSize();
 
@@ -784,8 +793,17 @@ class Wilson
 		requestAnimationFrame(update);
 	}
 
-	resetDraggables(animate: boolean = true)
+	resetDraggables(animate: boolean = this.animateReset)
 	{
+		for (const id in this.#draggables)
+		{
+			this.#draggableCallbacks.grab({
+				id,
+				x: this.#draggables[id].location[0],
+				y: this.#draggables[id].location[1],
+			});
+		}
+
 		const oldDraggableLocations: DraggableLocations = {};
 
 		for (const id in this.#draggables)
@@ -805,6 +823,15 @@ class Wilson
 					y: this.#draggables[id].location[1],
 					xDelta: this.#draggables[id].location[0] - oldDraggableLocations[id][0],
 					yDelta: this.#draggables[id].location[1] - oldDraggableLocations[id][1],
+				});
+			}
+
+			for (const id in this.#draggables)
+			{
+				this.#draggableCallbacks.release({
+					id,
+					x: this.#draggables[id].location[0],
+					y: this.#draggables[id].location[1],
 				});
 			}
 
@@ -850,9 +877,33 @@ class Wilson
 			{
 				requestAnimationFrame(update);
 			}
+
+			else
+			{
+				for (const id in this.#draggables)
+				{
+					this.#draggableCallbacks.release({
+						id,
+						x: this.#draggables[id].location[0],
+						y: this.#draggables[id].location[1],
+					});
+				}
+			}
 		};
 		
 		requestAnimationFrame(update);
+	}
+
+	reset()
+	{
+		this.resetWorldCoordinates();
+		this.resetDraggables();
+		this.onReset(this.animateReset);
+
+		if (this.#resetButton)
+		{
+			this.#resetButton.style.opacity = "0";
+		}
 	}
 
 
@@ -2075,7 +2126,18 @@ class Wilson
 
 	setDraggables(draggables: DraggableLocations)
 	{
-		this.#setDraggables(draggables, true);
+		let onlyNewDraggables = true;
+
+		for (const id in this.#draggables)
+		{
+			if (id in draggables)
+			{
+				onlyNewDraggables = false;
+				break;
+			}
+		}
+
+		this.#setDraggables(draggables, !onlyNewDraggables);
 	}
 
 	#setDraggables(draggables: DraggableLocations, showResetButton: boolean)
@@ -2132,6 +2194,8 @@ class Wilson
 					location: [x, y],
 					currentlyDragging: false,
 				};
+
+				this.#defaultDraggableLocations[id] = [x, y];
 			}
 
 			else
@@ -2481,14 +2545,7 @@ class Wilson
 
 			this.#resetButton.addEventListener("click", () =>
 			{
-				this.resetWorldCoordinates();
-				this.resetDraggables();
-				this.onReset();
-
-				if (this.#resetButton)
-				{
-					this.#resetButton.style.opacity = "0";
-				}
+				this.reset();
 			});
 		}
 	}
