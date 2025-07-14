@@ -676,7 +676,7 @@ class Wilson
 
 	destroy()
 	{
-		this.#exitFullscreen();
+		this.#exitFullscreen(false);
 
 		this.#destroyed = true;
 
@@ -2813,7 +2813,7 @@ class Wilson
 
 
 
-	#exitFullscreen()
+	#exitFullscreen(resetMetaThemeColor: boolean = true)
 	{
 		this.#currentlyFullscreen = false;
 		this.currentlyFullscreen = this.#currentlyFullscreen;
@@ -2830,7 +2830,7 @@ class Wilson
 		}
 
 
-		if (this.#metaThemeColorElement)
+		if (this.#metaThemeColorElement && resetMetaThemeColor)
 		{
 			if (!this.#oldMetaThemeColor)
 			{

@@ -444,7 +444,7 @@ class Wilson {
         }
     }
     destroy() {
-        __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_exitFullscreen).call(this);
+        __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_exitFullscreen).call(this, false);
         __classPrivateFieldSet(this, _Wilson_destroyed, true, "f");
         window.removeEventListener("resize", __classPrivateFieldGet(this, _Wilson_onResizeWindow, "f"));
         document.documentElement.removeEventListener("keydown", __classPrivateFieldGet(this, _Wilson_handleKeydownEvent, "f"));
@@ -1691,7 +1691,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     styleElement.innerHTML = temporaryStyle;
     document.head.appendChild(styleElement);
     return styleElement;
-}, _Wilson_exitFullscreen = function _Wilson_exitFullscreen() {
+}, _Wilson_exitFullscreen = function _Wilson_exitFullscreen(resetMetaThemeColor = true) {
     __classPrivateFieldSet(this, _Wilson_currentlyFullscreen, false, "f");
     this.currentlyFullscreen = __classPrivateFieldGet(this, _Wilson_currentlyFullscreen, "f");
     if (__classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f")) {
@@ -1701,7 +1701,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         this.worldHeight = __classPrivateFieldGet(this, _Wilson_worldHeight, "f");
         __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_clampWorldCoordinates).call(this);
     }
-    if (__classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f")) {
+    if (__classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f") && resetMetaThemeColor) {
         if (!__classPrivateFieldGet(this, _Wilson_oldMetaThemeColor, "f")) {
             __classPrivateFieldGet(this, _Wilson_metaThemeColorElement, "f").removeAttribute("content");
         }
