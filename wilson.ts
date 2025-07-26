@@ -271,6 +271,11 @@ class Wilson
 		release: Date.now(),
 	};
 
+	#lastInteractionTypes = {
+		grab: "mouse",
+		release: "mouse",
+	};
+
 	
 
 	#numPreviousVelocities: number = 4;
@@ -1440,12 +1445,15 @@ class Wilson
 		this.#lastInteractionRow = e.clientY;
 		this.#lastInteractionCol = e.clientX;
 
-		if (Date.now() - this.#lastInteractionTimes.grab <= 33)
-		{
+		if (
+			Date.now() - this.#lastInteractionTimes.grab <= 33
+			&& this.#lastInteractionTypes.grab === "touch"
+		) {
 			return;
 		}
 
 		this.#lastInteractionTimes.grab = Date.now();
+		this.#lastInteractionTypes.grab = "mouse";
 		
 		this.#interactionCallbacks.mousedown({ x, y, event: e });
 	}
@@ -1474,12 +1482,15 @@ class Wilson
 		this.#lastInteractionRow = e.clientY;
 		this.#lastInteractionCol = e.clientX;
 
-		if (Date.now() - this.#lastInteractionTimes.release <= 33)
-		{
+		if (
+			Date.now() - this.#lastInteractionTimes.release <= 33
+			&& this.#lastInteractionTypes.grab === "touch"
+		) {
 			return;
 		}
 
 		this.#lastInteractionTimes.release = Date.now();
+		this.#lastInteractionTypes.release = "mouse";
 		
 		this.#interactionCallbacks.mouseup({ x, y, event: e });
 	}
@@ -1659,12 +1670,15 @@ class Wilson
 			this.#lastInteractionCol2 = e.touches[1].clientX;
 		}
 
-		if (Date.now() - this.#lastInteractionTimes.grab <= 33)
-		{
+		if (
+			Date.now() - this.#lastInteractionTimes.grab <= 33
+			&& this.#lastInteractionTypes.grab === "mouse"
+		) {
 			return;
 		}
 
 		this.#lastInteractionTimes.grab = Date.now();
+		this.#lastInteractionTypes.grab = "touch";
 		
 		this.#interactionCallbacks.touchstart({ x, y, event: e });
 	}
@@ -1738,12 +1752,15 @@ class Wilson
 			this.#currentlyPinching = false;
 		}
 
-		if (Date.now() - this.#lastInteractionTimes.release <= 33)
-		{
+		if (
+			Date.now() - this.#lastInteractionTimes.release <= 33
+			&& this.#lastInteractionTypes.grab === "mouse"
+		) {
 			return;
 		}
 
 		this.#lastInteractionTimes.release = Date.now();
+		this.#lastInteractionTypes.release = "touch";
 		
 		this.#interactionCallbacks.touchend({ x, y, event: e });
 	}
