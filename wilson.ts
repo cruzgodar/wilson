@@ -4062,8 +4062,6 @@ export class WilsonGPU extends Wilson
 			});
 		`;
 
-		console.log(workerCode);
-
 		const blob = new Blob([workerCode], { type: "application/javascript" });
 		const workerUrl = URL.createObjectURL(blob);
 		const worker = new Worker(workerUrl);
