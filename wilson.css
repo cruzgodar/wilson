@@ -68,7 +68,7 @@
 	-webkit-user-select: none;
 	user-select: none;
 	
-	cursor: pointer;
+	cursor: grab;
 	
 	transition: width .125s ease-in-out,
 		height .125s ease-in-out,
@@ -83,6 +83,8 @@
 	
 	left: 2px;
 	top: 2px;
+
+	cursor: grabbing;
 }
 
 .WILSON_fullscreen-container.WILSON_fullscreen
