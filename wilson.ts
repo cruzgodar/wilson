@@ -681,7 +681,10 @@ class Wilson
 
 	destroy()
 	{
-		this.#exitFullscreen(false);
+		if (this.currentlyFullscreen)
+		{
+			this.#exitFullscreen(false);
+		}
 
 		this.#destroyed = true;
 
