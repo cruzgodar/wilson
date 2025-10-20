@@ -10,7 +10,7 @@ body
 	-webkit-text-size-adjust: 100%;
 }
 
-#demo-canvas, #demo-canvas-2
+#demo-canvas, #demo-canvas-2, #demo-canvas-3
 {
 	width: 75vmin;
 	height: calc(75vmin * 9 / 16);

@@ -1,3 +1,6 @@
+/// <reference path="./types/webgpu.d.ts" />
+
+
 type InteractionCallbacks = {
 	mousedown: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
 
@@ -990,7 +993,7 @@ class Wilson
 	
 	
 
-	resizeCanvasGPU = () => {}
+	resizeCanvasGL = () => {}
 
 	#resizeCanvas(
 		dimensions: { width: number, height?: undefined }
@@ -1025,7 +1028,7 @@ class Wilson
 			this.canvas.setAttribute("width", this.#canvasWidth.toString());
 			this.canvas.setAttribute("height", this.#canvasHeight.toString());
 
-			this.resizeCanvasGPU();
+			this.resizeCanvasGL();
 
 			this.#lastCanvasWidth = this.#canvasWidth;
 			this.#lastCanvasHeight = this.#canvasHeight;
@@ -3225,8 +3228,8 @@ export class WilsonCPU extends Wilson
 
 
 
-type ShaderProgramId = string;
-type UniformType = "int"
+type GLShaderProgramId = string;
+type GLUniformType = "int"
 	| "float"
 	| "vec2"
 	| "vec3"
@@ -3239,10 +3242,10 @@ type UniformType = "int"
 	| "mat2"
 	| "mat3"
 	| "mat4";
-type UniformValue = number | number[] | number[][];
-type UniformInitializers = {[name: string]: UniformValue};
+type GLUniformValue = number | number[] | number[][];
+type GLUniformInitializers = {[name: string]: GLUniformValue};
 
-const uniformFunctions: {[key in UniformType]: any} = {
+const uniformFunctions: {[key in GLUniformType]: any} = {
 	int: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
@@ -3322,7 +3325,7 @@ const uniformFunctions: {[key in UniformType]: any} = {
 	) => gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]),
 };
 
-type ReadPixelsOptions = {
+type GLReadPixelsOptions = {
 	row: number,
 	col: number,
 	height: number,
@@ -3330,43 +3333,43 @@ type ReadPixelsOptions = {
 	format: "unsignedByte" | "float",
 }
 
-type SingleShader = {
+type GLSingleShader = {
 	shader: string,
-	uniforms?: UniformInitializers
+	uniforms?: GLUniformInitializers
 };
 
-type MultipleShaders = {
-	shaders: {[id: ShaderProgramId]: string},
-	uniforms?: {[id: ShaderProgramId]: UniformInitializers},
+type GLMultipleShaders = {
+	shaders: {[id: GLShaderProgramId]: string},
+	uniforms?: {[id: GLShaderProgramId]: GLUniformInitializers},
 };
 
-export type WilsonGPUOptions = WilsonOptions
-	& (SingleShader | MultipleShaders)
+export type WilsonGLOptions = WilsonOptions
+	& (GLSingleShader | GLMultipleShaders)
 	& {
 		useWebGL2?: boolean,
 	}
 
-export class WilsonGPU extends Wilson
+export class WilsonGL extends Wilson
 {
 	gl: WebGLRenderingContext | WebGL2RenderingContext;
 
 	#useWebGL2: boolean;
 
-	#shaderPrograms: {[id: ShaderProgramId]: WebGLProgram} = {};
+	#shaderPrograms: {[id: GLShaderProgramId]: WebGLProgram} = {};
 
-	#shaderProgramSources: {[id: ShaderProgramId]: string} = {};
+	#shaderProgramSources: {[id: GLShaderProgramId]: string} = {};
 
 	#uniforms: {
-		[id: ShaderProgramId]: {
+		[id: GLShaderProgramId]: {
 			[name: string]: {
 				location: WebGLUniformLocation,
-				type: UniformType,
-				value?: UniformValue
+				type: GLUniformType,
+				value?: GLUniformValue
 			}
 		}
 	} = {};
 
-	constructor(canvas: HTMLCanvasElement, options: WilsonGPUOptions)
+	constructor(canvas: HTMLCanvasElement, options: WilsonGLOptions)
 	{
 		super(canvas, options);
 
@@ -3447,9 +3450,9 @@ export class WilsonGPU extends Wilson
 		shader,
 		uniforms = {}
 	}: {
-		id?: ShaderProgramId,
+		id?: GLShaderProgramId,
 		shader: string,
-		uniforms?: UniformInitializers
+		uniforms?: GLUniformInitializers
 	}) {
 		const vertexShaderSource = /* glsl*/`
 			attribute vec3 position;
@@ -3563,12 +3566,12 @@ export class WilsonGPU extends Wilson
 				throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader source: ${shader}`);
 			}
 
-			this.#uniforms[id][name] = { location, type: type as UniformType };
+			this.#uniforms[id][name] = { location, type: type as GLUniformType };
 			this.setUniforms({ [name]: value });
 		}
 	}
 
-	setUniforms(uniforms: UniformInitializers, shader: ShaderProgramId = this.#currentShaderId)
+	setUniforms(uniforms: GLUniformInitializers, shader: GLShaderProgramId = this.#currentShaderId)
 	{
 		this.gl.useProgram(this.#shaderPrograms[shader]);
 		
@@ -3588,7 +3591,7 @@ export class WilsonGPU extends Wilson
 		this.gl.useProgram(this.#shaderPrograms[this.#currentShaderId]);
 	}
 
-	useShader(id: ShaderProgramId)
+	useShader(id: GLShaderProgramId)
 	{
 		this.#currentShaderId = id;
 		this.gl.useProgram(this.#shaderPrograms[id]);
@@ -3753,9 +3756,9 @@ export class WilsonGPU extends Wilson
 		}
 	}
 
-	readPixels(options: ReadPixelsOptions)
+	readPixels(options: GLReadPixelsOptions)
 	{
-		const defaultOptions: ReadPixelsOptions = {
+		const defaultOptions: GLReadPixelsOptions = {
 			row: 0,
 			col: 0,
 			height: this.canvasHeight,
@@ -3786,7 +3789,7 @@ export class WilsonGPU extends Wilson
 
 
 
-	resizeCanvasGPU = () =>
+	resizeCanvasGL = () =>
 	{
 		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
 	};
@@ -3824,7 +3827,7 @@ export class WilsonGPU extends Wilson
 		format = "unsignedByte",
 	}: {
 		resolution?: number,
-		uniforms?: UniformInitializers,
+		uniforms?: GLUniformInitializers,
 		format?: "unsignedByte" | "float",
 	}): Promise<{
 		pixels: Uint8Array | Float32Array,
@@ -4112,7 +4115,7 @@ export class WilsonGPU extends Wilson
 
 		const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight);
 
-		const uniformData: {[name: string]: {type: UniformType, value: any}} = {};
+		const uniformData: {[name: string]: {type: GLUniformType, value: any}} = {};
 
 		for (const [name, data] of Object.entries(this.#uniforms[this.#currentShaderId]))
 		{
@@ -4146,7 +4149,7 @@ export class WilsonGPU extends Wilson
 	async downloadHighResFrame(
 		filename: string,
 		resolution: number = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight)),
-		uniforms: UniformInitializers = {}
+		uniforms: GLUniformInitializers = {}
 	) {
 		const { pixels, width, height } = await this.readHighResPixels({
 			resolution,
@@ -4195,5 +4198,250 @@ export class WilsonGPU extends Wilson
 
 			link.remove();
 		});
+	}
+}
+
+type GPUShaderProgramId = string;
+// TODO: add types and correct uniform initializers
+type GPUUniformType = "int";
+type GPUUniformValue = number | number[] | number[][];
+type GPUUniformInitializers = {[name: string]: GPUUniformValue};
+
+type GPUSingleShader = {
+	shader: string,
+	uniforms?: GPUUniformInitializers
+};
+
+type GPUMultipleShaders = {
+	shaders: {[id: GPUShaderProgramId]: string},
+	uniforms?: {[id: GPUShaderProgramId]: GPUUniformInitializers},
+};
+
+export type WilsonGPUOptions = WilsonOptions
+	& (GPUSingleShader);
+
+export class WilsonGPU extends Wilson
+{
+	device!: GPUDevice;
+	context!: GPUCanvasContext;
+	format!: GPUTextureFormat;
+
+	#uniformBuffer!: GPUBuffer;
+	#computePipeline!: GPUComputePipeline;
+	#renderPipeline!: GPURenderPipeline;
+	#bindGroup!: GPUBindGroup;
+	#outputTexture!: GPUTexture;
+
+	#loaded: Promise<void>;
+	#loadedResolve: () => void = () => {};
+	#loadedReject: () => void = () => {};
+
+	constructor(canvas: HTMLCanvasElement, options: WilsonGPUOptions)
+	{
+		super(canvas, options);
+
+		this.#loaded = new Promise((resolve, reject) =>
+		{
+			this.#loadedResolve = resolve;
+			this.#loadedReject = reject;
+		});
+
+		if (!navigator.gpu)
+		{
+			this.#loadedReject();
+			throw new Error("[Wilson] This browser does not support WebGPU");
+		}
+
+		this.#initWebGPU(options);
+	}
+
+	async #initWebGPU(options: WilsonGPUOptions)
+	{
+		const adapter = await navigator.gpu.requestAdapter();
+
+		if (!adapter)
+		{
+			throw new Error("[Wilson] Could not get WebGPU context");
+		}
+
+		this.device = await adapter.requestDevice();
+
+
+		const context = this.canvas.getContext("webgpu");
+		if (!context)
+		{
+			this.#loadedReject();
+			throw new Error("[Wilson] Could not get WebGPU context");
+		}
+		this.context = context;
+
+		this.format = navigator.gpu.getPreferredCanvasFormat();
+
+		this.context.configure({ device: this.device, format: this.format });
+
+
+
+		// TODO: uniform initialization
+
+		// TODO: handle multiple shaders
+		const shaderModule = this.device.createShaderModule({ code: options.shader });
+
+		// TODO: investigate what auto means here
+		this.#computePipeline = this.device.createComputePipeline({
+			layout: "auto",
+			compute: {
+				module: shaderModule,
+				entryPoint: "main"
+			}
+		});
+
+		if (!this.#computePipeline)
+		{
+			this.#loadedReject();
+			throw new Error("[Wilson] Could not create compute pipeline");
+		}
+
+		this.#uniformBuffer = this.device.createBuffer({
+			size: 16, // 2 floats for c (real, imag), 1 uint for max iterations, padding
+			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+		});
+
+		// Create output texture for compute shader
+		this.#outputTexture = this.device.createTexture({
+			size: [this.canvasWidth, this.canvasHeight],
+			// TODO: investigate rgba16float for HDR content
+			format: "rgba8unorm",
+			usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+		});
+
+		// Create bind group
+		this.#bindGroup = this.device.createBindGroup({
+			layout: this.#computePipeline.getBindGroupLayout(0),
+			entries: [
+				{
+					binding: 0,
+					resource: { buffer: this.#uniformBuffer }
+				},
+				{
+					binding: 1,
+					resource: this.#outputTexture.createView()
+				}
+			]
+		});
+
+
+
+		const displayShaderCode = /* wgsl */`
+			struct VertexOutput
+			{
+				@builtin(position) position: vec4<f32>,
+				@location(0) uv: vec2<f32>,
+			}
+			
+			@vertex
+			fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput
+			{
+				// Single triangle to cover the entire canvas.
+				var pos = array<vec2<f32>, 3>(
+					vec2<f32>(-1.0, -1.0),
+					vec2<f32>( 3.0, -1.0),
+					vec2<f32>(-1.0,  3.0)
+				);
+				
+				var output: VertexOutput;
+				output.position = vec4<f32>(pos[vertexIndex], 0.0, 1.0);
+				output.uv = (pos[vertexIndex] + 1.0) * 0.5;
+				output.uv.y = 1.0 - output.uv.y; // Flip Y
+				return output;
+			}
+			
+			@group(0) @binding(0) var texSampler: sampler;
+			@group(0) @binding(1) var tex: texture_2d<f32>;
+			
+			@fragment
+			fn fs_main(input: VertexOutput) -> @location(0) vec4<f32>
+			{
+				return textureSample(tex, texSampler, input.uv);
+			}
+		`;
+
+		const displayShaderModule = this.device.createShaderModule({
+			code: displayShaderCode
+		});
+		
+		this.#renderPipeline = this.device.createRenderPipeline({
+			layout: "auto",
+			vertex: {
+				module: displayShaderModule,
+				entryPoint: "vs_main"
+			},
+			fragment: {
+				module: displayShaderModule,
+				entryPoint: "fs_main",
+				targets: [{ format: this.format }]
+			}
+		});
+
+
+
+
+		this.#loadedResolve();
+	}
+
+
+
+	async drawFrame()
+	{
+		await this.#loaded;
+
+		// Update uniforms
+		const uniformData = new Float32Array([-0.3, 0.7]);
+		this.device.queue.writeBuffer(this.#uniformBuffer, 0, uniformData);
+		
+		const maxIterData = new Uint32Array([200]);
+		this.device.queue.writeBuffer(this.#uniformBuffer, 8, maxIterData);
+		
+		// Run compute shader
+		const commandEncoder = this.device.createCommandEncoder();
+		
+		const computePass = commandEncoder.beginComputePass();
+		computePass.setPipeline(this.#computePipeline);
+		computePass.setBindGroup(0, this.#bindGroup);
+		
+		// Dispatch workgroups (512 / 8 = 64 workgroups per dimension)
+		const workgroupCount = Math.ceil(this.canvasWidth / 8);
+		computePass.dispatchWorkgroups(workgroupCount, workgroupCount);
+		computePass.end();
+		
+		// Display the result
+		const sampler = this.device.createSampler({
+			magFilter: "linear",
+			minFilter: "linear"
+		});
+		
+		const displayBindGroup = this.device.createBindGroup({
+			layout: this.#renderPipeline.getBindGroupLayout(0),
+			entries: [
+				{ binding: 0, resource: sampler },
+				{ binding: 1, resource: this.#outputTexture.createView() }
+			]
+		});
+		
+		const textureView = this.context.getCurrentTexture().createView();
+		const renderPass = commandEncoder.beginRenderPass({
+			colorAttachments: [{
+				view: textureView,
+				clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
+				loadOp: "clear",
+				storeOp: "store"
+			}]
+		});
+		
+		renderPass.setPipeline(this.#renderPipeline);
+		renderPass.setBindGroup(0, displayBindGroup);
+		renderPass.draw(3);
+		renderPass.end();
+		
+		this.device.queue.submit([commandEncoder.finish()]);
 	}
 }

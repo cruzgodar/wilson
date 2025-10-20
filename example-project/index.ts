@@ -1,4 +1,4 @@
-import { WilsonCPU, WilsonCPUOptions, WilsonGPU, WilsonGPUOptions } from "/wilson.js";
+import { WilsonCPU, WilsonCPUOptions, WilsonGL, WilsonGLOptions, WilsonGPU, WilsonGPUOptions } from "/wilson.js";
 
 function initWilson1()
 {
@@ -111,7 +111,7 @@ function initWilson2()
 		}
 	`;
 
-	const options: WilsonGPUOptions = {
+	const options: WilsonGLOptions = {
 		shader,
 
 		uniforms: {
@@ -165,7 +165,7 @@ function initWilson2()
 		}
 	};
 
-	const wilson = new WilsonGPU(canvas, options);
+	const wilson = new WilsonGL(canvas, options);
 
 	drawFrame();
 
@@ -182,5 +182,152 @@ function initWilson2()
 
 
 
+function initWilson3()
+{
+	const canvas = document.querySelector("#demo-canvas-3") as HTMLCanvasElement;
+	const resolution = 1000;
+
+	const shader = /* wgsl */`
+		struct Uniforms
+		{
+			c: vec2<f32>,
+			maxIterations: u32,
+		}
+		
+		@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+		@group(0) @binding(1) var outputTex: texture_storage_2d<rgba8unorm, write>;
+		
+		@compute @workgroup_size(8, 8)
+		fn main(@builtin(global_invocation_id) globalId: vec3<u32>)
+		{
+			let dimensions = textureDimensions(outputTex);
+			let coords = vec2<u32>(globalId.xy);
+			
+			if (coords.x >= dimensions.x || coords.y >= dimensions.y)
+			{
+				return;
+			}
+			
+			// Convert pixel coordinates to complex plane [-2, 2]
+			let uv = vec2<f32>(coords) / vec2<f32>(dimensions);
+			var z = (uv * 4.0) - 2.0; // Map [0,1] to [-2,2]
+			
+			let c = uniforms.c;
+			var iterations = 0u;
+			
+			// Julia set iteration: z = z² + c
+			for (var i = 0u; i < uniforms.maxIterations; i++)
+			{
+				// Complex multiplication: (a + bi)² = (a² - b²) + (2ab)i
+				let zReal = z.x * z.x - z.y * z.y;
+				let zImag = 2.0 * z.x * z.y;
+				
+				z = vec2<f32>(zReal, zImag) + c;
+				
+				// Check if escaped
+				if (length(z) > 2.0)
+				{
+					iterations = i;
+					break;
+				}
+				
+				iterations = i;
+			}
+			
+			// Color based on iterations
+			let color = getColor(iterations, uniforms.maxIterations);
+			textureStore(outputTex, coords, color);
+		}
+		
+		fn getColor(iterations: u32, maxIter: u32) -> vec4<f32>
+		{
+			if (iterations >= maxIter - 1u)
+			{
+				return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+			}
+			
+			let t = f32(iterations) / f32(maxIter);
+			
+			// Smooth color gradient
+			let r = 0.5 + 0.5 * cos(3.0 + t * 6.28 + 0.0);
+			let g = 0.5 + 0.5 * cos(3.0 + t * 6.28 + 2.0);
+			let b = 0.5 + 0.5 * cos(3.0 + t * 6.28 + 4.0);
+			
+			return vec4<f32>(r, g, b, 1.0);
+		}
+	`;
+
+	const options: WilsonGPUOptions = {
+		shader,
+
+		uniforms: {
+			worldCenter: [0, 0],
+			worldSize: [2, 2],
+			c: [0, 1],
+		},
+
+		canvasWidth: resolution,
+		onResizeCanvas: drawFrame,
+
+		worldHeight: 3,
+
+		minWorldWidth: 0.00001,
+		minWorldHeight: 0.00001,
+
+		minWorldX: -2.5,
+		maxWorldX: 2.5,
+		minWorldY: -2.5,
+		maxWorldY: 2.5,
+
+		useResetButton: true,
+		resetButtonIconPath: "/reset.png",
+
+		interactionOptions: {
+			useForPanAndZoom: true,
+			onPanAndZoom: drawFrame
+		},
+
+		fullscreenOptions: {
+			fillScreen: true,
+			useFullscreenButton: true,
+			enterFullscreenButtonIconPath: "/enter-fullscreen.png",
+			exitFullscreenButtonIconPath: "/exit-fullscreen.png",
+		},
+
+		draggableOptions: {
+			draggables: {
+				c: [0, 1]
+			},
+
+			callbacks: {
+				drag: ({ id, x, y }) => {
+					if (id === "c")
+					{
+						// wilson.setUniforms({ c: [x, y] });
+						wilson.drawFrame();
+					}
+				}
+			}
+		}
+	};
+
+	const wilson = new WilsonGPU(canvas, options);
+
+	drawFrame();
+
+	function drawFrame()
+	{
+		// wilson.setUniforms({
+		// 	worldCenter: [wilson.worldCenterX, wilson.worldCenterY],
+		// 	worldSize: [wilson.worldWidth, wilson.worldHeight]
+		// });
+		
+		wilson.drawFrame();
+	}
+}
+
+
+
 initWilson1();
 initWilson2();
+initWilson3();
