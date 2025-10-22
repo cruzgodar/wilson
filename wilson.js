@@ -2470,7 +2470,6 @@ export class WilsonGPU extends Wilson {
             __classPrivateFieldSet(this, _WilsonGPU_loadedResolve, resolve, "f");
             __classPrivateFieldSet(this, _WilsonGPU_loadedReject, reject, "f");
         }), "f");
-        console.log(navigator, navigator.gpu);
         if (!navigator.gpu) {
             __classPrivateFieldGet(this, _WilsonGPU_loadedReject, "f").call(this);
             throw new Error("[Wilson] This browser does not support WebGPU");
@@ -2533,8 +2532,11 @@ _WilsonGPU_uniformBuffer = new WeakMap(), _WilsonGPU_computePipeline = new WeakM
         throw new Error("[Wilson] Could not get WebGPU context");
     }
     this.context = context;
-    this.format = navigator.gpu.getPreferredCanvasFormat();
-    this.context.configure({ device: this.device, format: this.format });
+    this.context.configure({
+        device: this.device,
+        format: "rgba16float",
+        toneMapping: { mode: "extended" },
+    });
     // TODO: uniform initialization
     // TODO: handle multiple shaders
     const shaderModule = this.device.createShaderModule({ code: options.shader });
@@ -2558,7 +2560,7 @@ _WilsonGPU_uniformBuffer = new WeakMap(), _WilsonGPU_computePipeline = new WeakM
     __classPrivateFieldSet(this, _WilsonGPU_outputTexture, this.device.createTexture({
         size: [this.canvasWidth, this.canvasHeight],
         // TODO: investigate rgba16float for HDR content
-        format: "rgba8unorm",
+        format: "rgba16float",
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
     }), "f");
     // Create bind group
@@ -2605,7 +2607,7 @@ _WilsonGPU_uniformBuffer = new WeakMap(), _WilsonGPU_computePipeline = new WeakM
 			@fragment
 			fn fs_main(input: VertexOutput) -> @location(0) vec4<f32>
 			{
-				return textureSample(tex, texSampler, input.uv);
+				return textureSample(tex, texSampler, input.uv) * 1.0;
 			}
 		`;
     const displayShaderModule = this.device.createShaderModule({
@@ -2620,7 +2622,7 @@ _WilsonGPU_uniformBuffer = new WeakMap(), _WilsonGPU_computePipeline = new WeakM
         fragment: {
             module: displayShaderModule,
             entryPoint: "fs_main",
-            targets: [{ format: this.format }]
+            targets: [{ format: "rgba16float", }]
         }
     }), "f");
     __classPrivateFieldGet(this, _WilsonGPU_loadedResolve, "f").call(this);

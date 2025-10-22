@@ -4275,9 +4275,11 @@ export class WilsonGPU extends Wilson
 		}
 		this.context = context;
 
-		this.format = navigator.gpu.getPreferredCanvasFormat();
-
-		this.context.configure({ device: this.device, format: this.format });
+		this.context.configure({
+			device: this.device,
+			format: "rgba16float",
+			toneMapping: { mode: "extended" },
+		});
 
 
 
@@ -4310,7 +4312,7 @@ export class WilsonGPU extends Wilson
 		this.#outputTexture = this.device.createTexture({
 			size: [this.canvasWidth, this.canvasHeight],
 			// TODO: investigate rgba16float for HDR content
-			format: "rgba8unorm",
+			format: "rgba16float",
 			usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
 		});
 
@@ -4361,7 +4363,7 @@ export class WilsonGPU extends Wilson
 			@fragment
 			fn fs_main(input: VertexOutput) -> @location(0) vec4<f32>
 			{
-				return textureSample(tex, texSampler, input.uv);
+				return textureSample(tex, texSampler, input.uv) * 1.0;
 			}
 		`;
 
@@ -4378,7 +4380,7 @@ export class WilsonGPU extends Wilson
 			fragment: {
 				module: displayShaderModule,
 				entryPoint: "fs_main",
-				targets: [{ format: this.format }]
+				targets: [{ format: "rgba16float", }]
 			}
 		});
 
