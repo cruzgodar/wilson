@@ -4201,11 +4201,82 @@ export class WilsonGL extends Wilson
 	}
 }
 
+
+type GPUTypeData = {
+	size: number,
+	alignment: number,
+	baseType: "float" | "int" | "uint",
+	isScalar?: boolean,
+	vectorSize?: number,
+	matrixSize?: [number, number]
+};
+
+const gpuTypeData: {
+	[key: string]: GPUTypeData
+} = {
+	// ============================================
+	// SCALAR TYPES
+	// ============================================
+	"f32": { size: 4, alignment: 4, baseType: "float", isScalar: true },
+	"i32": { size: 4, alignment: 4, baseType: "int", isScalar: true },
+	"u32": { size: 4, alignment: 4, baseType: "uint", isScalar: true },
+	"bool": { size: 4, alignment: 4, baseType: "uint", isScalar: true }, // Bools are stored as 32-bit in buffers
+	
+	// ============================================
+	// VECTOR TYPES - f32
+	// ============================================
+	"vec2<f32>": { size: 8, alignment: 8, baseType: "float", vectorSize: 2 },
+	"vec3<f32>": { size: 12, alignment: 16, baseType: "float", vectorSize: 3 }, // Note: vec3 aligns to 16!
+	"vec4<f32>": { size: 16, alignment: 16, baseType: "float", vectorSize: 4 },
+	
+	// ============================================
+	// VECTOR TYPES - i32
+	// ============================================
+	"vec2<i32>": { size: 8, alignment: 8, baseType: "int", vectorSize: 2 },
+	"vec3<i32>": { size: 12, alignment: 16, baseType: "int", vectorSize: 3 },
+	"vec4<i32>": { size: 16, alignment: 16, baseType: "int", vectorSize: 4 },
+	
+	// ============================================
+	// VECTOR TYPES - u32
+	// ============================================
+	"vec2<u32>": { size: 8, alignment: 8, baseType: "uint", vectorSize: 2 },
+	"vec3<u32>": { size: 12, alignment: 16, baseType: "uint", vectorSize: 3 },
+	"vec4<u32>": { size: 16, alignment: 16, baseType: "uint", vectorSize: 4 },
+	
+	// ============================================
+	// MATRIX TYPES - f32 (Square)
+	// ============================================
+	// Matrices are column-major: matCxR = C columns, R rows
+	// Size = columns * stride(column_type)
+	// Alignment = alignment(column_type)
+	
+	"mat2x2<f32>": { size: 16, alignment: 8, baseType: "float", matrixSize: [2, 2] },   // 2 cols of vec2<f32>, stride 8
+	"mat3x3<f32>": { size: 48, alignment: 16, baseType: "float", matrixSize: [3, 3] },  // 3 cols of vec3<f32>, stride 16
+	"mat4x4<f32>": { size: 64, alignment: 16, baseType: "float", matrixSize: [4, 4] },  // 4 cols of vec4<f32>, stride 16
+	
+	// ============================================
+	// MATRIX TYPES - f32 (Non-square)
+	// ============================================
+	// Format: matCxR where C = columns, R = rows
+	
+	// 2 columns (different row counts)
+	"mat2x3<f32>": { size: 32, alignment: 16, baseType: "float", matrixSize: [2, 3] },  // 2 cols of vec3<f32>, stride 16
+	"mat2x4<f32>": { size: 32, alignment: 16, baseType: "float", matrixSize: [2, 4] },  // 2 cols of vec4<f32>, stride 16
+	
+	// 3 columns (different row counts)
+	"mat3x2<f32>": { size: 24, alignment: 8, baseType: "float", matrixSize: [3, 2] },   // 3 cols of vec2<f32>, stride 8
+	"mat3x4<f32>": { size: 48, alignment: 16, baseType: "float", matrixSize: [3, 4] },  // 3 cols of vec4<f32>, stride 16
+	
+	// 4 columns (different row counts)
+	"mat4x2<f32>": { size: 32, alignment: 8, baseType: "float", matrixSize: [4, 2] },   // 4 cols of vec2<f32>, stride 8
+	"mat4x3<f32>": { size: 64, alignment: 16, baseType: "float", matrixSize: [4, 3] },  // 4 cols of vec4<f32>, stride 16
+};
+
 type GPUShaderProgramId = string;
-// TODO: add types and correct uniform initializers
-type GPUUniformType = "int";
 type GPUUniformValue = number | number[] | number[][];
 type GPUUniformInitializers = {[name: string]: GPUUniformValue};
+
+type GPUUniformData = {[name: string]: GPUTypeData & { offset: number }};
 
 type GPUSingleShader = {
 	shader: string,
@@ -4224,9 +4295,19 @@ export class WilsonGPU extends Wilson
 {
 	device!: GPUDevice;
 	context!: GPUCanvasContext;
-	format!: GPUTextureFormat;
+
+	#uniformData: GPUUniformData = {};
 
 	#uniformBuffer!: GPUBuffer;
+	#uniformBufferSize: number = 0;
+	// Todo: shouldn't be recreating the buffer every time
+	#uniformBufferData!: ArrayBuffer;
+	#uniformBufferViews!: {
+		float: Float32Array,
+		int: Int32Array,
+		uint: Uint32Array
+	};
+
 	#computePipeline!: GPUComputePipeline;
 	#renderPipeline!: GPURenderPipeline;
 	#bindGroup!: GPUBindGroup;
@@ -4353,7 +4434,6 @@ export class WilsonGPU extends Wilson
 				var output: VertexOutput;
 				output.position = vec4<f32>(pos[vertexIndex], 0.0, 1.0);
 				output.uv = (pos[vertexIndex] + 1.0) * 0.5;
-				output.uv.y = 1.0 - output.uv.y; // Flip Y
 				return output;
 			}
 			
@@ -4363,7 +4443,7 @@ export class WilsonGPU extends Wilson
 			@fragment
 			fn fs_main(input: VertexOutput) -> @location(0) vec4<f32>
 			{
-				return textureSample(tex, texSampler, input.uv) * 1.0;
+				return textureSample(tex, texSampler, input.uv);
 			}
 		`;
 
@@ -4386,8 +4466,116 @@ export class WilsonGPU extends Wilson
 
 
 
+		this.#initUniforms(options.shader);
 
 		this.#loadedResolve();
+	}
+
+
+
+	#initUniforms(shader: string)
+	{
+		// Pull the uniforms out of the shader code.
+		const structMatch = shader.match(/struct\s+Uniforms\s*\{([^}]+)\}/);
+		if (!structMatch)
+		{
+			console.warn("[Wilson] No Uniforms struct found in WGSL");
+			return;
+		}
+		
+		const structBody = structMatch[1];
+		const memberRegex = /(\w+)\s*:\s*([\w<>]+)/g;
+		let match;
+
+		let offset = 0;
+		
+		while ((match = memberRegex.exec(structBody)) !== null)
+		{
+			const name = match[1];
+			const typeString = match[2];
+
+			if (!(typeString in gpuTypeData))
+			{
+				throw new Error(`[Wilson] Invalid uniform type ${typeString} for uniform ${name} in shader "${shader}".`);
+			}
+
+			const typeData = gpuTypeData[typeString];
+
+			const size = typeData.size;
+			const alignment = typeData.alignment;
+
+			offset = Math.ceil(offset / alignment) * alignment;
+
+			this.#uniformData[name] = {
+				...typeData,
+				offset
+			};
+
+			offset += size;
+		}
+
+		this.#uniformBufferSize = Math.ceil(offset / 256) * 256;
+
+		this.#uniformBuffer = this.device.createBuffer({
+			size: this.#uniformBufferSize,
+			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+		});
+
+		this.#uniformBufferData = new ArrayBuffer(this.#uniformBufferSize);
+		this.#uniformBufferViews = {
+			float: new Float32Array(this.#uniformBufferData),
+			int: new Int32Array(this.#uniformBufferData),
+			uint: new Uint32Array(this.#uniformBufferData)
+		};
+	}
+
+	setUniforms(uniforms: GPUUniformInitializers)
+	{
+		for (const name in uniforms)
+		{
+			const value = uniforms[name];
+			
+			const typeData = this.#uniformData[name];
+			const viewOffset = this.#uniformData[name].offset / 4;
+			
+			if (typeData.isScalar)
+			{
+				// SCALAR: f32, i32, u32, bool
+				this.#uniformBufferViews[typeData.baseType][viewOffset] = value as number;
+			}
+			
+			else if (typeData.vectorSize)
+			{
+				// VECTOR: vec2/3/4<type>
+				const view = this.#uniformBufferViews[typeData.baseType];
+				
+				for (let i = 0; i < typeData.vectorSize; i++)
+				{
+					view[viewOffset + i] = (value as number[])[i];
+				}
+			}
+			
+			else if (typeData.matrixSize)
+			{
+				// MATRIX: matCxR<f32>
+				const cols = typeData.matrixSize[0];
+				const rows = typeData.matrixSize[1];
+				const view = this.#uniformBufferViews.float;
+				
+				// Column stride: vec2=2, vec3/vec4=4 (vec3 is padded!)
+				const colStride = rows === 2 ? 2 : 4;
+				
+				for (let col = 0; col < cols; col++)
+				{
+					for (let row = 0; row < rows; row++)
+					{
+						view[viewOffset + col * colStride + row] = (value as number[][])[row][col];
+					}
+				}
+			}
+		}
+		
+		this.device.queue.writeBuffer(this.#uniformBuffer, 0, this.#uniformBufferData);
 	}
 
 
