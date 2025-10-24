@@ -993,7 +993,7 @@ class Wilson
 	
 	
 
-	resizeCanvasGL = () => {}
+	resizeCanvasGPU = () => {}
 
 	#resizeCanvas(
 		dimensions: { width: number, height?: undefined }
@@ -1028,7 +1028,7 @@ class Wilson
 			this.canvas.setAttribute("width", this.#canvasWidth.toString());
 			this.canvas.setAttribute("height", this.#canvasHeight.toString());
 
-			this.resizeCanvasGL();
+			this.resizeCanvasGPU();
 
 			this.#lastCanvasWidth = this.#canvasWidth;
 			this.#lastCanvasHeight = this.#canvasHeight;
@@ -3789,7 +3789,7 @@ export class WilsonGL extends Wilson
 
 
 
-	resizeCanvasGL = () =>
+	resizeCanvasGPU = () =>
 	{
 		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
 	};
@@ -4310,7 +4310,12 @@ export class WilsonGPU extends Wilson
 
 	#computePipeline!: GPUComputePipeline;
 	#renderPipeline!: GPURenderPipeline;
+
 	#bindGroup!: GPUBindGroup;
+
+	#sampler!: GPUSampler;
+	#displayBindGroup!: GPUBindGroup;
+
 	#outputTexture!: GPUTexture;
 
 	#loaded: Promise<void>;
@@ -4384,14 +4389,13 @@ export class WilsonGPU extends Wilson
 			throw new Error("[Wilson] Could not create compute pipeline");
 		}
 
-
+		
 
 		this.#initUniforms(options.shader);
 
 		// Create output texture for compute shader
 		this.#outputTexture = this.device.createTexture({
 			size: [this.canvasWidth, this.canvasHeight],
-			// TODO: investigate rgba16float for HDR content
 			format: "rgba16float",
 			usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
 		});
@@ -4408,6 +4412,13 @@ export class WilsonGPU extends Wilson
 					resource: this.#outputTexture.createView()
 				}
 			]
+		});
+
+
+
+		this.#sampler = this.device.createSampler({
+			magFilter: "nearest",
+			minFilter: "nearest"
 		});
 
 
@@ -4460,6 +4471,14 @@ export class WilsonGPU extends Wilson
 				entryPoint: "fs_main",
 				targets: [{ format: "rgba16float", }]
 			}
+		});
+
+		this.#displayBindGroup = this.device.createBindGroup({
+			layout: this.#renderPipeline.getBindGroupLayout(0),
+			entries: [
+				{ binding: 0, resource: this.#sampler },
+				{ binding: 1, resource: this.#outputTexture.createView() }
+			]
 		});
 
 
@@ -4525,6 +4544,48 @@ export class WilsonGPU extends Wilson
 		};
 	}
 
+
+
+	resizeCanvasGPU = () =>
+	{
+		// Destroy old resources
+		if (this.#outputTexture)
+		{
+			this.#outputTexture.destroy();
+		}
+
+		// Create output texture for compute shader
+		this.#outputTexture = this.device.createTexture({
+			size: [this.canvasWidth, this.canvasHeight],
+			// TODO: investigate rgba16float for HDR content
+			format: "rgba16float",
+			usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+		});
+
+		this.#bindGroup = this.device.createBindGroup({
+			layout: this.#computePipeline.getBindGroupLayout(0),
+			entries: [
+				{
+					binding: 0,
+					resource: { buffer: this.#uniformBuffer }
+				},
+				{
+					binding: 1,
+					resource: this.#outputTexture.createView()
+				}
+			]
+		});
+
+		this.#displayBindGroup = this.device.createBindGroup({
+			layout: this.#renderPipeline.getBindGroupLayout(0),
+			entries: [
+				{ binding: 0, resource: this.#sampler },
+				{ binding: 1, resource: this.#outputTexture.createView() }
+			]
+		});
+	};
+
+
 	async setUniforms(uniforms: GPUUniformInitializers)
 	{
 		await this.#loaded;
@@ -4577,7 +4638,7 @@ export class WilsonGPU extends Wilson
 	}
 
 
-
+	// Todo: figure out what can be removed here
 	async drawFrame()
 	{
 		await this.#loaded;
@@ -4597,23 +4658,13 @@ export class WilsonGPU extends Wilson
 		computePass.setBindGroup(0, this.#bindGroup);
 		
 		// Dispatch workgroups (512 / 8 = 64 workgroups per dimension)
-		const workgroupCount = Math.ceil(this.canvasWidth / 8);
-		computePass.dispatchWorkgroups(workgroupCount, workgroupCount);
+		const workgroupSize = 8;
+		const workgroupsX = Math.ceil(this.canvasWidth / workgroupSize);
+		const workgroupsY = Math.ceil(this.canvasHeight / workgroupSize);
+		computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
 		computePass.end();
 		
-		// Display the result
-		const sampler = this.device.createSampler({
-			magFilter: "linear",
-			minFilter: "linear"
-		});
 		
-		const displayBindGroup = this.device.createBindGroup({
-			layout: this.#renderPipeline.getBindGroupLayout(0),
-			entries: [
-				{ binding: 0, resource: sampler },
-				{ binding: 1, resource: this.#outputTexture.createView() }
-			]
-		});
 		
 		const textureView = this.context.getCurrentTexture().createView();
 		const renderPass = commandEncoder.beginRenderPass({
@@ -4626,7 +4677,7 @@ export class WilsonGPU extends Wilson
 		});
 		
 		renderPass.setPipeline(this.#renderPipeline);
-		renderPass.setBindGroup(0, displayBindGroup);
+		renderPass.setBindGroup(0, this.#displayBindGroup);
 		renderPass.draw(3);
 		renderPass.end();
 		

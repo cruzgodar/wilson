@@ -227,12 +227,11 @@ function initWilson3()
 			let c = uniforms.c;
 			
 			// Julia set iteration: z = z² + c
-			for (var i = 0u; i < 200u; i++)
+			for (var i = 0u; i < 350u; i++)
 			{
 				// Check if escaped
 				if (length(z) > 2.0)
 				{
-					// Color based on iterations
 					textureStore(outputTex, coords, vec4<f32>(brightness / 10.0 * color, 1.0));
 					return;
 				}
