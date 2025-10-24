@@ -2530,7 +2530,8 @@ export class WilsonGPU extends Wilson {
         }
         __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_initWebGPU).call(this, options);
     }
-    setUniforms(uniforms) {
+    async setUniforms(uniforms) {
+        await __classPrivateFieldGet(this, _WilsonGPU_loaded, "f");
         for (const name in uniforms) {
             const value = uniforms[name];
             const typeData = __classPrivateFieldGet(this, _WilsonGPU_uniformData, "f")[name];
@@ -2565,10 +2566,10 @@ export class WilsonGPU extends Wilson {
     async drawFrame() {
         await __classPrivateFieldGet(this, _WilsonGPU_loaded, "f");
         // Update uniforms
-        const uniformData = new Float32Array([-0.3, 0.7]);
-        this.device.queue.writeBuffer(__classPrivateFieldGet(this, _WilsonGPU_uniformBuffer, "f"), 0, uniformData);
-        const maxIterData = new Uint32Array([200]);
-        this.device.queue.writeBuffer(__classPrivateFieldGet(this, _WilsonGPU_uniformBuffer, "f"), 8, maxIterData);
+        // const uniformData = new Float32Array([-0.3, 0.7]);
+        // this.device.queue.writeBuffer(this.#uniformBuffer, 0, uniformData);
+        // const maxIterData = new Uint32Array([200]);
+        // this.device.queue.writeBuffer(this.#uniformBuffer, 8, maxIterData);
         // Run compute shader
         const commandEncoder = this.device.createCommandEncoder();
         const computePass = commandEncoder.beginComputePass();
@@ -2638,10 +2639,7 @@ _WilsonGPU_uniformData = new WeakMap(), _WilsonGPU_uniformBuffer = new WeakMap()
         __classPrivateFieldGet(this, _WilsonGPU_loadedReject, "f").call(this);
         throw new Error("[Wilson] Could not create compute pipeline");
     }
-    __classPrivateFieldSet(this, _WilsonGPU_uniformBuffer, this.device.createBuffer({
-        size: 16, // 2 floats for c (real, imag), 1 uint for max iterations, padding
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    }), "f");
+    __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_initUniforms).call(this, options.shader);
     // Create output texture for compute shader
     __classPrivateFieldSet(this, _WilsonGPU_outputTexture, this.device.createTexture({
         size: [this.canvasWidth, this.canvasHeight],
@@ -2649,7 +2647,6 @@ _WilsonGPU_uniformData = new WeakMap(), _WilsonGPU_uniformBuffer = new WeakMap()
         format: "rgba16float",
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
     }), "f");
-    // Create bind group
     __classPrivateFieldSet(this, _WilsonGPU_bindGroup, this.device.createBindGroup({
         layout: __classPrivateFieldGet(this, _WilsonGPU_computePipeline, "f").getBindGroupLayout(0),
         entries: [
@@ -2710,7 +2707,6 @@ _WilsonGPU_uniformData = new WeakMap(), _WilsonGPU_uniformBuffer = new WeakMap()
             targets: [{ format: "rgba16float", }]
         }
     }), "f");
-    __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_initUniforms).call(this, options.shader);
     __classPrivateFieldGet(this, _WilsonGPU_loadedResolve, "f").call(this);
 }, _WilsonGPU_initUniforms = function _WilsonGPU_initUniforms(shader) {
     // Pull the uniforms out of the shader code.
@@ -2740,6 +2736,7 @@ _WilsonGPU_uniformData = new WeakMap(), _WilsonGPU_uniformBuffer = new WeakMap()
         offset += size;
     }
     __classPrivateFieldSet(this, _WilsonGPU_uniformBufferSize, Math.ceil(offset / 256) * 256, "f");
+    console.log(__classPrivateFieldGet(this, _WilsonGPU_uniformBufferSize, "f"));
     __classPrivateFieldSet(this, _WilsonGPU_uniformBuffer, this.device.createBuffer({
         size: __classPrivateFieldGet(this, _WilsonGPU_uniformBufferSize, "f"),
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST

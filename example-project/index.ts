@@ -191,7 +191,8 @@ function initWilson3()
 		struct Uniforms
 		{
 			c: vec2<f32>,
-			maxIterations: u32,
+			worldCenter: vec2<f32>,
+			worldSize: vec2<f32>,
 		}
 		
 		@group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -210,50 +211,39 @@ function initWilson3()
 			
 			// Convert pixel coordinates to complex plane [-2, 2]
 			let uv = vec2<f32>(coords) / vec2<f32>(dimensions);
-			var z = (uv * 4.0) - 2.0; // Map [0,1] to [-2,2]
+			var z = (uv - 0.5) * uniforms.worldSize + uniforms.worldCenter; // Map [0, 1] to [-2, 2]
+
+			let color = normalize(
+				vec3<f32>(
+					abs(z.x + z.y) / 2.0,
+					abs(z.x) / 2.0,
+					abs(z.y) / 2.0
+				)
+				+ .1 / length(z) * vec3<f32>(1.0, 1.0, 1.0)
+			);
+
+			var brightness = exp(-length(z));
 			
 			let c = uniforms.c;
-			var iterations = 0u;
 			
 			// Julia set iteration: z = z² + c
-			for (var i = 0u; i < uniforms.maxIterations; i++)
+			for (var i = 0u; i < 200u; i++)
 			{
-				// Complex multiplication: (a + bi)² = (a² - b²) + (2ab)i
-				let zReal = z.x * z.x - z.y * z.y;
-				let zImag = 2.0 * z.x * z.y;
-				
-				z = vec2<f32>(zReal, zImag) + c;
-				
 				// Check if escaped
 				if (length(z) > 2.0)
 				{
-					iterations = i;
-					break;
+					// Color based on iterations
+					textureStore(outputTex, coords, vec4<f32>(brightness / 10.0 * color, 1.0));
+					return;
 				}
-				
-				iterations = i;
+
+				z = vec2<f32>(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+
+				brightness += exp(-length(z));
 			}
 			
 			// Color based on iterations
-			let color = getColor(iterations, uniforms.maxIterations);
-			textureStore(outputTex, coords, color);
-		}
-		
-		fn getColor(iterations: u32, maxIter: u32) -> vec4<f32>
-		{
-			if (iterations >= maxIter - 1u)
-			{
-				return vec4<f32>(0.0, 0.0, 0.0, 1.0);
-			}
-			
-			let t = f32(iterations) / f32(maxIter);
-			
-			// Smooth color gradient
-			let r = 0.5 + 0.5 * cos(3.0 + t * 6.28 + 0.0);
-			let g = 0.5 + 0.5 * cos(3.0 + t * 6.28 + 2.0);
-			let b = 0.5 + 0.5 * cos(3.0 + t * 6.28 + 4.0);
-			
-			return vec4<f32>(r, g, b, 1.0);
+			textureStore(outputTex, coords, vec4<f32>(0.0, 0.0, 0.0, 1.0));
 		}
 	`;
 
@@ -303,7 +293,7 @@ function initWilson3()
 				drag: ({ id, x, y }) => {
 					if (id === "c")
 					{
-						// wilson.setUniforms({ c: [x, y] });
+						wilson.setUniforms({ c: [x, y] });
 						wilson.drawFrame();
 					}
 				}
@@ -317,10 +307,10 @@ function initWilson3()
 
 	function drawFrame()
 	{
-		// wilson.setUniforms({
-		// 	worldCenter: [wilson.worldCenterX, wilson.worldCenterY],
-		// 	worldSize: [wilson.worldWidth, wilson.worldHeight]
-		// });
+		wilson.setUniforms({
+			worldCenter: [wilson.worldCenterX, wilson.worldCenterY],
+			worldSize: [wilson.worldWidth, wilson.worldHeight]
+		});
 		
 		wilson.drawFrame();
 	}

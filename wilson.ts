@@ -4384,10 +4384,9 @@ export class WilsonGPU extends Wilson
 			throw new Error("[Wilson] Could not create compute pipeline");
 		}
 
-		this.#uniformBuffer = this.device.createBuffer({
-			size: 16, // 2 floats for c (real, imag), 1 uint for max iterations, padding
-			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-		});
+
+
+		this.#initUniforms(options.shader);
 
 		// Create output texture for compute shader
 		this.#outputTexture = this.device.createTexture({
@@ -4397,7 +4396,6 @@ export class WilsonGPU extends Wilson
 			usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
 		});
 
-		// Create bind group
 		this.#bindGroup = this.device.createBindGroup({
 			layout: this.#computePipeline.getBindGroupLayout(0),
 			entries: [
@@ -4466,8 +4464,6 @@ export class WilsonGPU extends Wilson
 
 
 
-		this.#initUniforms(options.shader);
-
 		this.#loadedResolve();
 	}
 
@@ -4529,8 +4525,10 @@ export class WilsonGPU extends Wilson
 		};
 	}
 
-	setUniforms(uniforms: GPUUniformInitializers)
+	async setUniforms(uniforms: GPUUniformInitializers)
 	{
+		await this.#loaded;
+
 		for (const name in uniforms)
 		{
 			const value = uniforms[name];
@@ -4585,11 +4583,11 @@ export class WilsonGPU extends Wilson
 		await this.#loaded;
 
 		// Update uniforms
-		const uniformData = new Float32Array([-0.3, 0.7]);
-		this.device.queue.writeBuffer(this.#uniformBuffer, 0, uniformData);
+		// const uniformData = new Float32Array([-0.3, 0.7]);
+		// this.device.queue.writeBuffer(this.#uniformBuffer, 0, uniformData);
 		
-		const maxIterData = new Uint32Array([200]);
-		this.device.queue.writeBuffer(this.#uniformBuffer, 8, maxIterData);
+		// const maxIterData = new Uint32Array([200]);
+		// this.device.queue.writeBuffer(this.#uniformBuffer, 8, maxIterData);
 		
 		// Run compute shader
 		const commandEncoder = this.device.createCommandEncoder();
