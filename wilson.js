@@ -2140,7 +2140,9 @@ export class WilsonGL extends Wilson {
         }
         this.canvas.toBlob((blob) => {
             if (!blob) {
-                console.error("[Wilson] Could not create a canvas blob");
+                if (this.verbose) {
+                    console.error(`[Wilson] Could not create a blob from a canvas with ID ${this.canvas.id}`);
+                }
                 return;
             }
             const link = document.createElement("a");
@@ -2536,7 +2538,6 @@ export class WilsonGPU extends Wilson {
             // Create output texture for compute shader
             __classPrivateFieldSet(this, _WilsonGPU_outputTexture, this.device.createTexture({
                 size: [this.canvasWidth, this.canvasHeight],
-                // TODO: investigate rgba16float for HDR content
                 format: "rgba16float",
                 usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
             }), "f");
@@ -2637,6 +2638,38 @@ export class WilsonGPU extends Wilson {
         renderPass.draw(3);
         renderPass.end();
         this.device.queue.submit([commandEncoder.finish()]);
+    }
+    async downloadFrame(filename, drawNewFrame = true) {
+        if (drawNewFrame) {
+            await this.drawFrame();
+        }
+        // Create temporary 2D canvas
+        const canvas2D = document.createElement("canvas");
+        canvas2D.width = this.canvasWidth;
+        canvas2D.height = this.canvasHeight;
+        const ctx2D = canvas2D.getContext("2d");
+        if (!ctx2D) {
+            if (this.verbose) {
+                console.error("[Wilson] Could not get 2d context for canvas");
+            }
+            return;
+        }
+        // Copy WebGPU texture to 2D canvas, destroying HDR :(
+        ctx2D.drawImage(this.canvas, 0, 0);
+        canvas2D.toBlob((blob) => {
+            if (!blob) {
+                if (this.verbose) {
+                    console.error("[Wilson] Could not create a canvas blob");
+                }
+                return;
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "frame.png";
+            a.click();
+            URL.revokeObjectURL(url);
+        });
     }
 }
 _WilsonGPU_uniformData = new WeakMap(), _WilsonGPU_uniformBuffer = new WeakMap(), _WilsonGPU_uniformBufferSize = new WeakMap(), _WilsonGPU_uniformBufferData = new WeakMap(), _WilsonGPU_uniformBufferViews = new WeakMap(), _WilsonGPU_computePipeline = new WeakMap(), _WilsonGPU_renderPipeline = new WeakMap(), _WilsonGPU_bindGroup = new WeakMap(), _WilsonGPU_sampler = new WeakMap(), _WilsonGPU_displayBindGroup = new WeakMap(), _WilsonGPU_outputTexture = new WeakMap(), _WilsonGPU_loaded = new WeakMap(), _WilsonGPU_loadedResolve = new WeakMap(), _WilsonGPU_loadedReject = new WeakMap(), _WilsonGPU_instances = new WeakSet(), _WilsonGPU_initWebGPU = async function _WilsonGPU_initWebGPU(options) {
