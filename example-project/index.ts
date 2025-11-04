@@ -226,8 +226,7 @@ function initWilson3()
 			
 			let c = uniforms.c;
 			
-			// Julia set iteration: z = z² + c
-			for (var i = 0u; i < 350u; i++)
+			for (var i = 0u; i < 300u; i++)
 			{
 				// Check if escaped
 				if (length(z) > 2.0)

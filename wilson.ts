@@ -2726,12 +2726,14 @@ class Wilson
 			::view-transition-old(WILSON_canvas-${this.#salt})
 			{
 				animation-name: WILSON_move-out;
+				animation-fill-mode: both;
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${this.#salt})
 			{
 				animation-name: WILSON_move-in;
+				animation-fill-mode: both;
 				mix-blend-mode: plus-lighter;
 			}
 		`;
@@ -2982,12 +2984,14 @@ class Wilson
 			::view-transition-old(WILSON_canvas-${this.#salt})
 			{
 				animation-name: WILSON_move-out-${this.#salt};
+				animation-fill-mode: both;
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${this.#salt})
 			{
 				animation-name: WILSON_move-in-${this.#salt};
+				animation-fill-mode: both;
 				mix-blend-mode: plus-lighter;
 			}
 		`;
@@ -3190,6 +3194,7 @@ export class WilsonCPU extends Wilson
 	{
 		this.ctx.putImageData(
 			new ImageData(
+				// @ts-ignore
 				image,
 				this.canvasWidth,
 				this.canvasHeight
