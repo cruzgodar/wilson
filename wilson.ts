@@ -3576,20 +3576,20 @@ export class WilsonGL extends Wilson
 		}
 	}
 
-	setUniforms(uniforms: GLUniformInitializers, shader: GLShaderProgramId = this.#currentShaderId)
+	setUniforms(uniforms: GLUniformInitializers, shaderId: GLShaderProgramId = this.#currentShaderId)
 	{
-		this.gl.useProgram(this.#shaderPrograms[shader]);
+		this.gl.useProgram(this.#shaderPrograms[shaderId]);
 		
 		for (const [name, value] of Object.entries(uniforms))
 		{
-			if (this.#uniforms[shader][name] === undefined)
+			if (this.#uniforms[shaderId][name] === undefined)
 			{
 				continue;
 			}
 			
-			const { location, type } = this.#uniforms[shader][name];
+			const { location, type } = this.#uniforms[shaderId][name];
 			const uniformFunction = uniformFunctions[type];
-			this.#uniforms[shader][name].value = value;
+			this.#uniforms[shaderId][name].value = value;
 			uniformFunction(this.gl, location, value);
 		}
 
@@ -4298,29 +4298,27 @@ type GPUMultipleShaders = {
 };
 
 export type WilsonGPUOptions = WilsonOptions
-	& (GPUSingleShader);
+	& (GPUSingleShader | GPUMultipleShaders);
 
 export class WilsonGPU extends Wilson
 {
 	device!: GPUDevice;
 	context!: GPUCanvasContext;
 
-	#uniformData: GPUUniformData = {};
-
-	#uniformBuffer!: GPUBuffer;
-	#uniformBufferSize: number = 0;
-	// Todo: shouldn't be recreating the buffer every time
-	#uniformBufferData!: ArrayBuffer;
-	#uniformBufferViews!: {
+	#uniformDataMap: {[id: GPUShaderProgramId]: GPUUniformData} = {};
+	#uniformBuffers: {[id: GPUShaderProgramId]: GPUBuffer} = {};
+	#uniformBufferSizes: {[id: GPUShaderProgramId]: number} = {};
+	#uniformBufferDataMap: {[id: GPUShaderProgramId]: ArrayBuffer} = {};
+	#uniformBufferViewsMap: {[id: GPUShaderProgramId]: {
 		float: Float32Array,
 		int: Int32Array,
 		uint: Uint32Array
-	};
+	}} = {};
 
-	#computePipeline!: GPUComputePipeline;
+	#computePipelines: {[id: GPUShaderProgramId]: GPUComputePipeline} = {};
 	#renderPipeline!: GPURenderPipeline;
 
-	#bindGroup!: GPUBindGroup;
+	#bindGroups: {[id: GPUShaderProgramId]: GPUBindGroup} = {};
 
 	#sampler!: GPUSampler;
 	#displayBindGroup!: GPUBindGroup;
@@ -4378,29 +4376,31 @@ export class WilsonGPU extends Wilson
 
 
 
-		// TODO: uniform initialization
-
-		// TODO: handle multiple shaders
-		const shaderModule = this.device.createShaderModule({ code: options.shader });
-
-		// TODO: investigate what auto means here
-		this.#computePipeline = this.device.createComputePipeline({
-			layout: "auto",
-			compute: {
-				module: shaderModule,
-				entryPoint: "main"
-			}
-		});
-
-		if (!this.#computePipeline)
+		// Load shader(s)
+		if ("shader" in options)
 		{
-			this.#loadedReject();
-			throw new Error("[Wilson] Could not create compute pipeline");
+			await this.loadShader({
+				shader: options.shader,
+				uniforms: options.uniforms,
+			});
 		}
 
-		
+		else if ("shaders" in options)
+		{
+			await Promise.all(Object.keys(options.shaders).map(id => this.loadShader({
+				id,
+				shader: options.shaders[id],
+				uniforms: options.uniforms?.[id],
+			})));
+		}
 
-		this.#initUniforms(options.shader);
+		else
+		{
+			this.#loadedReject();
+			throw new Error("[Wilson] No shader or shaders provided in options");
+		}
+
+
 
 		// Create output texture for compute shader
 		this.#outputTexture = this.device.createTexture({
@@ -4409,19 +4409,23 @@ export class WilsonGPU extends Wilson
 			usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
 		});
 
-		this.#bindGroup = this.device.createBindGroup({
-			layout: this.#computePipeline.getBindGroupLayout(0),
-			entries: [
-				{
-					binding: 0,
-					resource: { buffer: this.#uniformBuffer }
-				},
-				{
-					binding: 1,
-					resource: this.#outputTexture.createView()
-				}
-			]
-		});
+		// Create bind groups for all loaded shaders
+		for (const id in this.#computePipelines)
+		{
+			this.#bindGroups[id] = this.device.createBindGroup({
+				layout: this.#computePipelines[id].getBindGroupLayout(0),
+				entries: [
+					{
+						binding: 0,
+						resource: { buffer: this.#uniformBuffers[id] }
+					},
+					{
+						binding: 1,
+						resource: this.#outputTexture.createView()
+					}
+				]
+			});
+		}
 
 
 
@@ -4495,15 +4499,61 @@ export class WilsonGPU extends Wilson
 		this.#loadedResolve();
 	}
 
+	#numShaders = 0;
+	#currentShaderId: GPUShaderProgramId = "0";
 
+	async loadShader({
+		id = this.#numShaders.toString(),
+		shader,
+		uniforms = {}
+	}: {
+		id?: GPUShaderProgramId,
+		shader: string,
+		uniforms?: GPUUniformInitializers
+	}) {
+		// Create shader module
+		const shaderModule = this.device.createShaderModule({ code: shader });
 
-	#initUniforms(shader: string)
-	{
+		// Create compute pipeline
+		const computePipeline = this.device.createComputePipeline({
+			layout: "auto",
+			compute: {
+				module: shaderModule,
+				entryPoint: "main"
+			}
+		});
+
+		if (!computePipeline)
+		{
+			throw new Error(`[Wilson] Could not create compute pipeline for shader "${id}"`);
+		}
+
+		this.#computePipelines[id] = computePipeline;
+
+		
+		
 		// Pull the uniforms out of the shader code.
 		const structMatch = shader.match(/struct\s+Uniforms\s*\{([^}]+)\}/);
 		if (!structMatch)
 		{
-			console.warn("[Wilson] No Uniforms struct found in WGSL");
+			console.warn(`[Wilson] No Uniforms struct found in WGSL for shader "${id}"`);
+			
+			// Create empty uniform data
+			this.#uniformDataMap[id] = {};
+			this.#uniformBufferSizes[id] = 256; // Minimum size
+			
+			this.#uniformBuffers[id] = this.device.createBuffer({
+				size: this.#uniformBufferSizes[id],
+				usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+			});
+
+			this.#uniformBufferDataMap[id] = new ArrayBuffer(this.#uniformBufferSizes[id]);
+			this.#uniformBufferViewsMap[id] = {
+				float: new Float32Array(this.#uniformBufferDataMap[id]),
+				int: new Int32Array(this.#uniformBufferDataMap[id]),
+				uint: new Uint32Array(this.#uniformBufferDataMap[id])
+			};
+			
 			return;
 		}
 		
@@ -4512,6 +4562,7 @@ export class WilsonGPU extends Wilson
 		let match;
 
 		let offset = 0;
+		const uniformData: GPUUniformData = {};
 		
 		while ((match = memberRegex.exec(structBody)) !== null)
 		{
@@ -4520,7 +4571,7 @@ export class WilsonGPU extends Wilson
 
 			if (!(typeString in gpuTypeData))
 			{
-				throw new Error(`[Wilson] Invalid uniform type ${typeString} for uniform ${name} in shader "${shader}".`);
+				throw new Error(`[Wilson] Invalid uniform type ${typeString} for uniform ${name} in shader "${id}".`);
 			}
 
 			const typeData = gpuTypeData[typeString];
@@ -4530,7 +4581,7 @@ export class WilsonGPU extends Wilson
 
 			offset = Math.ceil(offset / alignment) * alignment;
 
-			this.#uniformData[name] = {
+			uniformData[name] = {
 				...typeData,
 				offset
 			};
@@ -4538,19 +4589,23 @@ export class WilsonGPU extends Wilson
 			offset += size;
 		}
 
-		this.#uniformBufferSize = Math.ceil(offset / 256) * 256;
+		this.#uniformDataMap[id] = uniformData;
+		this.#uniformBufferSizes[id] = Math.ceil(offset / 256) * 256;
 
-		this.#uniformBuffer = this.device.createBuffer({
-			size: this.#uniformBufferSize,
+		this.#uniformBuffers[id] = this.device.createBuffer({
+			size: this.#uniformBufferSizes[id],
 			usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
 		});
 
-		this.#uniformBufferData = new ArrayBuffer(this.#uniformBufferSize);
-		this.#uniformBufferViews = {
-			float: new Float32Array(this.#uniformBufferData),
-			int: new Int32Array(this.#uniformBufferData),
-			uint: new Uint32Array(this.#uniformBufferData)
+		this.#uniformBufferDataMap[id] = new ArrayBuffer(this.#uniformBufferSizes[id]);
+		this.#uniformBufferViewsMap[id] = {
+			float: new Float32Array(this.#uniformBufferDataMap[id]),
+			int: new Int32Array(this.#uniformBufferDataMap[id]),
+			uint: new Uint32Array(this.#uniformBufferDataMap[id])
 		};
+
+		// We need to set these immediately to prevent them being set in the wrong order.
+		this.#setUniformsSync(uniforms, id);
 	}
 
 
@@ -4570,19 +4625,23 @@ export class WilsonGPU extends Wilson
 			usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
 		});
 
-		this.#bindGroup = this.device.createBindGroup({
-			layout: this.#computePipeline.getBindGroupLayout(0),
-			entries: [
-				{
-					binding: 0,
-					resource: { buffer: this.#uniformBuffer }
-				},
-				{
-					binding: 1,
-					resource: this.#outputTexture.createView()
-				}
-			]
-		});
+		// Recreate bind groups for all shaders
+		for (const id in this.#computePipelines)
+		{
+			this.#bindGroups[id] = this.device.createBindGroup({
+				layout: this.#computePipelines[id].getBindGroupLayout(0),
+				entries: [
+					{
+						binding: 0,
+						resource: { buffer: this.#uniformBuffers[id] }
+					},
+					{
+						binding: 1,
+						resource: this.#outputTexture.createView()
+					}
+				]
+			});
+		}
 
 		this.#displayBindGroup = this.device.createBindGroup({
 			layout: this.#renderPipeline.getBindGroupLayout(0),
@@ -4594,27 +4653,55 @@ export class WilsonGPU extends Wilson
 	};
 
 
-	async setUniforms(uniforms: GPUUniformInitializers)
+	useShader(id: GPUShaderProgramId)
+	{
+		if (!(id in this.#computePipelines))
+		{
+			throw new Error(`[Wilson] Shader "${id}" not loaded`);
+		}
+
+		this.#currentShaderId = id;
+	}
+
+
+	async setUniforms(uniforms: GPUUniformInitializers, shaderId?: GPUShaderProgramId)
 	{
 		await this.#loaded;
+		this.#setUniformsSync(uniforms, shaderId);
+	}
+
+	#setUniformsSync(uniforms: GPUUniformInitializers, shaderId?: GPUShaderProgramId)
+	{
+		const id = shaderId ?? this.#currentShaderId;
+
+		if (!(id in this.#uniformDataMap))
+		{
+			throw new Error(`[Wilson] Shader "${id}" not loaded`);
+		}
 
 		for (const name in uniforms)
 		{
 			const value = uniforms[name];
 			
-			const typeData = this.#uniformData[name];
-			const viewOffset = this.#uniformData[name].offset / 4;
+			const typeData = this.#uniformDataMap[id][name];
+			if (!typeData)
+			{
+				console.warn(`[Wilson] Uniform "${name}" not found in shader "${id}"`);
+				continue;
+			}
+
+			const viewOffset = typeData.offset / 4;
 			
 			if (typeData.isScalar)
 			{
 				// SCALAR: f32, i32, u32, bool
-				this.#uniformBufferViews[typeData.baseType][viewOffset] = value as number;
+				this.#uniformBufferViewsMap[id][typeData.baseType][viewOffset] = value as number;
 			}
 			
 			else if (typeData.vectorSize)
 			{
 				// VECTOR: vec2/3/4<type>
-				const view = this.#uniformBufferViews[typeData.baseType];
+				const view = this.#uniformBufferViewsMap[id][typeData.baseType];
 				
 				for (let i = 0; i < typeData.vectorSize; i++)
 				{
@@ -4627,7 +4714,7 @@ export class WilsonGPU extends Wilson
 				// MATRIX: matCxR<f32>
 				const cols = typeData.matrixSize[0];
 				const rows = typeData.matrixSize[1];
-				const view = this.#uniformBufferViews.float;
+				const view = this.#uniformBufferViewsMap[id].float;
 				
 				// Column stride: vec2=2, vec3/vec4=4 (vec3 is padded!)
 				const colStride = rows === 2 ? 2 : 4;
@@ -4642,28 +4729,20 @@ export class WilsonGPU extends Wilson
 			}
 		}
 		
-		this.device.queue.writeBuffer(this.#uniformBuffer, 0, this.#uniformBufferData);
+		this.device.queue.writeBuffer(this.#uniformBuffers[id], 0, this.#uniformBufferDataMap[id]);
 	}
 
 
-	// Todo: figure out what can be removed here
 	async drawFrame()
 	{
 		await this.#loaded;
-
-		// Update uniforms
-		// const uniformData = new Float32Array([-0.3, 0.7]);
-		// this.device.queue.writeBuffer(this.#uniformBuffer, 0, uniformData);
-		
-		// const maxIterData = new Uint32Array([200]);
-		// this.device.queue.writeBuffer(this.#uniformBuffer, 8, maxIterData);
 		
 		// Run compute shader
 		const commandEncoder = this.device.createCommandEncoder();
 		
 		const computePass = commandEncoder.beginComputePass();
-		computePass.setPipeline(this.#computePipeline);
-		computePass.setBindGroup(0, this.#bindGroup);
+		computePass.setPipeline(this.#computePipelines[this.#currentShaderId]);
+		computePass.setBindGroup(0, this.#bindGroups[this.#currentShaderId]);
 		
 		// Dispatch workgroups (512 / 8 = 64 workgroups per dimension)
 		const workgroupSize = 8;
@@ -4733,7 +4812,7 @@ export class WilsonGPU extends Wilson
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement("a");
 			a.href = url;
-			a.download = "frame.png";
+			a.download = filename;
 			a.click();
 			URL.revokeObjectURL(url);
 		});
