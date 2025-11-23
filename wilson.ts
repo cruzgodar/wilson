@@ -4376,6 +4376,15 @@ export class WilsonGPU extends Wilson
 
 
 
+		// Create output texture for compute shader
+		this.#outputTexture = this.device.createTexture({
+			size: [this.canvasWidth, this.canvasHeight],
+			format: "rgba16float",
+			usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+		});
+
+
+
 		// Load shader(s)
 		if ("shader" in options)
 		{
@@ -4398,33 +4407,6 @@ export class WilsonGPU extends Wilson
 		{
 			this.#loadedReject();
 			throw new Error("[Wilson] No shader or shaders provided in options");
-		}
-
-
-
-		// Create output texture for compute shader
-		this.#outputTexture = this.device.createTexture({
-			size: [this.canvasWidth, this.canvasHeight],
-			format: "rgba16float",
-			usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
-		});
-
-		// Create bind groups for all loaded shaders
-		for (const id in this.#computePipelines)
-		{
-			this.#bindGroups[id] = this.device.createBindGroup({
-				layout: this.#computePipelines[id].getBindGroupLayout(0),
-				entries: [
-					{
-						binding: 0,
-						resource: { buffer: this.#uniformBuffers[id] }
-					},
-					{
-						binding: 1,
-						resource: this.#outputTexture.createView()
-					}
-				]
-			});
 		}
 
 
@@ -4606,6 +4588,21 @@ export class WilsonGPU extends Wilson
 
 		// We need to set these immediately to prevent them being set in the wrong order.
 		this.#setUniformsSync(uniforms, id);
+
+		// Create bind group for this shader
+		this.#bindGroups[id] = this.device.createBindGroup({
+			layout: this.#computePipelines[id].getBindGroupLayout(0),
+			entries: [
+				{
+					binding: 0,
+					resource: { buffer: this.#uniformBuffers[id] }
+				},
+				{
+					binding: 1,
+					resource: this.#outputTexture.createView()
+				}
+			]
+		});
 	}
 
 

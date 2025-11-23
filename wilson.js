@@ -2645,6 +2645,20 @@ export class WilsonGPU extends Wilson {
         };
         // We need to set these immediately to prevent them being set in the wrong order.
         __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_setUniformsSync).call(this, uniforms, id);
+        // Create bind group for this shader
+        __classPrivateFieldGet(this, _WilsonGPU_bindGroups, "f")[id] = this.device.createBindGroup({
+            layout: __classPrivateFieldGet(this, _WilsonGPU_computePipelines, "f")[id].getBindGroupLayout(0),
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: __classPrivateFieldGet(this, _WilsonGPU_uniformBuffers, "f")[id] }
+                },
+                {
+                    binding: 1,
+                    resource: __classPrivateFieldGet(this, _WilsonGPU_outputTexture, "f").createView()
+                }
+            ]
+        });
     }
     useShader(id) {
         if (!(id in __classPrivateFieldGet(this, _WilsonGPU_computePipelines, "f"))) {
@@ -2734,6 +2748,12 @@ _WilsonGPU_uniformDataMap = new WeakMap(), _WilsonGPU_uniformBuffers = new WeakM
         format: "rgba16float",
         toneMapping: { mode: "extended" },
     });
+    // Create output texture for compute shader
+    __classPrivateFieldSet(this, _WilsonGPU_outputTexture, this.device.createTexture({
+        size: [this.canvasWidth, this.canvasHeight],
+        format: "rgba16float",
+        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+    }), "f");
     // Load shader(s)
     if ("shader" in options) {
         await this.loadShader({
@@ -2754,28 +2774,6 @@ _WilsonGPU_uniformDataMap = new WeakMap(), _WilsonGPU_uniformBuffers = new WeakM
     else {
         __classPrivateFieldGet(this, _WilsonGPU_loadedReject, "f").call(this);
         throw new Error("[Wilson] No shader or shaders provided in options");
-    }
-    // Create output texture for compute shader
-    __classPrivateFieldSet(this, _WilsonGPU_outputTexture, this.device.createTexture({
-        size: [this.canvasWidth, this.canvasHeight],
-        format: "rgba16float",
-        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
-    }), "f");
-    // Create bind groups for all loaded shaders
-    for (const id in __classPrivateFieldGet(this, _WilsonGPU_computePipelines, "f")) {
-        __classPrivateFieldGet(this, _WilsonGPU_bindGroups, "f")[id] = this.device.createBindGroup({
-            layout: __classPrivateFieldGet(this, _WilsonGPU_computePipelines, "f")[id].getBindGroupLayout(0),
-            entries: [
-                {
-                    binding: 0,
-                    resource: { buffer: __classPrivateFieldGet(this, _WilsonGPU_uniformBuffers, "f")[id] }
-                },
-                {
-                    binding: 1,
-                    resource: __classPrivateFieldGet(this, _WilsonGPU_outputTexture, "f").createView()
-                }
-            ]
-        });
     }
     __classPrivateFieldSet(this, _WilsonGPU_sampler, this.device.createSampler({
         magFilter: "nearest",
