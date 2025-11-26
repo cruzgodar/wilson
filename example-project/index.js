@@ -196,63 +196,6 @@ function initWilson3() {
 			textureStore(outputTex, coords, vec4<f32>(0.0, 0.0, 0.0, 1.0));
 		}
 	`;
-    const shader2 = /* wgsl */ `
-		struct Uniforms
-		{
-			c: vec2<f32>,
-			worldCenter: vec2<f32>,
-			worldSize: vec2<f32>,
-		}
-		
-		@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-		@group(0) @binding(1) var outputTex: texture_storage_2d<rgba16float, write>;
-		
-		@compute @workgroup_size(8, 8)
-		fn main(@builtin(global_invocation_id) globalId: vec3<u32>)
-		{
-			let dimensions = textureDimensions(outputTex);
-			let coords = vec2<u32>(globalId.xy);
-			
-			if (coords.x >= dimensions.x || coords.y >= dimensions.y)
-			{
-				return;
-			}
-			
-			// Convert pixel coordinates to complex plane [-2, 2]
-			let uv = vec2<f32>(coords) / vec2<f32>(dimensions);
-			var z = (uv - 0.5) * uniforms.worldSize + uniforms.worldCenter; // Map [0, 1] to [-2, 2]
-
-			let color = normalize(
-				vec3<f32>(
-					abs(z.x + z.y) / 2.0,
-					abs(z.x) / 2.0,
-					abs(z.y) / 2.0
-				)
-				+ .1 / length(z) * vec3<f32>(1.0, 1.0, 1.0)
-			);
-
-			var brightness = exp(-length(z));
-			
-			let c = z;
-			
-			for (var i = 0u; i < 300u; i++)
-			{
-				// Check if escaped
-				if (length(z) > 2.0)
-				{
-					textureStore(outputTex, coords, vec4<f32>(brightness / 10.0 * color, 1.0));
-					return;
-				}
-
-				z = vec2<f32>(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
-
-				brightness += exp(-length(z));
-			}
-			
-			// Color based on iterations
-			textureStore(outputTex, coords, vec4<f32>(0.0, 0.0, 0.0, 1.0));
-		}
-	`;
     const options = {
         shader,
         uniforms: {
@@ -304,17 +247,6 @@ function initWilson3() {
         });
         wilson.drawFrame();
     }
-    setTimeout(() => {
-        wilson.loadShader({
-            shader: shader2,
-            uniforms: {
-                worldCenter: [0, 0],
-                worldSize: [2, 2],
-                c: [0, 1],
-            }
-        });
-        drawFrame();
-    }, 5000);
 }
 initWilson1();
 initWilson2();

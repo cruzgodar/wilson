@@ -2474,20 +2474,29 @@ const gpuTypeData = {
     // VECTOR TYPES - f32
     // ============================================
     "vec2<f32>": { size: 8, alignment: 8, baseType: "float", vectorSize: 2 },
+    "vec2f": { size: 8, alignment: 8, baseType: "float", vectorSize: 2 },
     "vec3<f32>": { size: 12, alignment: 16, baseType: "float", vectorSize: 3 }, // Note: vec3 aligns to 16!
+    "vec3f": { size: 12, alignment: 16, baseType: "float", vectorSize: 3 },
     "vec4<f32>": { size: 16, alignment: 16, baseType: "float", vectorSize: 4 },
+    "vec4f": { size: 16, alignment: 16, baseType: "float", vectorSize: 4 },
     // ============================================
     // VECTOR TYPES - i32
     // ============================================
     "vec2<i32>": { size: 8, alignment: 8, baseType: "int", vectorSize: 2 },
+    "vec2i": { size: 8, alignment: 8, baseType: "int", vectorSize: 2 },
     "vec3<i32>": { size: 12, alignment: 16, baseType: "int", vectorSize: 3 },
+    "vec3i": { size: 12, alignment: 16, baseType: "int", vectorSize: 3 },
     "vec4<i32>": { size: 16, alignment: 16, baseType: "int", vectorSize: 4 },
+    "vec4i": { size: 16, alignment: 16, baseType: "int", vectorSize: 4 },
     // ============================================
     // VECTOR TYPES - u32
     // ============================================
     "vec2<u32>": { size: 8, alignment: 8, baseType: "uint", vectorSize: 2 },
+    "vec2u": { size: 8, alignment: 8, baseType: "uint", vectorSize: 2 },
     "vec3<u32>": { size: 12, alignment: 16, baseType: "uint", vectorSize: 3 },
+    "vec3u": { size: 12, alignment: 16, baseType: "uint", vectorSize: 3 },
     "vec4<u32>": { size: 16, alignment: 16, baseType: "uint", vectorSize: 4 },
+    "vec4u": { size: 16, alignment: 16, baseType: "uint", vectorSize: 4 },
     // ============================================
     // MATRIX TYPES - f32 (Square)
     // ============================================
@@ -2495,21 +2504,30 @@ const gpuTypeData = {
     // Size = columns * stride(column_type)
     // Alignment = alignment(column_type)
     "mat2x2<f32>": { size: 16, alignment: 8, baseType: "float", matrixSize: [2, 2] }, // 2 cols of vec2<f32>, stride 8
+    "mat2x2f": { size: 16, alignment: 8, baseType: "float", matrixSize: [2, 2] },
     "mat3x3<f32>": { size: 48, alignment: 16, baseType: "float", matrixSize: [3, 3] }, // 3 cols of vec3<f32>, stride 16
+    "mat3x3f": { size: 48, alignment: 16, baseType: "float", matrixSize: [3, 3] },
     "mat4x4<f32>": { size: 64, alignment: 16, baseType: "float", matrixSize: [4, 4] }, // 4 cols of vec4<f32>, stride 16
+    "mat4x4f": { size: 64, alignment: 16, baseType: "float", matrixSize: [4, 4] },
     // ============================================
     // MATRIX TYPES - f32 (Non-square)
     // ============================================
     // Format: matCxR where C = columns, R = rows
     // 2 columns (different row counts)
     "mat2x3<f32>": { size: 32, alignment: 16, baseType: "float", matrixSize: [2, 3] }, // 2 cols of vec3<f32>, stride 16
+    "mat2x3f": { size: 32, alignment: 16, baseType: "float", matrixSize: [2, 3] },
     "mat2x4<f32>": { size: 32, alignment: 16, baseType: "float", matrixSize: [2, 4] }, // 2 cols of vec4<f32>, stride 16
+    "mat2x4f": { size: 32, alignment: 16, baseType: "float", matrixSize: [2, 4] },
     // 3 columns (different row counts)
     "mat3x2<f32>": { size: 24, alignment: 8, baseType: "float", matrixSize: [3, 2] }, // 3 cols of vec2<f32>, stride 8
+    "mat3x2f": { size: 24, alignment: 8, baseType: "float", matrixSize: [3, 2] },
     "mat3x4<f32>": { size: 48, alignment: 16, baseType: "float", matrixSize: [3, 4] }, // 3 cols of vec4<f32>, stride 16
+    "mat3x4f": { size: 48, alignment: 16, baseType: "float", matrixSize: [3, 4] },
     // 4 columns (different row counts)
     "mat4x2<f32>": { size: 32, alignment: 8, baseType: "float", matrixSize: [4, 2] }, // 4 cols of vec2<f32>, stride 8
+    "mat4x2f": { size: 32, alignment: 8, baseType: "float", matrixSize: [4, 2] },
     "mat4x3<f32>": { size: 64, alignment: 16, baseType: "float", matrixSize: [4, 3] }, // 4 cols of vec4<f32>, stride 16
+    "mat4x3f": { size: 64, alignment: 16, baseType: "float", matrixSize: [4, 3] },
 };
 export class WilsonGPU extends Wilson {
     constructor(canvas, options) {
@@ -2611,25 +2629,54 @@ export class WilsonGPU extends Wilson {
             return;
         }
         const structBody = structMatch[1];
-        const memberRegex = /(\w+)\s*:\s*([\w<>]+)/g;
+        const memberRegex = /(\w+)\s*:\s*(?:array<([\w<>]+),\s*(\d+)>|([\w<>]+))/g;
         let match;
         let offset = 0;
         const uniformData = {};
         while ((match = memberRegex.exec(structBody)) !== null) {
             const name = match[1];
-            const typeString = match[2];
-            if (!(typeString in gpuTypeData)) {
-                throw new Error(`[Wilson] Invalid uniform type ${typeString} for uniform ${name} in shader "${id}".`);
+            // Check if it's an array or regular type.
+            const isArray = match[2] !== undefined;
+            let elementTypeString = isArray ? match[2] : match[4];
+            const arrayLength = isArray ? parseInt(match[3]) : undefined;
+            // Replace shorthands.
+            if (!(elementTypeString in gpuTypeData)) {
+                throw new Error(`[Wilson] Invalid uniform type ${elementTypeString} for uniform ${name} in shader "${id}".`);
             }
-            const typeData = gpuTypeData[typeString];
-            const size = typeData.size;
-            const alignment = typeData.alignment;
-            offset = Math.ceil(offset / alignment) * alignment;
-            uniformData[name] = {
-                ...typeData,
-                offset
-            };
-            offset += size;
+            const elementTypeData = gpuTypeData[elementTypeString];
+            if (isArray) {
+                if (elementTypeString.slice(0, 4) === "vec2") {
+                    throw new Error(`[Wilson] Arrays of vec2 are not supported in uniforms. Use vec3<f32> instead.`);
+                }
+                // Arrays in uniform buffers have 16-byte stride per element
+                const arrayStride = 16;
+                const alignment = 16; // Arrays align to 16 bytes
+                if (arrayLength === undefined) {
+                    throw new Error(`[Wilson] Array length must be specified for uniform ${name} in shader "${id}".`);
+                }
+                const size = arrayStride * arrayLength;
+                offset = Math.ceil(offset / alignment) * alignment;
+                uniformData[name] = {
+                    ...elementTypeData,
+                    size,
+                    alignment,
+                    arrayLength,
+                    arrayElementType: elementTypeString,
+                    offset
+                };
+                offset += size;
+            }
+            else {
+                // Regular (non-array) type
+                const size = elementTypeData.size;
+                const alignment = elementTypeData.alignment;
+                offset = Math.ceil(offset / alignment) * alignment;
+                uniformData[name] = {
+                    ...elementTypeData,
+                    offset
+                };
+                offset += size;
+            }
         }
         __classPrivateFieldGet(this, _WilsonGPU_uniformDataMap, "f")[id] = uniformData;
         __classPrivateFieldGet(this, _WilsonGPU_uniformBufferSizes, "f")[id] = Math.ceil(offset / 256) * 256;
@@ -2847,7 +2894,45 @@ _WilsonGPU_uniformDataMap = new WeakMap(), _WilsonGPU_uniformBuffers = new WeakM
             continue;
         }
         const viewOffset = typeData.offset / 4;
-        if (typeData.isScalar) {
+        if (typeData.arrayLength) {
+            const arrayStride = 16; // 16 bytes = 4 floats/ints
+            if (typeof value === "number") {
+                throw new Error(`[Wilson] Uniform "${name}" is an array, but value passed is not an array.`);
+            }
+            const arrayValues = value;
+            if (!typeData.arrayElementType) {
+                throw new Error(`[Wilson] Array element type not specified for "${name}"`);
+            }
+            const elementTypeData = gpuTypeData[typeData.arrayElementType];
+            for (let i = 0; i < typeData.arrayLength; i++) {
+                const elementOffset = viewOffset + (i * arrayStride) / 4;
+                const elementValue = arrayValues[i];
+                if (elementTypeData.isScalar) {
+                    // Array of scalars: array<f32, N>
+                    __classPrivateFieldGet(this, _WilsonGPU_uniformBufferViewsMap, "f")[id][elementTypeData.baseType][elementOffset] = elementValue;
+                }
+                else if (elementTypeData.vectorSize) {
+                    // Array of vectors: array<vec3<f32>, N>
+                    const view = __classPrivateFieldGet(this, _WilsonGPU_uniformBufferViewsMap, "f")[id][elementTypeData.baseType];
+                    for (let j = 0; j < elementTypeData.vectorSize; j++) {
+                        view[elementOffset + j] = elementValue[j];
+                    }
+                }
+                else if (elementTypeData.matrixSize) {
+                    // Array of matrices: array<mat4x4<f32>, N>
+                    const cols = elementTypeData.matrixSize[0];
+                    const rows = elementTypeData.matrixSize[1];
+                    const view = __classPrivateFieldGet(this, _WilsonGPU_uniformBufferViewsMap, "f")[id].float;
+                    const colStride = rows === 2 ? 2 : 4;
+                    for (let col = 0; col < cols; col++) {
+                        for (let row = 0; row < rows; row++) {
+                            view[elementOffset + col * colStride + row] = elementValue[row][col];
+                        }
+                    }
+                }
+            }
+        }
+        else if (typeData.isScalar) {
             // SCALAR: f32, i32, u32, bool
             __classPrivateFieldGet(this, _WilsonGPU_uniformBufferViewsMap, "f")[id][typeData.baseType][viewOffset] = value;
         }
