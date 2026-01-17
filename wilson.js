@@ -10,7 +10,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Wilson_instances, _Wilson_destroyed, _Wilson_canvasWidth, _Wilson_canvasHeight, _Wilson_lastCanvasWidth, _Wilson_lastCanvasHeight, _Wilson_canvasAspectRatio, _Wilson_worldWidth, _Wilson_worldHeight, _Wilson_worldCenterX, _Wilson_worldCenterY, _Wilson_nonFullscreenWorldWidth, _Wilson_nonFullscreenWorldHeight, _Wilson_minWorldWidth, _Wilson_maxWorldWidth, _Wilson_minWorldHeight, _Wilson_maxWorldHeight, _Wilson_minWorldX, _Wilson_maxWorldX, _Wilson_minWorldY, _Wilson_maxWorldY, _Wilson_onResizeCanvasCallback, _Wilson_useP3ColorSpace, _Wilson_needDraggablesContainerSizeUpdate, _Wilson_interactionCallbacks, _Wilson_needPanAndZoomUpdate, _Wilson_interactionOnPanAndZoom, _Wilson_lastInteractionTimes, _Wilson_lastInteractionTypes, _Wilson_numPreviousVelocities, _Wilson_lastVelocityFactors, _Wilson_lastPanVelocityX, _Wilson_lastPanVelocityY, _Wilson_lastZoomVelocity, _Wilson_lastPanVelocitiesX, _Wilson_lastPanVelocitiesY, _Wilson_lastZoomVelocities, _Wilson_panVelocityX, _Wilson_panVelocityY, _Wilson_zoomVelocity, _Wilson_panFriction, _Wilson_zoomFriction, _Wilson_panVelocityThreshold, _Wilson_zoomVelocityThreshold, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_currentlyFullscreen, _Wilson_fullscreenOldScroll, _Wilson_fullscreenCanvasRect, _Wilson_fullscreenInitialWindowInnerWidth, _Wilson_fullscreenInitialWindowInnerHeight, _Wilson_fullscreenFillScreen, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButton, _Wilson_fullscreenExitFullscreenButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_draggables, _Wilson_draggableDefaultId, _Wilson_currentMouseDraggableId, _Wilson_useResetButton, _Wilson_resetButton, _Wilson_resetButtonTimeoutId, _Wilson_resetButtonIconPath, _Wilson_defaultWorldCenterX, _Wilson_defaultWorldCenterY, _Wilson_defaultWorldWidth, _Wilson_defaultWorldHeight, _Wilson_defaultDraggableLocations, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_buttonContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_salt, _Wilson_getDefaultWorldSize, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_resizeCanvas, _Wilson_zeroVelocities, _Wilson_setLastZoomVelocity, _Wilson_setLastPanVelocity, _Wilson_setZoomVelocity, _Wilson_setPanVelocity, _Wilson_currentlyDragging, _Wilson_currentlyPinching, _Wilson_currentlyWheeling, _Wilson_currentlyWheelingTimeoutId, _Wilson_ignoreTouchendCooldown, _Wilson_atMaxWorldSize, _Wilson_atMinWorldSize, _Wilson_lastInteractionRow, _Wilson_lastInteractionCol, _Wilson_lastInteractionRow2, _Wilson_lastInteractionCol2, _Wilson_clampWorldCoordinates, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMouseenter, _Wilson_onMouseleave, _Wilson_onMousemove, _Wilson_updateFromPinching, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_zoomFixedPoint, _Wilson_zoomCanvas, _Wilson_onWheel, _Wilson_lastPanAndZoomTimestamp, _Wilson_animationFrameLoop, _Wilson_initInteraction, _Wilson_documentDraggableMousemoveListener, _Wilson_documentDraggableMouseupListener, _Wilson_initDraggables, _Wilson_setDraggables, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_updateDraggablesLocation, _Wilson_initFullscreen, _Wilson_initResetButton, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_enterFullscreen, _Wilson_addEnterFullscreenFillScreenTransitionStyle, _Wilson_exitFullscreen, _Wilson_addExitFullscreenFillScreenTransitionStyle, _Wilson_interpolatePageToWorld, _WilsonGL_useWebGL2, _WilsonGL_shaderPrograms, _WilsonGL_shaderProgramSources, _WilsonGL_uniforms, _WilsonGL_numShaders, _WilsonGL_currentShaderId, _WilsonGL_framebuffers, _WilsonGL_textures, _WilsonGPU_instances, _WilsonGPU_uniformDataMap, _WilsonGPU_uniformBuffers, _WilsonGPU_uniformBufferSizes, _WilsonGPU_uniformBufferDataMap, _WilsonGPU_uniformBufferViewsMap, _WilsonGPU_computePipelines, _WilsonGPU_renderPipeline, _WilsonGPU_bindGroups, _WilsonGPU_sampler, _WilsonGPU_displayBindGroup, _WilsonGPU_outputTexture, _WilsonGPU_loaded, _WilsonGPU_loadedResolve, _WilsonGPU_loadedReject, _WilsonGPU_initWebGPU, _WilsonGPU_numShaders, _WilsonGPU_currentShaderId, _WilsonGPU_setUniformsSync;
+var _Wilson_instances, _Wilson_destroyed, _Wilson_canvasWidth, _Wilson_canvasHeight, _Wilson_lastCanvasWidth, _Wilson_lastCanvasHeight, _Wilson_canvasAspectRatio, _Wilson_worldWidth, _Wilson_worldHeight, _Wilson_worldCenterX, _Wilson_worldCenterY, _Wilson_nonFullscreenWorldWidth, _Wilson_nonFullscreenWorldHeight, _Wilson_minWorldWidth, _Wilson_maxWorldWidth, _Wilson_minWorldHeight, _Wilson_maxWorldHeight, _Wilson_minWorldX, _Wilson_maxWorldX, _Wilson_minWorldY, _Wilson_maxWorldY, _Wilson_onResizeCanvasCallback, _Wilson_useP3ColorSpace, _Wilson_needDraggablesContainerSizeUpdate, _Wilson_interactionCallbacks, _Wilson_needPanAndZoomUpdate, _Wilson_interactionOnPanAndZoom, _Wilson_lastInteractionTimes, _Wilson_lastInteractionTypes, _Wilson_numPreviousVelocities, _Wilson_lastVelocityFactors, _Wilson_lastPanVelocityX, _Wilson_lastPanVelocityY, _Wilson_lastZoomVelocity, _Wilson_lastPanVelocitiesX, _Wilson_lastPanVelocitiesY, _Wilson_lastZoomVelocities, _Wilson_panVelocityX, _Wilson_panVelocityY, _Wilson_zoomVelocity, _Wilson_panFriction, _Wilson_zoomFriction, _Wilson_panVelocityThreshold, _Wilson_zoomVelocityThreshold, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_currentlyFullscreen, _Wilson_fullscreenOldScroll, _Wilson_fullscreenCanvasRect, _Wilson_fullscreenInitialWindowInnerWidth, _Wilson_fullscreenInitialWindowInnerHeight, _Wilson_fullscreenFillScreen, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButton, _Wilson_fullscreenExitFullscreenButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_draggables, _Wilson_draggableDefaultId, _Wilson_currentMouseDraggableId, _Wilson_useResetButton, _Wilson_resetButton, _Wilson_resetButtonTimeoutId, _Wilson_resetButtonIconPath, _Wilson_defaultWorldCenterX, _Wilson_defaultWorldCenterY, _Wilson_defaultWorldWidth, _Wilson_defaultWorldHeight, _Wilson_defaultDraggableLocations, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_buttonContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_salt, _Wilson_getDefaultWorldSize, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_resizeCanvas, _Wilson_zeroVelocities, _Wilson_setLastZoomVelocity, _Wilson_setLastPanVelocity, _Wilson_setZoomVelocity, _Wilson_setPanVelocity, _Wilson_currentlyDragging, _Wilson_currentlyPinching, _Wilson_currentlyWheeling, _Wilson_currentlyWheelingTimeoutId, _Wilson_ignoreTouchendCooldown, _Wilson_atMaxWorldSize, _Wilson_atMinWorldSize, _Wilson_lastInteractionRow, _Wilson_lastInteractionCol, _Wilson_lastInteractionRow2, _Wilson_lastInteractionCol2, _Wilson_clampWorldCoordinates, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMouseenter, _Wilson_onMouseleave, _Wilson_onMousemove, _Wilson_updateFromPinching, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_zoomFixedPoint, _Wilson_zoomCanvas, _Wilson_onWheel, _Wilson_lastPanAndZoomTimestamp, _Wilson_animationFrameLoop, _Wilson_initInteraction, _Wilson_documentDraggableMousemoveListener, _Wilson_documentDraggableMouseupListener, _Wilson_initDraggables, _Wilson_setDraggables, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_updateDraggablesLocation, _Wilson_initFullscreen, _Wilson_initResetButton, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_enterFullscreen, _Wilson_addEnterFullscreenFillScreenTransitionStyle, _Wilson_exitFullscreen, _Wilson_addExitFullscreenFillScreenTransitionStyle, _Wilson_interpolatePageToWorld, _WilsonGL_useWebGL2, _WilsonGL_shaderPrograms, _WilsonGL_shaderProgramSources, _WilsonGL_uniforms, _WilsonGL_numShaders, _WilsonGL_currentShaderId, _WilsonGL_framebuffers, _WilsonGL_textures, _WilsonGPU_instances, _WilsonGPU_uniformDataMap, _WilsonGPU_uniformBuffers, _WilsonGPU_uniformBufferSizes, _WilsonGPU_uniformBufferDataMap, _WilsonGPU_uniformBufferViewsMap, _WilsonGPU_computePipelines, _WilsonGPU_renderPipeline, _WilsonGPU_bindGroups, _WilsonGPU_sampler, _WilsonGPU_displayBindGroup, _WilsonGPU_outputTexture, _WilsonGPU_isLoaded, _WilsonGPU_loaded, _WilsonGPU_loadedResolve, _WilsonGPU_loadedReject, _WilsonGPU_initWebGPU, _WilsonGPU_numShaders, _WilsonGPU_currentShaderId, _WilsonGPU_setUniformsSync;
 const defaultInteractionCallbacks = {
     mousedown: ({ x, y, event }) => { },
     mouseup: ({ x, y, event }) => { },
@@ -2544,12 +2544,16 @@ export class WilsonGPU extends Wilson {
         _WilsonGPU_sampler.set(this, void 0);
         _WilsonGPU_displayBindGroup.set(this, void 0);
         _WilsonGPU_outputTexture.set(this, void 0);
+        _WilsonGPU_isLoaded.set(this, false);
         _WilsonGPU_loaded.set(this, void 0);
         _WilsonGPU_loadedResolve.set(this, () => { });
         _WilsonGPU_loadedReject.set(this, () => { });
         _WilsonGPU_numShaders.set(this, 0);
         _WilsonGPU_currentShaderId.set(this, "0");
         this.resizeCanvasGPU = () => {
+            if (!__classPrivateFieldGet(this, _WilsonGPU_isLoaded, "f")) {
+                return;
+            }
             // Destroy old resources
             if (__classPrivateFieldGet(this, _WilsonGPU_outputTexture, "f")) {
                 __classPrivateFieldGet(this, _WilsonGPU_outputTexture, "f").destroy();
@@ -2558,7 +2562,9 @@ export class WilsonGPU extends Wilson {
             __classPrivateFieldSet(this, _WilsonGPU_outputTexture, this.device.createTexture({
                 size: [this.canvasWidth, this.canvasHeight],
                 format: "rgba16float",
-                usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+                usage: GPUTextureUsage.STORAGE_BINDING
+                    | GPUTextureUsage.TEXTURE_BINDING
+                    | GPUTextureUsage.COPY_SRC
             }), "f");
             // Recreate bind groups for all shaders
             for (const id in __classPrivateFieldGet(this, _WilsonGPU_computePipelines, "f")) {
@@ -2777,8 +2783,69 @@ export class WilsonGPU extends Wilson {
             URL.revokeObjectURL(url);
         });
     }
+    async readPixels(shaderId = __classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f")) {
+        await __classPrivateFieldGet(this, _WilsonGPU_loaded, "f");
+        // Run compute shader
+        const commandEncoder = this.device.createCommandEncoder();
+        const computePass = commandEncoder.beginComputePass();
+        computePass.setPipeline(__classPrivateFieldGet(this, _WilsonGPU_computePipelines, "f")[shaderId]);
+        computePass.setBindGroup(0, __classPrivateFieldGet(this, _WilsonGPU_bindGroups, "f")[shaderId]);
+        const workgroupSize = 8;
+        const workgroupsX = Math.ceil(this.canvasWidth / workgroupSize);
+        const workgroupsY = Math.ceil(this.canvasHeight / workgroupSize);
+        computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+        computePass.end();
+        // Create staging buffer for readback
+        const bytesPerPixel = 4 * 4; // 4 floats * 4 bytes (rgba16float)
+        const unpaddedBytesPerRow = this.canvasWidth * bytesPerPixel;
+        const bytesPerRow = Math.ceil(unpaddedBytesPerRow / 256) * 256;
+        const bufferSize = bytesPerRow * this.canvasHeight;
+        const stagingBuffer = this.device.createBuffer({
+            size: bufferSize,
+            usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+        });
+        // Copy texture to buffer
+        commandEncoder.copyTextureToBuffer({
+            texture: __classPrivateFieldGet(this, _WilsonGPU_outputTexture, "f"),
+            mipLevel: 0,
+            origin: { x: 0, y: 0, z: 0 }
+        }, {
+            buffer: stagingBuffer,
+            bytesPerRow, // 4 floats * 4 bytes
+            rowsPerImage: this.canvasHeight
+        }, {
+            width: this.canvasWidth,
+            height: this.canvasHeight,
+            depthOrArrayLayers: 1
+        });
+        this.device.queue.submit([commandEncoder.finish()]);
+        // Wait for GPU to finish and map buffer
+        await stagingBuffer.mapAsync(GPUMapMode.READ);
+        const mappedRange = stagingBuffer.getMappedRange();
+        const paddedData = new Float32Array(mappedRange);
+        // Remove padding if present
+        const pixelCount = this.canvasWidth * this.canvasHeight;
+        const data = new Float32Array(pixelCount * 4);
+        if (bytesPerRow === unpaddedBytesPerRow) {
+            // No padding, direct copy
+            data.set(paddedData);
+        }
+        else {
+            // Copy row by row, skipping padding
+            const floatsPerRow = this.canvasWidth * 4;
+            const paddedFloatsPerRow = bytesPerRow / 4;
+            for (let row = 0; row < this.canvasHeight; row++) {
+                const srcOffset = row * paddedFloatsPerRow;
+                const dstOffset = row * floatsPerRow;
+                data.set(paddedData.subarray(srcOffset, srcOffset + floatsPerRow), dstOffset);
+            }
+        }
+        stagingBuffer.unmap();
+        stagingBuffer.destroy();
+        return data;
+    }
 }
-_WilsonGPU_uniformDataMap = new WeakMap(), _WilsonGPU_uniformBuffers = new WeakMap(), _WilsonGPU_uniformBufferSizes = new WeakMap(), _WilsonGPU_uniformBufferDataMap = new WeakMap(), _WilsonGPU_uniformBufferViewsMap = new WeakMap(), _WilsonGPU_computePipelines = new WeakMap(), _WilsonGPU_renderPipeline = new WeakMap(), _WilsonGPU_bindGroups = new WeakMap(), _WilsonGPU_sampler = new WeakMap(), _WilsonGPU_displayBindGroup = new WeakMap(), _WilsonGPU_outputTexture = new WeakMap(), _WilsonGPU_loaded = new WeakMap(), _WilsonGPU_loadedResolve = new WeakMap(), _WilsonGPU_loadedReject = new WeakMap(), _WilsonGPU_numShaders = new WeakMap(), _WilsonGPU_currentShaderId = new WeakMap(), _WilsonGPU_instances = new WeakSet(), _WilsonGPU_initWebGPU = async function _WilsonGPU_initWebGPU(options) {
+_WilsonGPU_uniformDataMap = new WeakMap(), _WilsonGPU_uniformBuffers = new WeakMap(), _WilsonGPU_uniformBufferSizes = new WeakMap(), _WilsonGPU_uniformBufferDataMap = new WeakMap(), _WilsonGPU_uniformBufferViewsMap = new WeakMap(), _WilsonGPU_computePipelines = new WeakMap(), _WilsonGPU_renderPipeline = new WeakMap(), _WilsonGPU_bindGroups = new WeakMap(), _WilsonGPU_sampler = new WeakMap(), _WilsonGPU_displayBindGroup = new WeakMap(), _WilsonGPU_outputTexture = new WeakMap(), _WilsonGPU_isLoaded = new WeakMap(), _WilsonGPU_loaded = new WeakMap(), _WilsonGPU_loadedResolve = new WeakMap(), _WilsonGPU_loadedReject = new WeakMap(), _WilsonGPU_numShaders = new WeakMap(), _WilsonGPU_currentShaderId = new WeakMap(), _WilsonGPU_instances = new WeakSet(), _WilsonGPU_initWebGPU = async function _WilsonGPU_initWebGPU(options) {
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) {
         throw new Error("[Wilson] Could not get WebGPU context");
@@ -2799,7 +2866,9 @@ _WilsonGPU_uniformDataMap = new WeakMap(), _WilsonGPU_uniformBuffers = new WeakM
     __classPrivateFieldSet(this, _WilsonGPU_outputTexture, this.device.createTexture({
         size: [this.canvasWidth, this.canvasHeight],
         format: "rgba16float",
-        usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+        usage: GPUTextureUsage.STORAGE_BINDING
+            | GPUTextureUsage.TEXTURE_BINDING
+            | GPUTextureUsage.COPY_SRC
     }), "f");
     // Load shader(s)
     if ("shader" in options) {
@@ -2880,6 +2949,7 @@ _WilsonGPU_uniformDataMap = new WeakMap(), _WilsonGPU_uniformBuffers = new WeakM
             { binding: 1, resource: __classPrivateFieldGet(this, _WilsonGPU_outputTexture, "f").createView() }
         ]
     }), "f");
+    __classPrivateFieldSet(this, _WilsonGPU_isLoaded, true, "f");
     __classPrivateFieldGet(this, _WilsonGPU_loadedResolve, "f").call(this);
 }, _WilsonGPU_setUniformsSync = function _WilsonGPU_setUniformsSync(uniforms, shaderId) {
     const id = shaderId !== null && shaderId !== void 0 ? shaderId : __classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f");

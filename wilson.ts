@@ -3227,6 +3227,8 @@ export class WilsonCPU extends Wilson
 			link.click();
 
 			link.remove();
+
+			URL.revokeObjectURL(link.href);
 		});
 	}
 }
@@ -3827,6 +3829,8 @@ export class WilsonGL extends Wilson
 			link.click();
 
 			link.remove();
+
+			URL.revokeObjectURL(link.href);
 		});
 	}
 
@@ -4206,6 +4210,8 @@ export class WilsonGL extends Wilson
 			link.click();
 
 			link.remove();
+
+			URL.revokeObjectURL(link.href);
 		});
 	}
 }
@@ -4345,6 +4351,7 @@ export class WilsonGPU extends Wilson
 
 	#outputTexture!: GPUTexture;
 
+	#isLoaded: boolean = false;
 	#loaded: Promise<void>;
 	#loadedResolve: () => void = () => {};
 	#loadedReject: () => void = () => {};
@@ -4400,7 +4407,9 @@ export class WilsonGPU extends Wilson
 		this.#outputTexture = this.device.createTexture({
 			size: [this.canvasWidth, this.canvasHeight],
 			format: "rgba16float",
-			usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+			usage: GPUTextureUsage.STORAGE_BINDING
+				| GPUTextureUsage.TEXTURE_BINDING
+				| GPUTextureUsage.COPY_SRC
 		});
 
 
@@ -4498,6 +4507,7 @@ export class WilsonGPU extends Wilson
 
 
 
+		this.#isLoaded = true;
 		this.#loadedResolve();
 	}
 
@@ -4672,6 +4682,11 @@ export class WilsonGPU extends Wilson
 
 	resizeCanvasGPU = () =>
 	{
+		if (!this.#isLoaded)
+		{
+			return;
+		}
+
 		// Destroy old resources
 		if (this.#outputTexture)
 		{
@@ -4682,7 +4697,9 @@ export class WilsonGPU extends Wilson
 		this.#outputTexture = this.device.createTexture({
 			size: [this.canvasWidth, this.canvasHeight],
 			format: "rgba16float",
-			usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING
+			usage: GPUTextureUsage.STORAGE_BINDING
+				| GPUTextureUsage.TEXTURE_BINDING
+				| GPUTextureUsage.COPY_SRC
 		});
 
 		// Recreate bind groups for all shaders
@@ -4935,5 +4952,94 @@ export class WilsonGPU extends Wilson
 			a.click();
 			URL.revokeObjectURL(url);
 		});
+	}
+
+	async readPixels(shaderId: GPUShaderProgramId = this.#currentShaderId)
+	{
+		await this.#loaded;
+		
+		// Run compute shader
+		const commandEncoder = this.device.createCommandEncoder();
+		
+		const computePass = commandEncoder.beginComputePass();
+		computePass.setPipeline(this.#computePipelines[shaderId]);
+		computePass.setBindGroup(0, this.#bindGroups[shaderId]);
+		
+		const workgroupSize = 8;
+		const workgroupsX = Math.ceil(this.canvasWidth / workgroupSize);
+		const workgroupsY = Math.ceil(this.canvasHeight / workgroupSize);
+		computePass.dispatchWorkgroups(workgroupsX, workgroupsY);
+		computePass.end();
+		
+		
+		// Create staging buffer for readback
+		const bytesPerPixel = 4 * 4; // 4 floats * 4 bytes (rgba16float)
+		const unpaddedBytesPerRow = this.canvasWidth * bytesPerPixel;
+		const bytesPerRow = Math.ceil(unpaddedBytesPerRow / 256) * 256;
+		const bufferSize = bytesPerRow * this.canvasHeight;
+		
+		const stagingBuffer = this.device.createBuffer({
+			size: bufferSize,
+			usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+		});
+		
+		
+		// Copy texture to buffer
+		commandEncoder.copyTextureToBuffer(
+			{
+				texture: this.#outputTexture,
+				mipLevel: 0,
+				origin: { x: 0, y: 0, z: 0 }
+			},
+			{
+				buffer: stagingBuffer,
+				bytesPerRow, // 4 floats * 4 bytes
+				rowsPerImage: this.canvasHeight
+			},
+			{
+				width: this.canvasWidth,
+				height: this.canvasHeight,
+				depthOrArrayLayers: 1
+			}
+		);
+		
+		
+		this.device.queue.submit([commandEncoder.finish()]);
+		
+		
+		// Wait for GPU to finish and map buffer
+		await stagingBuffer.mapAsync(GPUMapMode.READ);
+		
+		const mappedRange = stagingBuffer.getMappedRange();
+		const paddedData = new Float32Array(mappedRange);
+
+		// Remove padding if present
+		const pixelCount = this.canvasWidth * this.canvasHeight;
+		const data = new Float32Array(pixelCount * 4);
+		
+		if (bytesPerRow === unpaddedBytesPerRow)
+		{
+			// No padding, direct copy
+			data.set(paddedData);
+		}
+		
+		else
+		{
+			// Copy row by row, skipping padding
+			const floatsPerRow = this.canvasWidth * 4;
+			const paddedFloatsPerRow = bytesPerRow / 4;
+			
+			for (let row = 0; row < this.canvasHeight; row++)
+			{
+				const srcOffset = row * paddedFloatsPerRow;
+				const dstOffset = row * floatsPerRow;
+				data.set(paddedData.subarray(srcOffset, srcOffset + floatsPerRow), dstOffset);
+			}
+		}
+		
+		stagingBuffer.unmap();
+		stagingBuffer.destroy();
+		
+		return data;
 	}
 }
