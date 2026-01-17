@@ -1692,12 +1692,14 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 			::view-transition-old(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
 				animation-name: WILSON_move-out;
+				animation-fill-mode: both;
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
 				animation-name: WILSON_move-in;
+				animation-fill-mode: both;
 				mix-blend-mode: plus-lighter;
 			}
 		`;
@@ -1808,12 +1810,14 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 			::view-transition-old(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
 				animation-name: WILSON_move-out-${__classPrivateFieldGet(this, _Wilson_salt, "f")};
+				animation-fill-mode: both;
 				mix-blend-mode: plus-lighter;
 			}
 
 			::view-transition-new(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
 				animation-name: WILSON_move-in-${__classPrivateFieldGet(this, _Wilson_salt, "f")};
+				animation-fill-mode: both;
 				mix-blend-mode: plus-lighter;
 			}
 		`;
@@ -1857,7 +1861,9 @@ export class WilsonCPU extends Wilson {
         this.ctx = canvas.getContext("2d");
     }
     drawFrame(image) {
-        this.ctx.putImageData(new ImageData(image, this.canvasWidth, this.canvasHeight), 0, 0);
+        this.ctx.putImageData(new ImageData(
+        // @ts-ignore
+        image, this.canvasWidth, this.canvasHeight), 0, 0);
     }
     downloadFrame(filename) {
         this.canvas.toBlob((blob) => {
