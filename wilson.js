@@ -465,6 +465,26 @@ class Wilson {
         }
         __classPrivateFieldGet(this, _Wilson_fullscreenContainerLocation, "f").remove();
     }
+    replaceCanvas() {
+        const newCanvas = document.createElement("canvas");
+        // Copy attributes
+        newCanvas.width = this.canvas.width;
+        newCanvas.height = this.canvas.height;
+        newCanvas.id = this.canvas.id;
+        newCanvas.className = this.canvas.className;
+        // Copy inline styles
+        newCanvas.style.cssText = this.canvas.style.cssText;
+        // Copy data attributes
+        for (const key of Object.keys(this.canvas.dataset)) {
+            newCanvas.dataset[key] = this.canvas.dataset[key];
+        }
+        // Replace in DOM
+        if (this.canvas.parentNode) {
+            this.canvas.parentNode.replaceChild(newCanvas, this.canvas);
+        }
+        this.canvas = newCanvas;
+        return newCanvas;
+    }
     setCurrentStateAsDefault() {
         __classPrivateFieldSet(this, _Wilson_defaultWorldCenterX, __classPrivateFieldGet(this, _Wilson_worldCenterX, "f"), "f");
         __classPrivateFieldSet(this, _Wilson_defaultWorldCenterY, __classPrivateFieldGet(this, _Wilson_worldCenterY, "f"), "f");
@@ -2491,7 +2511,7 @@ export class WilsonGPU extends Wilson {
         __classPrivateFieldSet(this, _WilsonGPU_shaders, [], "f");
         // Clear uniform references
         __classPrivateFieldSet(this, _WilsonGPU_uniforms, {}, "f");
-        // Lose the WebGL context to free GPU memory
+        // Lose the WebGL context to free up the context slot.
         const loseContext = this.gl.getExtension("WEBGL_lose_context");
         if (loseContext) {
             loseContext.loseContext();

@@ -715,6 +715,36 @@ class Wilson
 		this.#fullscreenContainerLocation.remove();
 	}
 
+    replaceCanvas()
+	{
+		const newCanvas = document.createElement("canvas");
+
+		// Copy attributes
+		newCanvas.width = this.canvas.width;
+		newCanvas.height = this.canvas.height;
+		newCanvas.id = this.canvas.id;
+		newCanvas.className = this.canvas.className;
+
+		// Copy inline styles
+		newCanvas.style.cssText = this.canvas.style.cssText;
+
+		// Copy data attributes
+		for (const key of Object.keys(this.canvas.dataset))
+		{
+			newCanvas.dataset[key] = this.canvas.dataset[key];
+		}
+
+		// Replace in DOM
+		if (this.canvas.parentNode)
+		{
+			this.canvas.parentNode.replaceChild(newCanvas, this.canvas);
+		}
+
+        this.canvas = newCanvas;
+
+        return newCanvas;
+	}
+
 	
 
 	setCurrentStateAsDefault()
@@ -4254,7 +4284,7 @@ export class WilsonGPU extends Wilson
 		// Clear uniform references
 		this.#uniforms = {};
 
-		// Lose the WebGL context to free GPU memory
+		// Lose the WebGL context to free up the context slot.
 		const loseContext = this.gl.getExtension("WEBGL_lose_context");
 		if (loseContext)
 		{
