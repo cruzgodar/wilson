@@ -3477,6 +3477,8 @@ export class WilsonGPU extends Wilson
 			throw new Error(`[Wilson] Couldn't create shader: ${vertexShader}, ${fragShader}`);
 		}
 
+		this.#shaders.push(vertexShader, fragShader);
+
 		const shaderProgram = this.gl.createProgram();
 
 		if (!shaderProgram)
@@ -3511,6 +3513,8 @@ export class WilsonGPU extends Wilson
 		{
 			throw new Error(`[Wilson] Couldn't create position buffer. Full shader source: ${shader}`);
 		}
+
+		this.#positionBuffers.push(positionBuffer);
 
 		this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
 
@@ -3610,6 +3614,9 @@ export class WilsonGPU extends Wilson
 			type: "unsignedByte" | "float"
 		}
 	} = {};
+
+	#positionBuffers: WebGLBuffer[] = [];
+	#shaders: WebGLShader[] = [];
 
 	createFramebufferTexturePair({
 		id,
@@ -4200,5 +4207,58 @@ export class WilsonGPU extends Wilson
 
 			link.remove();
 		});
+	}
+
+
+
+    destroy()
+	{
+		super.destroy();
+
+		// Delete all textures
+		for (const id in this.#textures)
+		{
+			this.gl.deleteTexture(this.#textures[id].texture);
+		}
+		this.#textures = {};
+
+		// Delete all framebuffers
+		for (const id in this.#framebuffers)
+		{
+			this.gl.deleteFramebuffer(this.#framebuffers[id]);
+		}
+		this.#framebuffers = {};
+
+		// Delete all shader programs (this also detaches shaders)
+		for (const id in this.#shaderPrograms)
+		{
+			this.gl.deleteProgram(this.#shaderPrograms[id]);
+		}
+		this.#shaderPrograms = {};
+		this.#shaderProgramSources = {};
+
+		// Delete all buffers
+		for (const buffer of this.#positionBuffers)
+		{
+			this.gl.deleteBuffer(buffer);
+		}
+		this.#positionBuffers = [];
+
+		// Delete all shaders
+		for (const shader of this.#shaders)
+		{
+			this.gl.deleteShader(shader);
+		}
+		this.#shaders = [];
+
+		// Clear uniform references
+		this.#uniforms = {};
+
+		// Lose the WebGL context to free GPU memory
+		const loseContext = this.gl.getExtension("WEBGL_lose_context");
+		if (loseContext)
+		{
+			loseContext.loseContext();
+		}
 	}
 }
