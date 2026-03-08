@@ -326,6 +326,8 @@ class Wilson
 	#fullscreenInitialWindowInnerWidth: number = window.innerWidth;
 	#fullscreenInitialWindowInnerHeight: number = window.innerHeight;
 	#fullscreenFillScreen: boolean;
+	#externalFullscreenOldFillScreen: boolean = false;
+	#externalFullscreenActive: boolean = false;
 	#fullscreenUseButton: boolean;
 	#fullscreenEnterFullscreenButton: HTMLElement | null = null;
 	#fullscreenExitFullscreenButton: HTMLElement | null = null;
@@ -371,6 +373,8 @@ class Wilson
 	constructor(canvas: HTMLCanvasElement, options: WilsonOptions)
 	{
 		this.canvas = canvas;
+        //@ts-expect-error
+        canvas.wilson = this;
 
 		const computedStyle = getComputedStyle(this.canvas);
 		this.#canvasAspectRatio = parseFloat(computedStyle.width) / parseFloat(computedStyle.height);
@@ -1010,7 +1014,7 @@ class Wilson
 
 	#handleKeydownEvent = (e: KeyboardEvent) =>
 	{
-		if (e.key === "Escape" && this.#currentlyFullscreen && this.closeFullscreenWithEscape)
+		if (e.key === "Escape" && this.#currentlyFullscreen && this.closeFullscreenWithEscape && !this.#externalFullscreenActive)
 		{
 			e.preventDefault();
 			e.stopPropagation();
@@ -3137,6 +3141,68 @@ class Wilson
 				element.style.removeProperty("view-transition-name");
 			}
 		}
+	}
+
+	// Enters fullscreen state for the canvas (resizes buffer, updates world
+	// coordinates) without managing its own fullscreen container. Used when
+	// an external system (e.g. desmos fullscreen) handles the container.
+	enterManagedFullscreen()
+	{
+		this.#externalFullscreenActive = true;
+		this.#externalFullscreenOldFillScreen = this.#fullscreenFillScreen;
+		this.#fullscreenFillScreen = true;
+
+		this.#currentlyFullscreen = true;
+		this.currentlyFullscreen = true;
+
+		this.#canvasOldWidth = this.#canvasWidth;
+		this.#canvasOldWidthStyle = this.canvas.style.width;
+		this.#canvasOldHeightStyle = this.canvas.style.height;
+
+		this.canvas.style.width = "100vw";
+		this.canvas.style.height = "100%";
+
+		const windowAspectRatio = window.innerWidth / window.innerHeight;
+		const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
+
+		this.#worldWidth = Math.max(this.#worldWidth * aspectRatioChange, this.#worldWidth);
+		this.worldWidth = this.#worldWidth;
+
+		this.#worldHeight = Math.max(this.#worldHeight / aspectRatioChange, this.#worldHeight);
+		this.worldHeight = this.#worldHeight;
+
+		this.#clampWorldCoordinates();
+
+		this.#onResizeWindow();
+		this.onSwitchFullscreen(true);
+	}
+
+	exitManagedFullscreen()
+	{
+		this.#externalFullscreenActive = false;
+		this.#currentlyFullscreen = false;
+		this.currentlyFullscreen = false;
+
+		this.#worldWidth = this.#nonFullscreenWorldWidth;
+		this.worldWidth = this.#worldWidth;
+
+		this.#worldHeight = this.#nonFullscreenWorldHeight;
+		this.worldHeight = this.#worldHeight;
+
+		this.#clampWorldCoordinates();
+
+		this.#fullscreenFillScreen = this.#externalFullscreenOldFillScreen;
+
+		if (this.#resizeCanvas({ width: this.#canvasOldWidth }))
+		{
+			this.#onResizeCanvasCallback();
+		}
+
+		this.canvas.style.width = this.#canvasOldWidthStyle;
+		this.canvas.style.height = this.#canvasOldHeightStyle;
+
+		this.#onResizeWindow();
+		this.onSwitchFullscreen(false);
 	}
 
 	#interpolatePageToWorld([row, col]: [number, number]): [number, number]

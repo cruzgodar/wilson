@@ -302,6 +302,8 @@ The above guide, along with the example project, are a great way to get started 
 - `removeDraggables(id: string | string[])`: removes the draggable with the given ID. If an array of IDs is given, all of them will be removed.
 - `enterFullscreen()`: enters fullscreen mode.
 - `exitFullscreen()`: exits fullscreen mode.
+- `enterManagedFullscreen()`: resizes the canvas and updates world coordinates, but does not manage the fullscreen container structure or start a view transition. Useful when an external system handles the fullscreen container.
+- `exitManagedFullscreen()`: analogous to `enterManagedFullscreen`.
 - `interpolateCanvasToWorld([row: number, col: number]): [number, number]`: converts a point in canvas coordinates to world coordinates.
 - `interpolateWorldToCanvas([x: number, y: number]): [number, number]`: converts a point in world coordinates to canvas coordinates.
 - `destroy()`: destroys the Wilson instace, removes all event listeners, and returns the canvas div structure to its original state.
