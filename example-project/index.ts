@@ -138,7 +138,7 @@ function initWilson2()
 
 		interactionOptions: {
 			useForPanAndZoom: true,
-			onPanAndZoom: drawFrame
+			onPanAndZoom: drawFrame,
 		},
 
 		fullscreenOptions: {

@@ -1320,7 +1320,7 @@ class Wilson
 	#lastInteractionRow2: number = 0;
 	#lastInteractionCol2: number = 0;
 
-	#clampWorldCoordinates(hardnessFactor: number = 1)
+	#clampWorldCoordinates(dt: number = 1)
 	{
 		this.#atMaxWorldSize = false;
 		this.#atMinWorldSize = false;
@@ -1334,11 +1334,17 @@ class Wilson
 					return;
 				}
 
-				factor = Math.pow(
-					factor,
-					(hardnessFactor / this.rubberbandingZoomSoftness)
-						/ (this.#currentlyWheeling ? 1.5 : 1)
+				// Frame-rate independent zoom snap-back using exponential decay.
+				// The rate is calibrated so that at 60fps (dt = 1/60), the per-frame
+				// correction matches the old behavior with the same softness value.
+				// At dt = 1 (default for non-animation calls), this gives full correction.
+				const wheelFactor = this.#currentlyWheeling ? 1.5 : 1;
+				const zoomSnapRate = -60 * Math.log(
+					1 - 1 / (this.rubberbandingZoomSoftness * wheelFactor)
 				);
+				const zoomExponent = 1 - Math.exp(-zoomSnapRate * dt);
+
+				factor = Math.pow(factor, zoomExponent);
 
 				if (Math.abs(factor - 1) > this.#zoomVelocityThreshold)
 				{
@@ -1434,8 +1440,17 @@ class Wilson
 
 			if (this.usePanAndZoomRubberbanding)
 			{
-				xAdjust /= this.rubberbandingPanSoftness * hardnessFactor;
-				yAdjust /= this.rubberbandingPanSoftness * hardnessFactor;
+				// Frame-rate independent pan snap-back using exponential decay.
+				// The rate is calibrated so that at 60fps (dt = 1/60), the per-frame
+				// correction matches the old behavior with the same softness value.
+				// At dt = 1 (default for non-animation calls), correction ≈ 1.0.
+				const panSnapRate = -60 * Math.log(
+					1 - 1 / this.rubberbandingPanSoftness
+				);
+				const panCorrection = 1 - Math.exp(-panSnapRate * dt);
+
+				xAdjust *= panCorrection;
+				yAdjust *= panCorrection;
 			}
 
 			xAdjust = isNaN(xAdjust) ? 0 : xAdjust;
@@ -1457,6 +1472,90 @@ class Wilson
 				this.#needPanAndZoomUpdate = true;
 			}
 		}
+	}
+
+	#getPanOverscroll()
+	{
+		const rightBound = this.#maxWorldX - this.#worldWidth / 2;
+		const leftBound = this.#minWorldX + this.#worldWidth / 2;
+		const xSatisfiable = rightBound >= leftBound;
+
+		let overX = 0;
+
+		if (xSatisfiable)
+		{
+			if (this.#worldCenterX > rightBound)
+			{
+				overX = this.#worldCenterX - rightBound;
+			}
+
+			else if (this.#worldCenterX < leftBound)
+			{
+				overX = this.#worldCenterX - leftBound;
+			}
+		}
+
+		const topBound = this.#maxWorldY - this.#worldHeight / 2;
+		const bottomBound = this.#minWorldY + this.#worldHeight / 2;
+		const ySatisfiable = topBound >= bottomBound;
+
+		let overY = 0;
+
+		if (ySatisfiable)
+		{
+			if (this.#worldCenterY > topBound)
+			{
+				overY = this.#worldCenterY - topBound;
+			}
+
+			else if (this.#worldCenterY < bottomBound)
+			{
+				overY = this.#worldCenterY - bottomBound;
+			}
+		}
+
+		return { overX, overY, xSatisfiable, ySatisfiable };
+	}
+
+	#getZoomOverscroll()
+	{
+		const tooLargeWidth = this.#worldWidth > this.#maxWorldWidth;
+		const tooLargeHeight = this.#worldHeight > this.#maxWorldHeight;
+		const tooSmallWidth = this.#worldWidth < this.#minWorldWidth;
+		const tooSmallHeight = this.#worldHeight < this.#minWorldHeight;
+
+		let overWidthRatio = 0;
+
+		if (tooLargeWidth)
+		{
+			overWidthRatio = this.#worldWidth / this.#maxWorldWidth - 1;
+		}
+
+		else if (tooSmallWidth)
+		{
+			overWidthRatio = 1 - this.#worldWidth / this.#minWorldWidth;
+		}
+
+		let overHeightRatio = 0;
+
+		if (tooLargeHeight)
+		{
+			overHeightRatio = this.#worldHeight / this.#maxWorldHeight - 1;
+		}
+
+		else if (tooSmallHeight)
+		{
+			overHeightRatio = 1 - this.#worldHeight / this.#minWorldHeight;
+		}
+
+		return {
+			overWidthRatio,
+			overHeightRatio,
+			tooLargeWidth,
+			tooLargeHeight,
+			tooSmallWidth,
+			tooSmallHeight,
+		};
 	}
 
 	#onMousedown(e: MouseEvent)
@@ -1592,14 +1691,51 @@ class Wilson
 
 		if (this.useInteractionForPanAndZoom && this.#currentlyDragging)
 		{
-			this.#worldCenterX -= x - lastX;
+			let deltaX = -(x - lastX);
+			let deltaY = -(y - lastY);
+
+			// Apply rubber band resistance when dragging past bounds.
+			// Uses a reciprocal curve: at zero overscroll, full tracking (1:1);
+			// at half the viewport past bounds, tracking is halved.
+			// Only resists when pushing FURTHER past bounds, not when dragging back.
+			if (this.usePanAndZoomRubberbanding)
+			{
+				const { overX, overY, xSatisfiable, ySatisfiable }
+					= this.#getPanOverscroll();
+
+				if (xSatisfiable && overX !== 0)
+				{
+					const pushingFurther = (overX > 0 && deltaX > 0)
+						|| (overX < 0 && deltaX < 0);
+
+					if (pushingFurther)
+					{
+						deltaX *= 1 / (1 + Math.abs(overX)
+							/ (this.#worldWidth * 0.5));
+					}
+				}
+
+				if (ySatisfiable && overY !== 0)
+				{
+					const pushingFurther = (overY > 0 && deltaY > 0)
+						|| (overY < 0 && deltaY < 0);
+
+					if (pushingFurther)
+					{
+						deltaY *= 1 / (1 + Math.abs(overY)
+							/ (this.#worldHeight * 0.5));
+					}
+				}
+			}
+
+			this.#worldCenterX += deltaX;
 			this.worldCenterX = this.#worldCenterX;
 
-			this.#worldCenterY -= y - lastY;
+			this.#worldCenterY += deltaY;
 			this.worldCenterY = this.#worldCenterY;
 
-			this.#setLastPanVelocity(lastX - x, lastY - y);
-			
+			this.#setLastPanVelocity(deltaX, deltaY);
+
 			this.#needPanAndZoomUpdate = true;
 		}
 
@@ -1648,7 +1784,30 @@ class Wilson
 			(this.#zoomFixedPoint[1] - this.#worldCenterY) / this.#worldHeight
 		];
 
-		const scale = lastDistance / distance;
+		let scale = lastDistance / distance;
+
+		// Apply zoom resistance during pinch when past bounds.
+		if (this.usePanAndZoomRubberbanding && scale !== 1)
+		{
+			const {
+				overWidthRatio, overHeightRatio,
+				tooLargeWidth, tooLargeHeight,
+				tooSmallWidth, tooSmallHeight
+			} = this.#getZoomOverscroll();
+
+			const overZoomRatio = Math.max(overWidthRatio, overHeightRatio);
+
+			const zoomingPastMax = (scale > 1)
+				&& (tooLargeWidth || tooLargeHeight);
+			const zoomingPastMin = (scale < 1)
+				&& (tooSmallWidth || tooSmallHeight);
+
+			if ((zoomingPastMax || zoomingPastMin) && overZoomRatio > 0)
+			{
+				const resistance = 1 / (1 + overZoomRatio * 3);
+				scale = 1 + (scale - 1) * resistance;
+			}
+		}
 
 		this.#worldWidth *= scale;
 		this.worldWidth = this.#worldWidth;
@@ -1862,13 +2021,47 @@ class Wilson
 			
 			else
 			{
-				this.#worldCenterX -= x - lastX;
+				let deltaX = -(x - lastX);
+				let deltaY = -(y - lastY);
+
+				// Apply rubber band resistance when dragging past bounds.
+				if (this.usePanAndZoomRubberbanding)
+				{
+					const { overX, overY, xSatisfiable, ySatisfiable }
+						= this.#getPanOverscroll();
+
+					if (xSatisfiable && overX !== 0)
+					{
+						const pushingFurther = (overX > 0 && deltaX > 0)
+							|| (overX < 0 && deltaX < 0);
+
+						if (pushingFurther)
+						{
+							deltaX *= 1 / (1 + Math.abs(overX)
+								/ (this.#worldWidth * 0.5));
+						}
+					}
+
+					if (ySatisfiable && overY !== 0)
+					{
+						const pushingFurther = (overY > 0 && deltaY > 0)
+							|| (overY < 0 && deltaY < 0);
+
+						if (pushingFurther)
+						{
+							deltaY *= 1 / (1 + Math.abs(overY)
+								/ (this.#worldHeight * 0.5));
+						}
+					}
+				}
+
+				this.#worldCenterX += deltaX;
 				this.worldCenterX = this.#worldCenterX;
 
-				this.#worldCenterY -= y - lastY;
+				this.#worldCenterY += deltaY;
 				this.worldCenterY = this.#worldCenterY;
 
-				this.#setLastPanVelocity(lastX - x, lastY - y);
+				this.#setLastPanVelocity(deltaX, deltaY);
 			}
 
 			this.#needPanAndZoomUpdate = true;
@@ -1901,6 +2094,33 @@ class Wilson
 			)
 		) {
 			return;
+		}
+
+		// Apply zoom resistance when past bounds and rubberbanding is active.
+		// Uses a reciprocal curve on the over-zoom ratio so that zooming further
+		// past bounds requires increasingly more effort.
+		if (this.usePanAndZoomRubberbanding && scale !== 1)
+		{
+			const {
+				overWidthRatio, overHeightRatio,
+				tooLargeWidth, tooLargeHeight,
+				tooSmallWidth, tooSmallHeight
+			} = this.#getZoomOverscroll();
+
+			const overZoomRatio = Math.max(overWidthRatio, overHeightRatio);
+
+			// scale > 1 means world gets larger (zooming out)
+			// scale < 1 means world gets smaller (zooming in)
+			const zoomingPastMax = (scale > 1)
+				&& (tooLargeWidth || tooLargeHeight);
+			const zoomingPastMin = (scale < 1)
+				&& (tooSmallWidth || tooSmallHeight);
+
+			if ((zoomingPastMax || zoomingPastMin) && overZoomRatio > 0)
+			{
+				const resistance = 1 / (1 + overZoomRatio * 3);
+				scale = 1 + (scale - 1) * resistance;
+			}
 		}
 
 		const centerProportion = [
@@ -2041,6 +2261,32 @@ class Wilson
 				timeElapsed / (1000 / 60)
 			);
 
+			// Extra friction when zoom momentum pushes further past bounds.
+			// Rate of 15 means velocity drops to ~22% in 0.1s, roughly 3x
+			// faster than normal friction. Only damps velocity in the
+			// direction of further overscroll.
+			if (this.usePanAndZoomRubberbanding)
+			{
+				const dt = timeElapsed / 1000;
+
+				const {
+					tooLargeWidth, tooLargeHeight,
+					tooSmallWidth, tooSmallHeight
+				} = this.#getZoomOverscroll();
+
+				// zoomVelocity > 0 means zooming out (world gets larger)
+				// zoomVelocity < 0 means zooming in (world gets smaller)
+				const pushingPastMax = this.#zoomVelocity > 0
+					&& (tooLargeWidth || tooLargeHeight);
+				const pushingPastMin = this.#zoomVelocity < 0
+					&& (tooSmallWidth || tooSmallHeight);
+
+				if (pushingPastMax || pushingPastMin)
+				{
+					this.#zoomVelocity *= Math.exp(-15 * dt);
+				}
+			}
+
 			if (Math.abs(this.#zoomVelocity) < this.#zoomVelocityThreshold)
 			{
 				this.#zoomVelocity = 0;
@@ -2065,6 +2311,34 @@ class Wilson
 			this.#panVelocityX *= frictionFactor;
 			this.#panVelocityY *= frictionFactor;
 
+			// Extra friction when pan momentum pushes further past bounds.
+			if (this.usePanAndZoomRubberbanding)
+			{
+				const dt = timeElapsed / 1000;
+				const { overX, overY, xSatisfiable, ySatisfiable }
+					= this.#getPanOverscroll();
+
+				const overscrollDamping = Math.exp(-15 * dt);
+
+				if (xSatisfiable)
+				{
+					if ((overX > 0 && this.#panVelocityX > 0)
+						|| (overX < 0 && this.#panVelocityX < 0))
+					{
+						this.#panVelocityX *= overscrollDamping;
+					}
+				}
+
+				if (ySatisfiable)
+				{
+					if ((overY > 0 && this.#panVelocityY > 0)
+						|| (overY < 0 && this.#panVelocityY < 0))
+					{
+						this.#panVelocityY *= overscrollDamping;
+					}
+				}
+			}
+
 			const totalPanVelocitySquared = this.#panVelocityX * this.#panVelocityX
 				+ this.#panVelocityY * this.#panVelocityY;
 
@@ -2084,7 +2358,7 @@ class Wilson
 		{
 			this.#needPanAndZoomUpdate = false;
 
-			this.#clampWorldCoordinates(Math.min(timeElapsed / (1000 / 60), 1));
+			this.#clampWorldCoordinates(timeElapsed / 1000);
 			this.#updateDraggablesLocation();
 			this.#interactionOnPanAndZoom();
 			this.showResetButton();
@@ -2672,6 +2946,7 @@ class Wilson
 		}
 
 		this.#onResizeWindow();
+		this.#updateDraggablesContainerSize();
 		this.onSwitchFullscreen(true);
 
 		setTimeout(() =>
@@ -2836,7 +3111,25 @@ class Wilson
 					data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}-${this.#salt}`);
 				}
 			}
-			
+
+			// Prevent crossfade opacity dip on draggable elements — see
+			// the matching comment in exitFullscreen() for the full explanation.
+			let draggableStyleElement: HTMLStyleElement | null = null;
+			const draggableIds = Object.keys(this.#draggables);
+
+			if (draggableIds.length > 0)
+			{
+				const rules = draggableIds.map(id =>
+				{
+					const name = `WILSON_draggable-${id}-${this.#salt}`;
+					return `::view-transition-old(${name}),\n::view-transition-new(${name}) { animation: none; }`;
+				}).join("\n");
+
+				draggableStyleElement = document.createElement("style");
+				draggableStyleElement.innerHTML = rules;
+				document.head.appendChild(draggableStyleElement);
+			}
+
 			if (this.animateFullscreen)
 			{
 				// @ts-ignore
@@ -2847,17 +3140,23 @@ class Wilson
 					await transition.finished;
 
 					styleElement?.remove();
+					draggableStyleElement?.remove();
 				}
 
 				else
 				{
-					setTimeout(() => styleElement?.remove(), 1000);
+					setTimeout(() =>
+					{
+						styleElement?.remove();
+						draggableStyleElement?.remove();
+					}, 1000);
 				}
 			}
 
 			else
 			{
 				this.#enterFullscreen();
+				draggableStyleElement?.remove();
 			}
 		}
 
@@ -2928,6 +3227,7 @@ class Wilson
 		this.canvas.style.height = this.#canvasOldHeightStyle;
 
 		this.#onResizeWindow();
+		this.#updateDraggablesContainerSize();
 		this.onSwitchFullscreen(false);
 
 		// When there are multiple Wilson instances on the same page,
@@ -3105,6 +3405,28 @@ class Wilson
 				}
 			}
 
+			// Prevent crossfade opacity dip on draggable elements — they look
+			// identical in both states and only need the group's position
+			// interpolation. Safari doesn't reliably apply plus-lighter
+			// blending on view-transition pseudo-elements, so the default
+			// crossfade causes a visible fade for draggables that travel
+			// large distances (especially near the bottom of the canvas).
+			let draggableStyleElement: HTMLStyleElement | null = null;
+			const draggableIds = Object.keys(this.#draggables);
+
+			if (draggableIds.length > 0)
+			{
+				const rules = draggableIds.map(id =>
+				{
+					const name = `WILSON_draggable-${id}-${this.#salt}`;
+					return `::view-transition-old(${name}),\n::view-transition-new(${name}) { animation: none; }`;
+				}).join("\n");
+
+				draggableStyleElement = document.createElement("style");
+				draggableStyleElement.innerHTML = rules;
+				document.head.appendChild(draggableStyleElement);
+			}
+
 			if (this.animateFullscreen)
 			{
 				// @ts-ignore
@@ -3115,20 +3437,26 @@ class Wilson
 					await transition.finished;
 
 					styleElement?.remove();
+					draggableStyleElement?.remove();
 				}
 
 				else
 				{
-					setTimeout(() => styleElement?.remove(), 1000);
+					setTimeout(() =>
+					{
+						styleElement?.remove();
+						draggableStyleElement?.remove();
+					}, 1000);
 				}
 			}
 
 			else
 			{
 				this.#exitFullscreen();
+				draggableStyleElement?.remove();
 			}
 		}
-		
+
 		else
 		{
 			this.#exitFullscreen();

@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Wilson_instances, _Wilson_destroyed, _Wilson_canvasWidth, _Wilson_canvasHeight, _Wilson_lastCanvasWidth, _Wilson_lastCanvasHeight, _Wilson_canvasAspectRatio, _Wilson_worldWidth, _Wilson_worldHeight, _Wilson_worldCenterX, _Wilson_worldCenterY, _Wilson_nonFullscreenWorldWidth, _Wilson_nonFullscreenWorldHeight, _Wilson_minWorldWidth, _Wilson_maxWorldWidth, _Wilson_minWorldHeight, _Wilson_maxWorldHeight, _Wilson_minWorldX, _Wilson_maxWorldX, _Wilson_minWorldY, _Wilson_maxWorldY, _Wilson_onResizeCanvasCallback, _Wilson_useP3ColorSpace, _Wilson_needDraggablesContainerSizeUpdate, _Wilson_interactionCallbacks, _Wilson_needPanAndZoomUpdate, _Wilson_interactionOnPanAndZoom, _Wilson_lastInteractionTimes, _Wilson_lastInteractionTypes, _Wilson_numPreviousVelocities, _Wilson_lastVelocityFactors, _Wilson_lastPanVelocityX, _Wilson_lastPanVelocityY, _Wilson_lastZoomVelocity, _Wilson_lastPanVelocitiesX, _Wilson_lastPanVelocitiesY, _Wilson_lastZoomVelocities, _Wilson_panVelocityX, _Wilson_panVelocityY, _Wilson_zoomVelocity, _Wilson_panFriction, _Wilson_zoomFriction, _Wilson_panVelocityThreshold, _Wilson_zoomVelocityThreshold, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_currentlyFullscreen, _Wilson_fullscreenOldScroll, _Wilson_fullscreenCanvasRect, _Wilson_fullscreenInitialWindowInnerWidth, _Wilson_fullscreenInitialWindowInnerHeight, _Wilson_fullscreenFillScreen, _Wilson_externalFullscreenOldFillScreen, _Wilson_externalFullscreenActive, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButton, _Wilson_fullscreenExitFullscreenButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_draggables, _Wilson_draggableDefaultId, _Wilson_currentMouseDraggableId, _Wilson_useResetButton, _Wilson_resetButton, _Wilson_resetButtonTimeoutId, _Wilson_resetButtonIconPath, _Wilson_defaultWorldCenterX, _Wilson_defaultWorldCenterY, _Wilson_defaultWorldWidth, _Wilson_defaultWorldHeight, _Wilson_defaultDraggableLocations, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_buttonContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_salt, _Wilson_getDefaultWorldSize, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_resizeCanvas, _Wilson_zeroVelocities, _Wilson_setLastZoomVelocity, _Wilson_setLastPanVelocity, _Wilson_setZoomVelocity, _Wilson_setPanVelocity, _Wilson_currentlyDragging, _Wilson_currentlyPinching, _Wilson_currentlyWheeling, _Wilson_currentlyWheelingTimeoutId, _Wilson_ignoreTouchendCooldown, _Wilson_atMaxWorldSize, _Wilson_atMinWorldSize, _Wilson_lastInteractionRow, _Wilson_lastInteractionCol, _Wilson_lastInteractionRow2, _Wilson_lastInteractionCol2, _Wilson_clampWorldCoordinates, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMouseenter, _Wilson_onMouseleave, _Wilson_onMousemove, _Wilson_updateFromPinching, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_zoomFixedPoint, _Wilson_zoomCanvas, _Wilson_onWheel, _Wilson_lastPanAndZoomTimestamp, _Wilson_animationFrameLoop, _Wilson_initInteraction, _Wilson_documentDraggableMousemoveListener, _Wilson_documentDraggableMouseupListener, _Wilson_initDraggables, _Wilson_setDraggables, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_updateDraggablesLocation, _Wilson_initFullscreen, _Wilson_initResetButton, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_enterFullscreen, _Wilson_addEnterFullscreenFillScreenTransitionStyle, _Wilson_exitFullscreen, _Wilson_addExitFullscreenFillScreenTransitionStyle, _Wilson_interpolatePageToWorld, _WilsonGPU_useWebGL2, _WilsonGPU_shaderPrograms, _WilsonGPU_shaderProgramSources, _WilsonGPU_uniforms, _WilsonGPU_numShaders, _WilsonGPU_currentShaderId, _WilsonGPU_framebuffers, _WilsonGPU_textures, _WilsonGPU_positionBuffers, _WilsonGPU_shaders;
+var _Wilson_instances, _Wilson_destroyed, _Wilson_canvasWidth, _Wilson_canvasHeight, _Wilson_lastCanvasWidth, _Wilson_lastCanvasHeight, _Wilson_canvasAspectRatio, _Wilson_worldWidth, _Wilson_worldHeight, _Wilson_worldCenterX, _Wilson_worldCenterY, _Wilson_nonFullscreenWorldWidth, _Wilson_nonFullscreenWorldHeight, _Wilson_minWorldWidth, _Wilson_maxWorldWidth, _Wilson_minWorldHeight, _Wilson_maxWorldHeight, _Wilson_minWorldX, _Wilson_maxWorldX, _Wilson_minWorldY, _Wilson_maxWorldY, _Wilson_onResizeCanvasCallback, _Wilson_useP3ColorSpace, _Wilson_needDraggablesContainerSizeUpdate, _Wilson_interactionCallbacks, _Wilson_needPanAndZoomUpdate, _Wilson_interactionOnPanAndZoom, _Wilson_lastInteractionTimes, _Wilson_lastInteractionTypes, _Wilson_numPreviousVelocities, _Wilson_lastVelocityFactors, _Wilson_lastPanVelocityX, _Wilson_lastPanVelocityY, _Wilson_lastZoomVelocity, _Wilson_lastPanVelocitiesX, _Wilson_lastPanVelocitiesY, _Wilson_lastZoomVelocities, _Wilson_panVelocityX, _Wilson_panVelocityY, _Wilson_zoomVelocity, _Wilson_panFriction, _Wilson_zoomFriction, _Wilson_panVelocityThreshold, _Wilson_zoomVelocityThreshold, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_currentlyFullscreen, _Wilson_fullscreenOldScroll, _Wilson_fullscreenCanvasRect, _Wilson_fullscreenInitialWindowInnerWidth, _Wilson_fullscreenInitialWindowInnerHeight, _Wilson_fullscreenFillScreen, _Wilson_externalFullscreenOldFillScreen, _Wilson_externalFullscreenActive, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButton, _Wilson_fullscreenExitFullscreenButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_draggables, _Wilson_draggableDefaultId, _Wilson_currentMouseDraggableId, _Wilson_useResetButton, _Wilson_resetButton, _Wilson_resetButtonTimeoutId, _Wilson_resetButtonIconPath, _Wilson_defaultWorldCenterX, _Wilson_defaultWorldCenterY, _Wilson_defaultWorldWidth, _Wilson_defaultWorldHeight, _Wilson_defaultDraggableLocations, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_buttonContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_salt, _Wilson_getDefaultWorldSize, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_resizeCanvas, _Wilson_zeroVelocities, _Wilson_setLastZoomVelocity, _Wilson_setLastPanVelocity, _Wilson_setZoomVelocity, _Wilson_setPanVelocity, _Wilson_currentlyDragging, _Wilson_currentlyPinching, _Wilson_currentlyWheeling, _Wilson_currentlyWheelingTimeoutId, _Wilson_ignoreTouchendCooldown, _Wilson_atMaxWorldSize, _Wilson_atMinWorldSize, _Wilson_lastInteractionRow, _Wilson_lastInteractionCol, _Wilson_lastInteractionRow2, _Wilson_lastInteractionCol2, _Wilson_clampWorldCoordinates, _Wilson_getPanOverscroll, _Wilson_getZoomOverscroll, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMouseenter, _Wilson_onMouseleave, _Wilson_onMousemove, _Wilson_updateFromPinching, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_zoomFixedPoint, _Wilson_zoomCanvas, _Wilson_onWheel, _Wilson_lastPanAndZoomTimestamp, _Wilson_animationFrameLoop, _Wilson_initInteraction, _Wilson_documentDraggableMousemoveListener, _Wilson_documentDraggableMouseupListener, _Wilson_initDraggables, _Wilson_setDraggables, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_updateDraggablesLocation, _Wilson_initFullscreen, _Wilson_initResetButton, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_enterFullscreen, _Wilson_addEnterFullscreenFillScreenTransitionStyle, _Wilson_exitFullscreen, _Wilson_addExitFullscreenFillScreenTransitionStyle, _Wilson_interpolatePageToWorld, _WilsonGPU_useWebGL2, _WilsonGPU_shaderPrograms, _WilsonGPU_shaderProgramSources, _WilsonGPU_uniforms, _WilsonGPU_numShaders, _WilsonGPU_currentShaderId, _WilsonGPU_framebuffers, _WilsonGPU_textures, _WilsonGPU_positionBuffers, _WilsonGPU_shaders;
 const defaultInteractionCallbacks = {
     mousedown: ({ x, y, event }) => { },
     mouseup: ({ x, y, event }) => { },
@@ -211,6 +211,23 @@ class Wilson {
             if (__classPrivateFieldGet(this, _Wilson_zoomVelocity, "f")) {
                 __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_zoomCanvas).call(this, 1 + __classPrivateFieldGet(this, _Wilson_zoomVelocity, "f") * 0.005);
                 __classPrivateFieldSet(this, _Wilson_zoomVelocity, __classPrivateFieldGet(this, _Wilson_zoomVelocity, "f") * Math.pow(__classPrivateFieldGet(this, _Wilson_zoomFriction, "f"), timeElapsed / (1000 / 60)), "f");
+                // Extra friction when zoom momentum pushes further past bounds.
+                // Rate of 15 means velocity drops to ~22% in 0.1s, roughly 3x
+                // faster than normal friction. Only damps velocity in the
+                // direction of further overscroll.
+                if (this.usePanAndZoomRubberbanding) {
+                    const dt = timeElapsed / 1000;
+                    const { tooLargeWidth, tooLargeHeight, tooSmallWidth, tooSmallHeight } = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_getZoomOverscroll).call(this);
+                    // zoomVelocity > 0 means zooming out (world gets larger)
+                    // zoomVelocity < 0 means zooming in (world gets smaller)
+                    const pushingPastMax = __classPrivateFieldGet(this, _Wilson_zoomVelocity, "f") > 0
+                        && (tooLargeWidth || tooLargeHeight);
+                    const pushingPastMin = __classPrivateFieldGet(this, _Wilson_zoomVelocity, "f") < 0
+                        && (tooSmallWidth || tooSmallHeight);
+                    if (pushingPastMax || pushingPastMin) {
+                        __classPrivateFieldSet(this, _Wilson_zoomVelocity, __classPrivateFieldGet(this, _Wilson_zoomVelocity, "f") * Math.exp(-15 * dt), "f");
+                    }
+                }
                 if (Math.abs(__classPrivateFieldGet(this, _Wilson_zoomVelocity, "f")) < __classPrivateFieldGet(this, _Wilson_zoomVelocityThreshold, "f")) {
                     __classPrivateFieldSet(this, _Wilson_zoomVelocity, 0, "f");
                 }
@@ -224,6 +241,24 @@ class Wilson {
                 const frictionFactor = Math.pow(__classPrivateFieldGet(this, _Wilson_panFriction, "f"), timeElapsed / (1000 / 60));
                 __classPrivateFieldSet(this, _Wilson_panVelocityX, __classPrivateFieldGet(this, _Wilson_panVelocityX, "f") * frictionFactor, "f");
                 __classPrivateFieldSet(this, _Wilson_panVelocityY, __classPrivateFieldGet(this, _Wilson_panVelocityY, "f") * frictionFactor, "f");
+                // Extra friction when pan momentum pushes further past bounds.
+                if (this.usePanAndZoomRubberbanding) {
+                    const dt = timeElapsed / 1000;
+                    const { overX, overY, xSatisfiable, ySatisfiable } = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_getPanOverscroll).call(this);
+                    const overscrollDamping = Math.exp(-15 * dt);
+                    if (xSatisfiable) {
+                        if ((overX > 0 && __classPrivateFieldGet(this, _Wilson_panVelocityX, "f") > 0)
+                            || (overX < 0 && __classPrivateFieldGet(this, _Wilson_panVelocityX, "f") < 0)) {
+                            __classPrivateFieldSet(this, _Wilson_panVelocityX, __classPrivateFieldGet(this, _Wilson_panVelocityX, "f") * overscrollDamping, "f");
+                        }
+                    }
+                    if (ySatisfiable) {
+                        if ((overY > 0 && __classPrivateFieldGet(this, _Wilson_panVelocityY, "f") > 0)
+                            || (overY < 0 && __classPrivateFieldGet(this, _Wilson_panVelocityY, "f") < 0)) {
+                            __classPrivateFieldSet(this, _Wilson_panVelocityY, __classPrivateFieldGet(this, _Wilson_panVelocityY, "f") * overscrollDamping, "f");
+                        }
+                    }
+                }
                 const totalPanVelocitySquared = __classPrivateFieldGet(this, _Wilson_panVelocityX, "f") * __classPrivateFieldGet(this, _Wilson_panVelocityX, "f")
                     + __classPrivateFieldGet(this, _Wilson_panVelocityY, "f") * __classPrivateFieldGet(this, _Wilson_panVelocityY, "f");
                 const threshold = __classPrivateFieldGet(this, _Wilson_panVelocityThreshold, "f")
@@ -235,7 +270,7 @@ class Wilson {
             }
             if (__classPrivateFieldGet(this, _Wilson_needPanAndZoomUpdate, "f")) {
                 __classPrivateFieldSet(this, _Wilson_needPanAndZoomUpdate, false, "f");
-                __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_clampWorldCoordinates).call(this, Math.min(timeElapsed / (1000 / 60), 1));
+                __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_clampWorldCoordinates).call(this, timeElapsed / 1000);
                 __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesLocation).call(this);
                 __classPrivateFieldGet(this, _Wilson_interactionOnPanAndZoom, "f").call(this);
                 this.showResetButton();
@@ -764,19 +799,37 @@ class Wilson {
                     data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`);
                 }
             }
+            // Prevent crossfade opacity dip on draggable elements — see
+            // the matching comment in exitFullscreen() for the full explanation.
+            let draggableStyleElement = null;
+            const draggableIds = Object.keys(__classPrivateFieldGet(this, _Wilson_draggables, "f"));
+            if (draggableIds.length > 0) {
+                const rules = draggableIds.map(id => {
+                    const name = `WILSON_draggable-${id}-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`;
+                    return `::view-transition-old(${name}),\n::view-transition-new(${name}) { animation: none; }`;
+                }).join("\n");
+                draggableStyleElement = document.createElement("style");
+                draggableStyleElement.innerHTML = rules;
+                document.head.appendChild(draggableStyleElement);
+            }
             if (this.animateFullscreen) {
                 // @ts-ignore
                 const transition = document.startViewTransition(() => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_enterFullscreen).call(this));
                 if (transition.finished !== undefined) {
                     await transition.finished;
                     styleElement === null || styleElement === void 0 ? void 0 : styleElement.remove();
+                    draggableStyleElement === null || draggableStyleElement === void 0 ? void 0 : draggableStyleElement.remove();
                 }
                 else {
-                    setTimeout(() => styleElement === null || styleElement === void 0 ? void 0 : styleElement.remove(), 1000);
+                    setTimeout(() => {
+                        styleElement === null || styleElement === void 0 ? void 0 : styleElement.remove();
+                        draggableStyleElement === null || draggableStyleElement === void 0 ? void 0 : draggableStyleElement.remove();
+                    }, 1000);
                 }
             }
             else {
                 __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_enterFullscreen).call(this);
+                draggableStyleElement === null || draggableStyleElement === void 0 ? void 0 : draggableStyleElement.remove();
             }
         }
         else {
@@ -822,19 +875,41 @@ class Wilson {
                     data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`);
                 }
             }
+            // Prevent crossfade opacity dip on draggable elements — they look
+            // identical in both states and only need the group's position
+            // interpolation. Safari doesn't reliably apply plus-lighter
+            // blending on view-transition pseudo-elements, so the default
+            // crossfade causes a visible fade for draggables that travel
+            // large distances (especially near the bottom of the canvas).
+            let draggableStyleElement = null;
+            const draggableIds = Object.keys(__classPrivateFieldGet(this, _Wilson_draggables, "f"));
+            if (draggableIds.length > 0) {
+                const rules = draggableIds.map(id => {
+                    const name = `WILSON_draggable-${id}-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`;
+                    return `::view-transition-old(${name}),\n::view-transition-new(${name}) { animation: none; }`;
+                }).join("\n");
+                draggableStyleElement = document.createElement("style");
+                draggableStyleElement.innerHTML = rules;
+                document.head.appendChild(draggableStyleElement);
+            }
             if (this.animateFullscreen) {
                 // @ts-ignore
                 const transition = document.startViewTransition(() => __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_exitFullscreen).call(this));
                 if (transition.finished !== undefined) {
                     await transition.finished;
                     styleElement === null || styleElement === void 0 ? void 0 : styleElement.remove();
+                    draggableStyleElement === null || draggableStyleElement === void 0 ? void 0 : draggableStyleElement.remove();
                 }
                 else {
-                    setTimeout(() => styleElement === null || styleElement === void 0 ? void 0 : styleElement.remove(), 1000);
+                    setTimeout(() => {
+                        styleElement === null || styleElement === void 0 ? void 0 : styleElement.remove();
+                        draggableStyleElement === null || draggableStyleElement === void 0 ? void 0 : draggableStyleElement.remove();
+                    }, 1000);
                 }
             }
             else {
                 __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_exitFullscreen).call(this);
+                draggableStyleElement === null || draggableStyleElement === void 0 ? void 0 : draggableStyleElement.remove();
             }
         }
         else {
@@ -999,7 +1074,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         __classPrivateFieldSet(this, _Wilson_panVelocityX, 0, "f");
         __classPrivateFieldSet(this, _Wilson_panVelocityY, 0, "f");
     }
-}, _Wilson_clampWorldCoordinates = function _Wilson_clampWorldCoordinates(hardnessFactor = 1) {
+}, _Wilson_clampWorldCoordinates = function _Wilson_clampWorldCoordinates(dt = 1) {
     __classPrivateFieldSet(this, _Wilson_atMaxWorldSize, false, "f");
     __classPrivateFieldSet(this, _Wilson_atMinWorldSize, false, "f");
     const applyFactor = (factor) => {
@@ -1007,8 +1082,14 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
             if (__classPrivateFieldGet(this, _Wilson_currentlyPinching, "f")) {
                 return;
             }
-            factor = Math.pow(factor, (hardnessFactor / this.rubberbandingZoomSoftness)
-                / (__classPrivateFieldGet(this, _Wilson_currentlyWheeling, "f") ? 1.5 : 1));
+            // Frame-rate independent zoom snap-back using exponential decay.
+            // The rate is calibrated so that at 60fps (dt = 1/60), the per-frame
+            // correction matches the old behavior with the same softness value.
+            // At dt = 1 (default for non-animation calls), this gives full correction.
+            const wheelFactor = __classPrivateFieldGet(this, _Wilson_currentlyWheeling, "f") ? 1.5 : 1;
+            const zoomSnapRate = -60 * Math.log(1 - 1 / (this.rubberbandingZoomSoftness * wheelFactor));
+            const zoomExponent = 1 - Math.exp(-zoomSnapRate * dt);
+            factor = Math.pow(factor, zoomExponent);
             if (Math.abs(factor - 1) > __classPrivateFieldGet(this, _Wilson_zoomVelocityThreshold, "f")) {
                 __classPrivateFieldSet(this, _Wilson_needPanAndZoomUpdate, true, "f");
             }
@@ -1069,8 +1150,14 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
             ? (__classPrivateFieldGet(this, _Wilson_maxWorldY, "f") + __classPrivateFieldGet(this, _Wilson_minWorldY, "f")) / 2 - __classPrivateFieldGet(this, _Wilson_worldCenterY, "f")
             : yIncrease - yDecrease;
         if (this.usePanAndZoomRubberbanding) {
-            xAdjust /= this.rubberbandingPanSoftness * hardnessFactor;
-            yAdjust /= this.rubberbandingPanSoftness * hardnessFactor;
+            // Frame-rate independent pan snap-back using exponential decay.
+            // The rate is calibrated so that at 60fps (dt = 1/60), the per-frame
+            // correction matches the old behavior with the same softness value.
+            // At dt = 1 (default for non-animation calls), correction ≈ 1.0.
+            const panSnapRate = -60 * Math.log(1 - 1 / this.rubberbandingPanSoftness);
+            const panCorrection = 1 - Math.exp(-panSnapRate * dt);
+            xAdjust *= panCorrection;
+            yAdjust *= panCorrection;
         }
         xAdjust = isNaN(xAdjust) ? 0 : xAdjust;
         yAdjust = isNaN(yAdjust) ? 0 : yAdjust;
@@ -1085,6 +1172,59 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
             __classPrivateFieldSet(this, _Wilson_needPanAndZoomUpdate, true, "f");
         }
     }
+}, _Wilson_getPanOverscroll = function _Wilson_getPanOverscroll() {
+    const rightBound = __classPrivateFieldGet(this, _Wilson_maxWorldX, "f") - __classPrivateFieldGet(this, _Wilson_worldWidth, "f") / 2;
+    const leftBound = __classPrivateFieldGet(this, _Wilson_minWorldX, "f") + __classPrivateFieldGet(this, _Wilson_worldWidth, "f") / 2;
+    const xSatisfiable = rightBound >= leftBound;
+    let overX = 0;
+    if (xSatisfiable) {
+        if (__classPrivateFieldGet(this, _Wilson_worldCenterX, "f") > rightBound) {
+            overX = __classPrivateFieldGet(this, _Wilson_worldCenterX, "f") - rightBound;
+        }
+        else if (__classPrivateFieldGet(this, _Wilson_worldCenterX, "f") < leftBound) {
+            overX = __classPrivateFieldGet(this, _Wilson_worldCenterX, "f") - leftBound;
+        }
+    }
+    const topBound = __classPrivateFieldGet(this, _Wilson_maxWorldY, "f") - __classPrivateFieldGet(this, _Wilson_worldHeight, "f") / 2;
+    const bottomBound = __classPrivateFieldGet(this, _Wilson_minWorldY, "f") + __classPrivateFieldGet(this, _Wilson_worldHeight, "f") / 2;
+    const ySatisfiable = topBound >= bottomBound;
+    let overY = 0;
+    if (ySatisfiable) {
+        if (__classPrivateFieldGet(this, _Wilson_worldCenterY, "f") > topBound) {
+            overY = __classPrivateFieldGet(this, _Wilson_worldCenterY, "f") - topBound;
+        }
+        else if (__classPrivateFieldGet(this, _Wilson_worldCenterY, "f") < bottomBound) {
+            overY = __classPrivateFieldGet(this, _Wilson_worldCenterY, "f") - bottomBound;
+        }
+    }
+    return { overX, overY, xSatisfiable, ySatisfiable };
+}, _Wilson_getZoomOverscroll = function _Wilson_getZoomOverscroll() {
+    const tooLargeWidth = __classPrivateFieldGet(this, _Wilson_worldWidth, "f") > __classPrivateFieldGet(this, _Wilson_maxWorldWidth, "f");
+    const tooLargeHeight = __classPrivateFieldGet(this, _Wilson_worldHeight, "f") > __classPrivateFieldGet(this, _Wilson_maxWorldHeight, "f");
+    const tooSmallWidth = __classPrivateFieldGet(this, _Wilson_worldWidth, "f") < __classPrivateFieldGet(this, _Wilson_minWorldWidth, "f");
+    const tooSmallHeight = __classPrivateFieldGet(this, _Wilson_worldHeight, "f") < __classPrivateFieldGet(this, _Wilson_minWorldHeight, "f");
+    let overWidthRatio = 0;
+    if (tooLargeWidth) {
+        overWidthRatio = __classPrivateFieldGet(this, _Wilson_worldWidth, "f") / __classPrivateFieldGet(this, _Wilson_maxWorldWidth, "f") - 1;
+    }
+    else if (tooSmallWidth) {
+        overWidthRatio = 1 - __classPrivateFieldGet(this, _Wilson_worldWidth, "f") / __classPrivateFieldGet(this, _Wilson_minWorldWidth, "f");
+    }
+    let overHeightRatio = 0;
+    if (tooLargeHeight) {
+        overHeightRatio = __classPrivateFieldGet(this, _Wilson_worldHeight, "f") / __classPrivateFieldGet(this, _Wilson_maxWorldHeight, "f") - 1;
+    }
+    else if (tooSmallHeight) {
+        overHeightRatio = 1 - __classPrivateFieldGet(this, _Wilson_worldHeight, "f") / __classPrivateFieldGet(this, _Wilson_minWorldHeight, "f");
+    }
+    return {
+        overWidthRatio,
+        overHeightRatio,
+        tooLargeWidth,
+        tooLargeHeight,
+        tooSmallWidth,
+        tooSmallHeight,
+    };
 }, _Wilson_onMousedown = function _Wilson_onMousedown(e) {
     if (e.target instanceof HTMLElement && e.target.classList.contains("WILSON_draggable")) {
         return;
@@ -1165,11 +1305,36 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         ? __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").mousedrag
         : __classPrivateFieldGet(this, _Wilson_interactionCallbacks, "f").mousemove;
     if (this.useInteractionForPanAndZoom && __classPrivateFieldGet(this, _Wilson_currentlyDragging, "f")) {
-        __classPrivateFieldSet(this, _Wilson_worldCenterX, __classPrivateFieldGet(this, _Wilson_worldCenterX, "f") - (x - lastX), "f");
+        let deltaX = -(x - lastX);
+        let deltaY = -(y - lastY);
+        // Apply rubber band resistance when dragging past bounds.
+        // Uses a reciprocal curve: at zero overscroll, full tracking (1:1);
+        // at half the viewport past bounds, tracking is halved.
+        // Only resists when pushing FURTHER past bounds, not when dragging back.
+        if (this.usePanAndZoomRubberbanding) {
+            const { overX, overY, xSatisfiable, ySatisfiable } = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_getPanOverscroll).call(this);
+            if (xSatisfiable && overX !== 0) {
+                const pushingFurther = (overX > 0 && deltaX > 0)
+                    || (overX < 0 && deltaX < 0);
+                if (pushingFurther) {
+                    deltaX *= 1 / (1 + Math.abs(overX)
+                        / (__classPrivateFieldGet(this, _Wilson_worldWidth, "f") * 0.5));
+                }
+            }
+            if (ySatisfiable && overY !== 0) {
+                const pushingFurther = (overY > 0 && deltaY > 0)
+                    || (overY < 0 && deltaY < 0);
+                if (pushingFurther) {
+                    deltaY *= 1 / (1 + Math.abs(overY)
+                        / (__classPrivateFieldGet(this, _Wilson_worldHeight, "f") * 0.5));
+                }
+            }
+        }
+        __classPrivateFieldSet(this, _Wilson_worldCenterX, __classPrivateFieldGet(this, _Wilson_worldCenterX, "f") + deltaX, "f");
         this.worldCenterX = __classPrivateFieldGet(this, _Wilson_worldCenterX, "f");
-        __classPrivateFieldSet(this, _Wilson_worldCenterY, __classPrivateFieldGet(this, _Wilson_worldCenterY, "f") - (y - lastY), "f");
+        __classPrivateFieldSet(this, _Wilson_worldCenterY, __classPrivateFieldGet(this, _Wilson_worldCenterY, "f") + deltaY, "f");
         this.worldCenterY = __classPrivateFieldGet(this, _Wilson_worldCenterY, "f");
-        __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_setLastPanVelocity).call(this, lastX - x, lastY - y);
+        __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_setLastPanVelocity).call(this, deltaX, deltaY);
         __classPrivateFieldSet(this, _Wilson_needPanAndZoomUpdate, true, "f");
     }
     callback({ x, y, xDelta: x - lastX, yDelta: y - lastY, event: e });
@@ -1191,7 +1356,20 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         (__classPrivateFieldGet(this, _Wilson_zoomFixedPoint, "f")[0] - __classPrivateFieldGet(this, _Wilson_worldCenterX, "f")) / __classPrivateFieldGet(this, _Wilson_worldWidth, "f"),
         (__classPrivateFieldGet(this, _Wilson_zoomFixedPoint, "f")[1] - __classPrivateFieldGet(this, _Wilson_worldCenterY, "f")) / __classPrivateFieldGet(this, _Wilson_worldHeight, "f")
     ];
-    const scale = lastDistance / distance;
+    let scale = lastDistance / distance;
+    // Apply zoom resistance during pinch when past bounds.
+    if (this.usePanAndZoomRubberbanding && scale !== 1) {
+        const { overWidthRatio, overHeightRatio, tooLargeWidth, tooLargeHeight, tooSmallWidth, tooSmallHeight } = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_getZoomOverscroll).call(this);
+        const overZoomRatio = Math.max(overWidthRatio, overHeightRatio);
+        const zoomingPastMax = (scale > 1)
+            && (tooLargeWidth || tooLargeHeight);
+        const zoomingPastMin = (scale < 1)
+            && (tooSmallWidth || tooSmallHeight);
+        if ((zoomingPastMax || zoomingPastMin) && overZoomRatio > 0) {
+            const resistance = 1 / (1 + overZoomRatio * 3);
+            scale = 1 + (scale - 1) * resistance;
+        }
+    }
     __classPrivateFieldSet(this, _Wilson_worldWidth, __classPrivateFieldGet(this, _Wilson_worldWidth, "f") * scale, "f");
     this.worldWidth = __classPrivateFieldGet(this, _Wilson_worldWidth, "f");
     __classPrivateFieldSet(this, _Wilson_worldHeight, __classPrivateFieldGet(this, _Wilson_worldHeight, "f") * scale, "f");
@@ -1327,11 +1505,33 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
                 __classPrivateFieldSet(this, _Wilson_lastInteractionCol2, e.touches[1].clientX, "f");
         }
         else {
-            __classPrivateFieldSet(this, _Wilson_worldCenterX, __classPrivateFieldGet(this, _Wilson_worldCenterX, "f") - (x - lastX), "f");
+            let deltaX = -(x - lastX);
+            let deltaY = -(y - lastY);
+            // Apply rubber band resistance when dragging past bounds.
+            if (this.usePanAndZoomRubberbanding) {
+                const { overX, overY, xSatisfiable, ySatisfiable } = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_getPanOverscroll).call(this);
+                if (xSatisfiable && overX !== 0) {
+                    const pushingFurther = (overX > 0 && deltaX > 0)
+                        || (overX < 0 && deltaX < 0);
+                    if (pushingFurther) {
+                        deltaX *= 1 / (1 + Math.abs(overX)
+                            / (__classPrivateFieldGet(this, _Wilson_worldWidth, "f") * 0.5));
+                    }
+                }
+                if (ySatisfiable && overY !== 0) {
+                    const pushingFurther = (overY > 0 && deltaY > 0)
+                        || (overY < 0 && deltaY < 0);
+                    if (pushingFurther) {
+                        deltaY *= 1 / (1 + Math.abs(overY)
+                            / (__classPrivateFieldGet(this, _Wilson_worldHeight, "f") * 0.5));
+                    }
+                }
+            }
+            __classPrivateFieldSet(this, _Wilson_worldCenterX, __classPrivateFieldGet(this, _Wilson_worldCenterX, "f") + deltaX, "f");
             this.worldCenterX = __classPrivateFieldGet(this, _Wilson_worldCenterX, "f");
-            __classPrivateFieldSet(this, _Wilson_worldCenterY, __classPrivateFieldGet(this, _Wilson_worldCenterY, "f") - (y - lastY), "f");
+            __classPrivateFieldSet(this, _Wilson_worldCenterY, __classPrivateFieldGet(this, _Wilson_worldCenterY, "f") + deltaY, "f");
             this.worldCenterY = __classPrivateFieldGet(this, _Wilson_worldCenterY, "f");
-            __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_setLastPanVelocity).call(this, lastX - x, lastY - y);
+            __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_setLastPanVelocity).call(this, deltaX, deltaY);
         }
         __classPrivateFieldSet(this, _Wilson_needPanAndZoomUpdate, true, "f");
     }
@@ -1351,6 +1551,23 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     if (!this.usePanAndZoomRubberbanding && (scale > 1 && __classPrivateFieldGet(this, _Wilson_atMaxWorldSize, "f")
         || scale < 1 && __classPrivateFieldGet(this, _Wilson_atMinWorldSize, "f"))) {
         return;
+    }
+    // Apply zoom resistance when past bounds and rubberbanding is active.
+    // Uses a reciprocal curve on the over-zoom ratio so that zooming further
+    // past bounds requires increasingly more effort.
+    if (this.usePanAndZoomRubberbanding && scale !== 1) {
+        const { overWidthRatio, overHeightRatio, tooLargeWidth, tooLargeHeight, tooSmallWidth, tooSmallHeight } = __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_getZoomOverscroll).call(this);
+        const overZoomRatio = Math.max(overWidthRatio, overHeightRatio);
+        // scale > 1 means world gets larger (zooming out)
+        // scale < 1 means world gets smaller (zooming in)
+        const zoomingPastMax = (scale > 1)
+            && (tooLargeWidth || tooLargeHeight);
+        const zoomingPastMin = (scale < 1)
+            && (tooSmallWidth || tooSmallHeight);
+        if ((zoomingPastMax || zoomingPastMin) && overZoomRatio > 0) {
+            const resistance = 1 / (1 + overZoomRatio * 3);
+            scale = 1 + (scale - 1) * resistance;
+        }
     }
     const centerProportion = [
         (__classPrivateFieldGet(this, _Wilson_zoomFixedPoint, "f")[0] - __classPrivateFieldGet(this, _Wilson_worldCenterX, "f")) / __classPrivateFieldGet(this, _Wilson_worldWidth, "f"),
@@ -1692,6 +1909,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
         this.canvas.style.height = `min(100vh, calc(100vw / ${__classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f")}))`;
     }
     __classPrivateFieldGet(this, _Wilson_onResizeWindow, "f").call(this);
+    __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesContainerSize).call(this);
     this.onSwitchFullscreen(true);
     setTimeout(() => {
         __classPrivateFieldSet(this, _Wilson_fullscreenInitialWindowInnerWidth, window.innerWidth, "f");
@@ -1808,6 +2026,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     this.canvas.style.width = __classPrivateFieldGet(this, _Wilson_canvasOldWidthStyle, "f");
     this.canvas.style.height = __classPrivateFieldGet(this, _Wilson_canvasOldHeightStyle, "f");
     __classPrivateFieldGet(this, _Wilson_onResizeWindow, "f").call(this);
+    __classPrivateFieldGet(this, _Wilson_instances, "m", _Wilson_updateDraggablesContainerSize).call(this);
     this.onSwitchFullscreen(false);
     // When there are multiple Wilson instances on the same page,
     // one of them might incorrectly try to scroll back to 0.

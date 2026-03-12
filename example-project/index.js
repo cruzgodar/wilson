@@ -104,7 +104,7 @@ function initWilson2() {
         resetButtonIconPath: "/reset.png",
         interactionOptions: {
             useForPanAndZoom: true,
-            onPanAndZoom: drawFrame
+            onPanAndZoom: drawFrame,
         },
         fullscreenOptions: {
             fillScreen: true,
