@@ -799,18 +799,22 @@ class Wilson {
                     data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`);
                 }
             }
-            // Prevent crossfade opacity dip on draggable elements — see
-            // the matching comment in exitFullscreen() for the full explanation.
+            // For non-fill-screen mode, suppress the default crossfade on
+            // draggable pseudo-elements to prevent an opacity dip in Safari.
+            // In fill-screen mode, the fill-screen stylesheet already includes
+            // per-draggable keyframe animations that track the canvas transform.
             let draggableStyleElement = null;
-            const draggableIds = Object.keys(__classPrivateFieldGet(this, _Wilson_draggables, "f"));
-            if (draggableIds.length > 0) {
-                const rules = draggableIds.map(id => {
-                    const name = `WILSON_draggable-${id}-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`;
-                    return `::view-transition-old(${name}),\n::view-transition-new(${name}) { animation: none; }`;
-                }).join("\n");
-                draggableStyleElement = document.createElement("style");
-                draggableStyleElement.innerHTML = rules;
-                document.head.appendChild(draggableStyleElement);
+            if (!styleElement) {
+                const draggableIds = Object.keys(__classPrivateFieldGet(this, _Wilson_draggables, "f"));
+                if (draggableIds.length > 0) {
+                    const rules = draggableIds.map(id => {
+                        const name = `WILSON_draggable-${id}-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`;
+                        return `::view-transition-old(${name}),\n::view-transition-new(${name}) { animation: none; }`;
+                    }).join("\n");
+                    draggableStyleElement = document.createElement("style");
+                    draggableStyleElement.innerHTML = rules;
+                    document.head.appendChild(draggableStyleElement);
+                }
             }
             if (this.animateFullscreen) {
                 // @ts-ignore
@@ -875,22 +879,22 @@ class Wilson {
                     data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`);
                 }
             }
-            // Prevent crossfade opacity dip on draggable elements — they look
-            // identical in both states and only need the group's position
-            // interpolation. Safari doesn't reliably apply plus-lighter
-            // blending on view-transition pseudo-elements, so the default
-            // crossfade causes a visible fade for draggables that travel
-            // large distances (especially near the bottom of the canvas).
+            // For non-fill-screen mode, suppress the default crossfade on
+            // draggable pseudo-elements to prevent an opacity dip in Safari.
+            // In fill-screen mode, the fill-screen stylesheet already includes
+            // per-draggable keyframe animations that track the canvas transform.
             let draggableStyleElement = null;
-            const draggableIds = Object.keys(__classPrivateFieldGet(this, _Wilson_draggables, "f"));
-            if (draggableIds.length > 0) {
-                const rules = draggableIds.map(id => {
-                    const name = `WILSON_draggable-${id}-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`;
-                    return `::view-transition-old(${name}),\n::view-transition-new(${name}) { animation: none; }`;
-                }).join("\n");
-                draggableStyleElement = document.createElement("style");
-                draggableStyleElement.innerHTML = rules;
-                document.head.appendChild(draggableStyleElement);
+            if (!styleElement) {
+                const draggableIds = Object.keys(__classPrivateFieldGet(this, _Wilson_draggables, "f"));
+                if (draggableIds.length > 0) {
+                    const rules = draggableIds.map(id => {
+                        const name = `WILSON_draggable-${id}-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`;
+                        return `::view-transition-old(${name}),\n::view-transition-new(${name}) { animation: none; }`;
+                    }).join("\n");
+                    draggableStyleElement = document.createElement("style");
+                    draggableStyleElement.innerHTML = rules;
+                    document.head.appendChild(draggableStyleElement);
+                }
             }
             if (this.animateFullscreen) {
                 // @ts-ignore
@@ -1933,6 +1937,34 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     // Position the center of the new canvas over the old one.
     const newTopStart = canvasRect.top - (window.innerHeight * scaleStart - canvasRect.height) / 2;
     const newLeftStart = canvasRect.left - (window.innerWidth * scaleStart - canvasRect.width) / 2;
+    // Compute per-draggable keyframes that track the canvas transform.
+    const aspectRatioChange = windowAspectRatio / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f");
+    const fullscreenWorldWidth = Math.max(__classPrivateFieldGet(this, _Wilson_worldWidth, "f") * aspectRatioChange, __classPrivateFieldGet(this, _Wilson_worldWidth, "f"));
+    const fullscreenWorldHeight = Math.max(__classPrivateFieldGet(this, _Wilson_worldHeight, "f") / aspectRatioChange, __classPrivateFieldGet(this, _Wilson_worldHeight, "f"));
+    let draggableRules = "";
+    for (const [id, data] of Object.entries(__classPrivateFieldGet(this, _Wilson_draggables, "f"))) {
+        const [wx, wy] = data.location;
+        const dx = window.innerWidth
+            * ((wx - __classPrivateFieldGet(this, _Wilson_worldCenterX, "f")) / fullscreenWorldWidth + 0.5);
+        const dy = window.innerHeight
+            * (1 - ((wy - __classPrivateFieldGet(this, _Wilson_worldCenterY, "f")) / fullscreenWorldHeight + 0.5));
+        const A = newLeftStart + dx * (scaleStart - 1);
+        const B = newTopStart + dy * (scaleStart - 1);
+        const name = `WILSON_draggable-${id}-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`;
+        draggableRules += `
+				@keyframes WILSON_draggable-${id}-enter-move-${__classPrivateFieldGet(this, _Wilson_salt, "f")}
+				{
+					from { transform: translate(${A}px, ${B}px); }
+					to { transform: translate(0px, 0px); }
+				}
+				::view-transition-group(${name}) { animation: none; }
+				::view-transition-old(${name}) { animation: none; opacity: 0; }
+				::view-transition-new(${name}) {
+					animation-name: WILSON_draggable-${id}-enter-move-${__classPrivateFieldGet(this, _Wilson_salt, "f")};
+					animation-fill-mode: both;
+				}
+			`;
+    }
     const temporaryStyle = /* css */ `
 			@keyframes WILSON_move-out
 			{
@@ -1967,7 +1999,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 					opacity: 1;
 				}
 			}
-			
+
 			::view-transition-group(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
 				animation: none;
@@ -1986,6 +2018,8 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 				animation-fill-mode: both;
 				mix-blend-mode: plus-lighter;
 			}
+
+			${draggableRules}
 		`;
     const styleElement = document.createElement("style");
     styleElement.innerHTML = temporaryStyle;
@@ -2052,6 +2086,31 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     const newHeightStart = Math.min(window.innerHeight, window.innerWidth / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f"));
     const newLeftStart = (window.innerWidth - newWidthStart) / 2 - __classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").left;
     const newTopStart = (window.innerHeight - newHeightStart) / 2 - __classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").top;
+    const S0 = scaleEnd / scaleStart;
+    let draggableRules = "";
+    for (const [id, data] of Object.entries(__classPrivateFieldGet(this, _Wilson_draggables, "f"))) {
+        const [wx, wy] = data.location;
+        const dx = __classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").width
+            * ((wx - __classPrivateFieldGet(this, _Wilson_worldCenterX, "f")) / __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f") + 0.5);
+        const dy = __classPrivateFieldGet(this, _Wilson_fullscreenCanvasRect, "f").height
+            * (1 - ((wy - __classPrivateFieldGet(this, _Wilson_worldCenterY, "f")) / __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f") + 0.5));
+        const A = newLeftStart + dx * (S0 - 1);
+        const B = newTopStart + dy * (S0 - 1);
+        const name = `WILSON_draggable-${id}-${__classPrivateFieldGet(this, _Wilson_salt, "f")}`;
+        draggableRules += `
+				@keyframes WILSON_draggable-${id}-move-${__classPrivateFieldGet(this, _Wilson_salt, "f")}
+				{
+					from { transform: translate(${A}px, ${B}px); }
+					to { transform: translate(0px, 0px); }
+				}
+				::view-transition-group(${name}) { animation: none; }
+				::view-transition-old(${name}) { animation: none; opacity: 0; }
+				::view-transition-new(${name}) {
+					animation-name: WILSON_draggable-${id}-move-${__classPrivateFieldGet(this, _Wilson_salt, "f")};
+					animation-fill-mode: both;
+				}
+			`;
+    }
     const temporaryStyle = /* css */ `
 			@keyframes WILSON_move-out-${__classPrivateFieldGet(this, _Wilson_salt, "f")}
 			{
@@ -2086,7 +2145,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 					opacity: 1;
 				}
 			}
-			
+
 			::view-transition-group(WILSON_canvas-${__classPrivateFieldGet(this, _Wilson_salt, "f")})
 			{
 				animation: none;
@@ -2105,6 +2164,8 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
 				animation-fill-mode: both;
 				mix-blend-mode: plus-lighter;
 			}
+
+			${draggableRules}
 		`;
     const styleElement = document.createElement("style");
     styleElement.innerHTML = temporaryStyle;

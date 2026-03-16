@@ -2988,6 +2988,44 @@ class Wilson
 		const newTopStart = canvasRect.top - (window.innerHeight * scaleStart - canvasRect.height) / 2;
 		const newLeftStart = canvasRect.left - (window.innerWidth * scaleStart - canvasRect.width) / 2;
 
+		// Compute per-draggable keyframes that track the canvas transform.
+		const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
+		const fullscreenWorldWidth = Math.max(
+			this.#worldWidth * aspectRatioChange, this.#worldWidth
+		);
+		const fullscreenWorldHeight = Math.max(
+			this.#worldHeight / aspectRatioChange, this.#worldHeight
+		);
+
+		let draggableRules = "";
+
+		for (const [id, data] of Object.entries(this.#draggables))
+		{
+			const [wx, wy] = data.location;
+			const dx = window.innerWidth
+				* ((wx - this.#worldCenterX) / fullscreenWorldWidth + 0.5);
+			const dy = window.innerHeight
+				* (1 - ((wy - this.#worldCenterY) / fullscreenWorldHeight + 0.5));
+
+			const A = newLeftStart + dx * (scaleStart - 1);
+			const B = newTopStart + dy * (scaleStart - 1);
+
+			const name = `WILSON_draggable-${id}-${this.#salt}`;
+
+			draggableRules += `
+				@keyframes WILSON_draggable-${id}-enter-move-${this.#salt}
+				{
+					from { transform: translate(${A}px, ${B}px); }
+					to { transform: translate(0px, 0px); }
+				}
+				::view-transition-group(${name}) { animation: none; }
+				::view-transition-old(${name}) { animation: none; opacity: 0; }
+				::view-transition-new(${name}) {
+					animation-name: WILSON_draggable-${id}-enter-move-${this.#salt};
+					animation-fill-mode: both;
+				}
+			`;
+		}
 
 		const temporaryStyle = /* css */`
 			@keyframes WILSON_move-out
@@ -3023,7 +3061,7 @@ class Wilson
 					opacity: 1;
 				}
 			}
-			
+
 			::view-transition-group(WILSON_canvas-${this.#salt})
 			{
 				animation: none;
@@ -3042,6 +3080,8 @@ class Wilson
 				animation-fill-mode: both;
 				mix-blend-mode: plus-lighter;
 			}
+
+			${draggableRules}
 		`;
 
 		const styleElement = document.createElement("style");
@@ -3112,22 +3152,28 @@ class Wilson
 				}
 			}
 
-			// Prevent crossfade opacity dip on draggable elements — see
-			// the matching comment in exitFullscreen() for the full explanation.
+			// For non-fill-screen mode, suppress the default crossfade on
+			// draggable pseudo-elements to prevent an opacity dip in Safari.
+			// In fill-screen mode, the fill-screen stylesheet already includes
+			// per-draggable keyframe animations that track the canvas transform.
 			let draggableStyleElement: HTMLStyleElement | null = null;
-			const draggableIds = Object.keys(this.#draggables);
 
-			if (draggableIds.length > 0)
+			if (!styleElement)
 			{
-				const rules = draggableIds.map(id =>
-				{
-					const name = `WILSON_draggable-${id}-${this.#salt}`;
-					return `::view-transition-old(${name}),\n::view-transition-new(${name}) { animation: none; }`;
-				}).join("\n");
+				const draggableIds = Object.keys(this.#draggables);
 
-				draggableStyleElement = document.createElement("style");
-				draggableStyleElement.innerHTML = rules;
-				document.head.appendChild(draggableStyleElement);
+				if (draggableIds.length > 0)
+				{
+					const rules = draggableIds.map(id =>
+					{
+						const name = `WILSON_draggable-${id}-${this.#salt}`;
+						return `::view-transition-old(${name}),\n::view-transition-new(${name}) { animation: none; }`;
+					}).join("\n");
+
+					draggableStyleElement = document.createElement("style");
+					draggableStyleElement.innerHTML = rules;
+					document.head.appendChild(draggableStyleElement);
+				}
 			}
 
 			if (this.animateFullscreen)
@@ -3272,6 +3318,38 @@ class Wilson
 		const newLeftStart = (window.innerWidth - newWidthStart) / 2 - this.#fullscreenCanvasRect.left;
 		const newTopStart = (window.innerHeight - newHeightStart) / 2 - this.#fullscreenCanvasRect.top;
 
+		const S0 = scaleEnd / scaleStart;
+
+		let draggableRules = "";
+
+		for (const [id, data] of Object.entries(this.#draggables))
+		{
+			const [wx, wy] = data.location;
+			const dx = this.#fullscreenCanvasRect.width
+				* ((wx - this.#worldCenterX) / this.#nonFullscreenWorldWidth + 0.5);
+			const dy = this.#fullscreenCanvasRect.height
+				* (1 - ((wy - this.#worldCenterY) / this.#nonFullscreenWorldHeight + 0.5));
+
+			const A = newLeftStart + dx * (S0 - 1);
+			const B = newTopStart + dy * (S0 - 1);
+
+			const name = `WILSON_draggable-${id}-${this.#salt}`;
+
+			draggableRules += `
+				@keyframes WILSON_draggable-${id}-move-${this.#salt}
+				{
+					from { transform: translate(${A}px, ${B}px); }
+					to { transform: translate(0px, 0px); }
+				}
+				::view-transition-group(${name}) { animation: none; }
+				::view-transition-old(${name}) { animation: none; opacity: 0; }
+				::view-transition-new(${name}) {
+					animation-name: WILSON_draggable-${id}-move-${this.#salt};
+					animation-fill-mode: both;
+				}
+			`;
+		}
+
 		const temporaryStyle = /* css */`
 			@keyframes WILSON_move-out-${this.#salt}
 			{
@@ -3306,7 +3384,7 @@ class Wilson
 					opacity: 1;
 				}
 			}
-			
+
 			::view-transition-group(WILSON_canvas-${this.#salt})
 			{
 				animation: none;
@@ -3325,6 +3403,8 @@ class Wilson
 				animation-fill-mode: both;
 				mix-blend-mode: plus-lighter;
 			}
+
+			${draggableRules}
 		`;
 
 		const styleElement = document.createElement("style");
@@ -3405,26 +3485,28 @@ class Wilson
 				}
 			}
 
-			// Prevent crossfade opacity dip on draggable elements — they look
-			// identical in both states and only need the group's position
-			// interpolation. Safari doesn't reliably apply plus-lighter
-			// blending on view-transition pseudo-elements, so the default
-			// crossfade causes a visible fade for draggables that travel
-			// large distances (especially near the bottom of the canvas).
+			// For non-fill-screen mode, suppress the default crossfade on
+			// draggable pseudo-elements to prevent an opacity dip in Safari.
+			// In fill-screen mode, the fill-screen stylesheet already includes
+			// per-draggable keyframe animations that track the canvas transform.
 			let draggableStyleElement: HTMLStyleElement | null = null;
-			const draggableIds = Object.keys(this.#draggables);
 
-			if (draggableIds.length > 0)
+			if (!styleElement)
 			{
-				const rules = draggableIds.map(id =>
-				{
-					const name = `WILSON_draggable-${id}-${this.#salt}`;
-					return `::view-transition-old(${name}),\n::view-transition-new(${name}) { animation: none; }`;
-				}).join("\n");
+				const draggableIds = Object.keys(this.#draggables);
 
-				draggableStyleElement = document.createElement("style");
-				draggableStyleElement.innerHTML = rules;
-				document.head.appendChild(draggableStyleElement);
+				if (draggableIds.length > 0)
+				{
+					const rules = draggableIds.map(id =>
+					{
+						const name = `WILSON_draggable-${id}-${this.#salt}`;
+						return `::view-transition-old(${name}),\n::view-transition-new(${name}) { animation: none; }`;
+					}).join("\n");
+
+					draggableStyleElement = document.createElement("style");
+					draggableStyleElement.innerHTML = rules;
+					document.head.appendChild(draggableStyleElement);
+				}
 			}
 
 			if (this.animateFullscreen)
