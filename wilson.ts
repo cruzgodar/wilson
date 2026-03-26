@@ -4671,13 +4671,20 @@ export class WilsonGPU extends Wilson
 			uniforms,
 		});
 		
-		const imageData = new ImageData(new Uint8ClampedArray(pixels), width);
+		const colorSpace = (this.useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
+			? "display-p3"
+			: "srgb";
+
+		const imageData = new ImageData(new Uint8ClampedArray(pixels), width, height, { colorSpace });
 
 		const canvas = document.createElement("canvas");
 
 		canvas.width = width;
 		canvas.height = height;
-		const ctx = canvas.getContext("2d");
+
+		const ctx = canvas.getContext("2d", {
+			colorSpace,
+		});
 
 		if (!ctx)
 		{
