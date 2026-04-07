@@ -4004,11 +4004,29 @@ export class WilsonGPU extends Wilson
 		this.gl.compileShader(vertexShader);
 		this.gl.compileShader(fragShader);
 
+		if (!this.gl.getShaderParameter(vertexShader, this.gl.COMPILE_STATUS))
+		{
+			console.groupCollapsed(`[Wilson] Full non-compiled vertex shader source:`);
+			console.log(vertexShaderSource);
+			console.groupEnd();
+
+            throw new Error(`[Wilson] Couldn't compile vertex shader: ${this.gl.getShaderInfoLog(vertexShader)}`);
+		}
+
+		if (!this.gl.getShaderParameter(fragShader, this.gl.COMPILE_STATUS))
+		{
+			console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+			console.log(shader);
+			console.groupEnd();
+
+            throw new Error(`[Wilson] Couldn't compile fragment shader: ${this.gl.getShaderInfoLog(fragShader)}`);
+		}
+
 		this.gl.linkProgram(this.#shaderPrograms[id]);
 
 		if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS))
 		{
-			throw new Error(`[Wilson] Couldn't link shader program: ${this.gl.getProgramInfoLog(shaderProgram)}. Full shader source: ${shader}`);
+			throw new Error(`[Wilson] Couldn't link shader program: ${this.gl.getProgramInfoLog(shaderProgram)}`);
 		}
 
 		this.useShader(id);
@@ -4491,6 +4509,24 @@ export class WilsonGPU extends Wilson
 
 				gl.compileShader(vertexShader);
 				gl.compileShader(fragShader);
+
+				if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS))
+				{
+					console.groupCollapsed("[Wilson] Full non-compiled vertex shader source:");
+					console.log(vertexShaderSource);
+					console.groupEnd();
+
+					throw new Error("[Wilson] Couldn't compile vertex shader: " + gl.getShaderInfoLog(vertexShader));
+				}
+
+				if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS))
+				{
+					console.groupCollapsed("[Wilson] Full non-compiled fragment shader source:");
+					console.log(shader);
+					console.groupEnd();
+
+					throw new Error("[Wilson] Couldn't compile fragment shader: " + gl.getShaderInfoLog(fragShader));
+				}
 
 				gl.linkProgram(shaderProgram);
 
