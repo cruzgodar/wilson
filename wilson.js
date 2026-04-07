@@ -2339,12 +2339,18 @@ export class WilsonGPU extends Wilson {
         if (!this.gl.getShaderParameter(vertexShader, this.gl.COMPILE_STATUS)) {
             const infoLog = (_a = this.gl.getShaderInfoLog(vertexShader)) !== null && _a !== void 0 ? _a : "";
             __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_logShaderSource).call(this, vertexShaderSource, infoLog);
-            throw new Error(`[Wilson] Couldn't compile vertex shader with id ${id}: ${infoLog}`);
+            console.groupCollapsed(`[Wilson] Full non-compiled vertex shader source:`);
+            console.log(shader);
+            console.groupEnd();
+            throw new Error(`[Wilson] Couldn't compile vertex shader with id ${id}. ${infoLog}`);
         }
         if (!this.gl.getShaderParameter(fragShader, this.gl.COMPILE_STATUS)) {
             const infoLog = (_b = this.gl.getShaderInfoLog(fragShader)) !== null && _b !== void 0 ? _b : "";
             __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_logShaderSource).call(this, shader, infoLog);
-            throw new Error(`[Wilson] Couldn't compile fragment shader with id ${id}: ${infoLog}`);
+            console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+            console.log(shader);
+            console.groupEnd();
+            throw new Error(`[Wilson] Couldn't compile fragment shader with id ${id}. ${infoLog}`);
         }
         this.gl.linkProgram(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id]);
         if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS)) {
@@ -2366,6 +2372,9 @@ export class WilsonGPU extends Wilson {
         this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(quad), this.gl.STATIC_DRAW);
         const positionAttribute = this.gl.getAttribLocation(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id], "position");
         if (positionAttribute === -1) {
+            console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+            console.log(shader);
+            console.groupEnd();
             throw new Error(`[Wilson] Couldn't get position attribute for shader with id ${id}.`);
         }
         this.gl.enableVertexAttribArray(positionAttribute);
@@ -2384,10 +2393,16 @@ export class WilsonGPU extends Wilson {
             // Match strings like "uniform int foo;" to "int".
             const match = shader.match(new RegExp(`uniform\\s+(\\S+?)\\s+${name}(\\[\\d+\\])?\\s*;`));
             if (!match) {
+                console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+                console.log(shader);
+                console.groupEnd();
                 throw new Error(`[Wilson] Couldn't find uniform ${name} in shader with id ${id}.`);
             }
             const type = match[1].trim() + (match[2] ? "Array" : "");
             if (!(type in uniformFunctions)) {
+                console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+                console.log(shader);
+                console.groupEnd();
                 throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader with id ${id}.`);
             }
             __classPrivateFieldGet(this, _WilsonGPU_uniforms, "f")[id][name] = { location, type: type };

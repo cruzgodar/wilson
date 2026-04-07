@@ -4043,7 +4043,11 @@ export class WilsonGPU extends Wilson
 			const infoLog = this.gl.getShaderInfoLog(vertexShader) ?? "";
 			this.#logShaderSource(vertexShaderSource, infoLog);
 
-			throw new Error(`[Wilson] Couldn't compile vertex shader with id ${id}: ${infoLog}`);
+            console.groupCollapsed(`[Wilson] Full non-compiled vertex shader source:`);
+			console.log(shader);
+			console.groupEnd();
+
+			throw new Error(`[Wilson] Couldn't compile vertex shader with id ${id}. ${infoLog}`);
 		}
 
 		if (!this.gl.getShaderParameter(fragShader, this.gl.COMPILE_STATUS))
@@ -4051,7 +4055,11 @@ export class WilsonGPU extends Wilson
 			const infoLog = this.gl.getShaderInfoLog(fragShader) ?? "";
 			this.#logShaderSource(shader, infoLog);
 
-			throw new Error(`[Wilson] Couldn't compile fragment shader with id ${id}: ${infoLog}`);
+            console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+			console.log(shader);
+			console.groupEnd();
+
+			throw new Error(`[Wilson] Couldn't compile fragment shader with id ${id}. ${infoLog}`);
 		}
 
 		this.gl.linkProgram(this.#shaderPrograms[id]);
@@ -4086,6 +4094,10 @@ export class WilsonGPU extends Wilson
 
 		if (positionAttribute === -1)
 		{
+            console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+			console.log(shader);
+			console.groupEnd();
+            
 			throw new Error(`[Wilson] Couldn't get position attribute for shader with id ${id}.`);
 		}
 
@@ -4118,6 +4130,10 @@ export class WilsonGPU extends Wilson
 			);
 			if (!match)
 			{
+                console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+                console.log(shader);
+                console.groupEnd();
+                
 				throw new Error(`[Wilson] Couldn't find uniform ${name} in shader with id ${id}.`);
 			}
 			
@@ -4125,6 +4141,10 @@ export class WilsonGPU extends Wilson
 
 			if (!(type in uniformFunctions))
 			{
+                console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+                console.log(shader);
+                console.groupEnd();
+                
 				throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader with id ${id}.`);
 			}
 
