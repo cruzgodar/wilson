@@ -3859,9 +3859,18 @@ type WilsonGPUWebXRData = {
 	refSpace: XRReferenceSpace | XRBoundedReferenceSpace
 };
 
+export type RenderWebXRFrame = (
+	projectionMatrix: Float32Array,
+	viewMatrix: Float32Array
+) => void
+
 export type WilsonGPUWebXROptions = { useWebXR?: false } | {
 	useWebXR: true,
-	renderWebXRFrame: (projectionMatrix: Float32Array<ArrayBufferLike>, viewMatrix: Float32Array<ArrayBufferLike>) => void,
+
+	renderWebXRFrame: RenderWebXRFrame,
+
+	onEnterXR?: () => {},
+	onExitXR?: () => {},
 };
 
 export type WilsonGPUOptions = WilsonOptions
@@ -3889,12 +3898,23 @@ export class WilsonGPU extends Wilson
 		}
 	} = {};
 
+
+
+	inXR: boolean = false;
+	#inXR: boolean = false;
 	
 	#useWebXR: boolean;
-	#renderWebXRFrame: (projectionMatrix: Float32Array<ArrayBufferLike>, viewMatrix: Float32Array<ArrayBufferLike>) => void = () => {};
+
+	#renderWebXRFrame: RenderWebXRFrame = () => {};
+
 	#webXRData: WilsonGPUWebXRData | null = null;
 
-	async #isXRSupported()
+	#webXRCallbacks = {
+		onEnter: () => {},
+		onExit: () => {}
+	};
+
+	async isXRSupported()
 	{
 		if (!navigator.xr)
 		{
@@ -3951,18 +3971,21 @@ export class WilsonGPU extends Wilson
 		if (options.useWebXR)
 		{
 			this.#renderWebXRFrame = options.renderWebXRFrame;
+
+			this.#webXRCallbacks = {
+				onEnter: options.onEnterXR ?? (() => {}),
+				onExit: options.onExitXR ?? (() => {})
+			};
 		}
 
-		const getContextOptions = { xrCompatible: this.#useWebXR };
+		const getContextOptions: WebGLContextAttributes = { xrCompatible: this.#useWebXR };
 
 		const gl = this.#useWebGL2
 			? canvas.getContext("webgl2", getContextOptions) ?? canvas.getContext("webgl", getContextOptions)
 			: canvas.getContext("webgl", getContextOptions);
 
-		if (
-			!gl
-			|| (!(gl instanceof WebGLRenderingContext) && !(gl instanceof WebGL2RenderingContext))
-		) {
+		if (!gl)
+		{
 			throw new Error("[Wilson] Failed to get WebGL or WebGL2 context.");
 		}
 
@@ -4310,6 +4333,19 @@ export class WilsonGPU extends Wilson
 	{
 		if (id === null)
 		{
+			if (this.#inXR && this.#webXRData)
+			{
+				const baseLayer = this.#webXRData.session.renderState.baseLayer;
+
+				if (baseLayer)
+				{
+					this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, baseLayer);
+					return;
+				}
+
+				throw new Error("[Wilson] WebXR base layer is undefined.");
+			}
+
 			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
 			return;
 		}
@@ -4832,7 +4868,7 @@ export class WilsonGPU extends Wilson
 			{
 				if (this.verbose)
 				{
-					console.error("[Wilson] Could not create a canvas blob");
+					console.error("[Wilson] Could not create a canvas blob.");
 				}
 
 				return;
@@ -4854,7 +4890,17 @@ export class WilsonGPU extends Wilson
 
 	async enterXR()
 	{
-		if (!navigator.xr || !(await this.#isXRSupported()))
+		if (this.#inXR)
+		{
+			return;
+		}
+
+		if (!this.#useWebXR)
+		{
+			throw new Error("[Wilson] `useWebXR` must be `true` in the constructor options in order to call `enterXR`.");
+		}
+
+		if (!navigator.xr || !(await this.isXRSupported()))
 		{
 			return;
 		}
@@ -4862,24 +4908,36 @@ export class WilsonGPU extends Wilson
 		const session = await navigator.xr.requestSession(XR_MODE, {
 			requiredFeatures: [REFERENCE_SPACE]
 		});
-	
-		// WebXR owns this framebuffer and builds the per-eye projections from depthNear/depthFar.
-		const baseLayer = new XRWebGLLayer(session, this.gl);
-		session.updateRenderState({ baseLayer, depthNear: 0.1, depthFar: 1000 });
-	
-		const refSpace = await session.requestReferenceSpace(REFERENCE_SPACE);
+		
+		try
+		{
+			// WebXR owns this framebuffer and builds the per-eye projections from depthNear/depthFar.
+			const baseLayer = new XRWebGLLayer(session, this.gl);
+			session.updateRenderState({ baseLayer, depthNear: 0.1, depthFar: 1000 });
+		
+			const refSpace = await session.requestReferenceSpace(REFERENCE_SPACE);
 
-		this.#webXRData = { session, refSpace };
-	
-		session.addEventListener("end", this.#onXREnd);
-		session.requestAnimationFrame((time, frame) => this.#onXRFrame(frame));
+			this.#webXRData = { session, refSpace };
+
+			this.#inXR = true;
+			this.inXR = this.#inXR;
+
+			this.#webXRCallbacks.onEnter();
+		
+			session.addEventListener("end", () => this.#onXREnd);
+			session.requestAnimationFrame((time, frame) => this.#onXRFrame(frame));
+		}
+
+		catch(ex)
+		{
+			await session.end();
+		}
 	}
 
 	#onXRFrame(frame: XRFrame)
 	{
 		if (!this.#webXRData)
 		{
-			this.#onXREnd();
 			return;
 		}
 
@@ -4913,25 +4971,37 @@ export class WilsonGPU extends Wilson
 
 			if (!viewport)
 			{
-				return;
+				// Skip this eye, not the whole frame
+				continue;
 			}
 
 			this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 	
 			// transform is the eye pose in reference space; its inverse is the view matrix.
-			this.#renderWebXRFrame(view.projectionMatrix, view.transform.inverse.matrix);
+			this.#renderWebXRFrame(view.projectionMatrix, view.transform.matrix);
 		}
 	}
 
 	#onXREnd()
 	{
+		this.#inXR = false;
+		this.inXR = this.#inXR;
+
+		this.#webXRCallbacks.onExit();
+
 		this.#webXRData = null;
-	
-		// Restart your normal window.requestAnimationFrame loop here.
+
+		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+		this.resizeCanvasGPU();
 	}
 	
-	#exitXR()
+	exitXR()
 	{
+		if (!this.#inXR)
+		{
+			return;
+		}
+
 		this.#webXRData?.session.end?.();
 	}
 
@@ -4942,21 +5012,23 @@ export class WilsonGPU extends Wilson
 	{
 		super.destroy();
 
-		// Delete all textures
+		this.#webXRData?.session.end?.();
+
+		// Delete all textures.
 		for (const id in this.#textures)
 		{
 			this.gl.deleteTexture(this.#textures[id].texture);
 		}
 		this.#textures = {};
 
-		// Delete all framebuffers
+		// Delete all framebuffers.
 		for (const id in this.#framebuffers)
 		{
 			this.gl.deleteFramebuffer(this.#framebuffers[id]);
 		}
 		this.#framebuffers = {};
 
-		// Delete all shader programs (this also detaches shaders)
+		// Delete all shader programs (this also detaches shaders).
 		for (const id in this.#shaderPrograms)
 		{
 			this.gl.deleteProgram(this.#shaderPrograms[id]);
@@ -4964,21 +5036,21 @@ export class WilsonGPU extends Wilson
 		this.#shaderPrograms = {};
 		this.#shaderProgramSources = {};
 
-		// Delete all buffers
+		// Delete all buffers.
 		for (const buffer of this.#positionBuffers)
 		{
 			this.gl.deleteBuffer(buffer);
 		}
 		this.#positionBuffers = [];
 
-		// Delete all shaders
+		// Delete all shaders.
 		for (const shader of this.#shaders)
 		{
 			this.gl.deleteShader(shader);
 		}
 		this.#shaders = [];
 
-		// Clear uniform references
+		// Clear uniform references.
 		this.#uniforms = {};
 
 		// Lose the WebGL context to free up the context slot.
