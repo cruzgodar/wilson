@@ -3861,7 +3861,7 @@ type WilsonGPUWebXRData = {
 
 export type RenderWebXRFrame = (
 	projectionMatrix: Float32Array,
-	viewMatrix: Float32Array
+	cameraToWorld: Float32Array
 ) => void
 
 export type WilsonGPUWebXROptions = { useWebXR?: false } | {
