@@ -3750,7 +3750,7 @@ type UniformType = "int"
 	| "mat2"
 	| "mat3"
 	| "mat4";
-type UniformValue = number | number[] | number[][];
+type UniformValue = number | number[] | number[][] | Float32Array;
 type UniformInitializers = {[name: string]: UniformValue};
 
 const uniformFunctions: {[key in UniformType]: any} = {
@@ -3818,19 +3818,31 @@ const uniformFunctions: {[key in UniformType]: any} = {
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
 		value: [[number, number], [number, number]]
-	) => gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]]),
+	) => {
+		return value instanceof Float32Array
+			? gl.uniformMatrix2fv(location, false, value)
+			: gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]])
+	},
 	
 	mat3: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
 		value: [[number, number, number], [number, number, number], [number, number, number]]
-	) => gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]]),
+	) => {
+		return value instanceof Float32Array
+			? gl.uniformMatrix3fv(location, false, value)
+			: gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]])
+	},
 	
 	mat4: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
 		value: [[number, number, number, number], [number, number, number, number], [number, number, number, number], [number, number, number, number]]
-	) => gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]),
+	) => {
+		return value instanceof Float32Array
+			? gl.uniformMatrix4fv(location, false, value)
+			: gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]])
+	},
 };
 
 type ReadPixelsOptions = {
@@ -3852,25 +3864,40 @@ type MultipleShaders = {
 };
 
 const XR_MODE = "immersive-vr";
-const REFERENCE_SPACE = "local-floor";
+const REFERENCE_SPACE = "local";
 
 type WilsonGPUWebXRData = {
 	session: XRSession,
-	refSpace: XRReferenceSpace | XRBoundedReferenceSpace
+	refSpace: XRReferenceSpace,
 };
 
-export type RenderWebXRFrame = (
-	projectionMatrix: Float32Array,
-	cameraToWorld: Float32Array
-) => void
+export type RenderWebXRFrame = (data: {
+    view: XRView,
+    projectionMatrix: Float32Array,
+    cameraToWorld: Float32Array,
+    eye: XREye,
+    viewIndex: number,
+    numViews: number,
+    viewport: XRViewport,
+    time: number,
+    frame: XRFrame,
+    refSpace: XRReferenceSpace,
+}) => void;
 
 export type WilsonGPUWebXROptions = { useWebXR?: false } | {
 	useWebXR: true,
 
-	renderWebXRFrame: RenderWebXRFrame,
+	renderXRFrame: RenderWebXRFrame,
 
-	onEnterXR?: () => {},
-	onExitXR?: () => {},
+	onEnterXR?: () => void,
+	onExitXR?: () => void,
+
+    xrRequiredFeatures?: string[],
+    xrOptionalFeatures?: string[],
+    xrDepthNear?: number,
+    xrDepthFar?: number,
+
+	xrViewportScale: number | null; // null uses the device's own recommended value.
 };
 
 export type WilsonGPUOptions = WilsonOptions
@@ -3899,29 +3926,53 @@ export class WilsonGPU extends Wilson
 	} = {};
 
 
-
-	inXR: boolean = false;
-	#inXR: boolean = false;
 	
 	#useWebXR: boolean;
 
-	#renderWebXRFrame: RenderWebXRFrame = () => {};
+	#xrSupportPromise: Promise<boolean> | null = null;
+	#xrIsSupported: boolean | null = null; // Resolves to a boolean once known.
 
-	#webXRData: WilsonGPUWebXRData | null = null;
+	#renderXRFrame: RenderWebXRFrame = () => {};
+
+	#xrData?: WilsonGPUWebXRData;
+
+    #xrRequiredFeatures?: string[];
+    #xrOptionalFeatures?: string[];
+    #xrDepthNear?: number;
+    #xrDepthFar?: number;
+
+	#xrViewportScale: number | null = null;
+
+	get inXR() { return this.#xrData !== null; }
+	#enteringXR: boolean = false;
 
 	#webXRCallbacks = {
 		onEnter: () => {},
 		onExit: () => {}
 	};
 
-	async isXRSupported()
+	#checkXRSupport()
 	{
-		if (!navigator.xr)
+		if (!this.#xrSupportPromise)
 		{
-			return false;
+			this.#xrSupportPromise = (
+				navigator.xr
+					? navigator.xr.isSessionSupported(XR_MODE)
+					: Promise.resolve(false)
+			)
+				.catch(() => false)
+				.then(supported => (this.#xrIsSupported = supported));
 		}
-	
-		return navigator.xr.isSessionSupported(XR_MODE);
+
+		return this.#xrSupportPromise;
+	}
+
+	#onDeviceChange()
+	{
+		this.#xrSupportPromise = null;
+		this.#xrIsSupported = null;
+
+		this.#checkXRSupport();
 	}
 
 
@@ -3970,12 +4021,23 @@ export class WilsonGPU extends Wilson
 
 		if (options.useWebXR)
 		{
-			this.#renderWebXRFrame = options.renderWebXRFrame;
+			this.#checkXRSupport();
+
+			navigator.xr?.addEventListener("devicechange", this.#onDeviceChange);
+
+			this.#renderXRFrame = options.renderXRFrame;
 
 			this.#webXRCallbacks = {
 				onEnter: options.onEnterXR ?? (() => {}),
 				onExit: options.onExitXR ?? (() => {})
 			};
+
+			this.#xrRequiredFeatures = options.xrRequiredFeatures ?? [];
+			this.#xrOptionalFeatures = options.xrOptionalFeatures ?? [];
+			this.#xrDepthNear = options.xrDepthNear ?? 0.1;
+			this.#xrDepthFar = options.xrDepthFar ?? 1000;
+
+			this.#xrViewportScale = options.xrViewportScale;
 		}
 
 		const getContextOptions: WebGLContextAttributes = { xrCompatible: this.#useWebXR };
@@ -4333,13 +4395,13 @@ export class WilsonGPU extends Wilson
 	{
 		if (id === null)
 		{
-			if (this.#inXR && this.#webXRData)
+			if (this.inXR && this.#xrData)
 			{
-				const baseLayer = this.#webXRData.session.renderState.baseLayer;
+				const baseLayer = this.#xrData.session.renderState.baseLayer;
 
 				if (baseLayer)
 				{
-					this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, baseLayer);
+					this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, baseLayer.framebuffer);
 					return;
 				}
 
@@ -4558,22 +4620,34 @@ export class WilsonGPU extends Wilson
 				) => gl.uniform4fv(location, value.flat()),
 
 				mat2: (
-					gl,
-					location,
-					value,
-				) => gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]]),
+					gl: WebGLRenderingContext | WebGL2RenderingContext,
+					location: WebGLUniformLocation,
+					value: [[number, number], [number, number]]
+				) => {
+					return value instanceof Float32Array
+						? gl.uniformMatrix2fv(location, false, value)
+						: gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]])
+				},
 				
 				mat3: (
-					gl,
-					location,
-					value,
-				) => gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]]),
+					gl: WebGLRenderingContext | WebGL2RenderingContext,
+					location: WebGLUniformLocation,
+					value: [[number, number, number], [number, number, number], [number, number, number]]
+				) => {
+					return value instanceof Float32Array
+						? gl.uniformMatrix3fv(location, false, value)
+						: gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]])
+				},
 				
 				mat4: (
-					gl,
-					location,
-					value,
-				) => gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]),
+					gl: WebGLRenderingContext | WebGL2RenderingContext,
+					location: WebGLUniformLocation,
+					value: [[number, number, number, number], [number, number, number, number], [number, number, number, number], [number, number, number, number]]
+				) => {
+					return value instanceof Float32Array
+						? gl.uniformMatrix4fv(location, false, value)
+						: gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]])
+				},
 			};
 
 			self.addEventListener("message", (event) => 
@@ -4888,65 +4962,107 @@ export class WilsonGPU extends Wilson
 
 
 
-	async enterXR()
+	async enterXR(): Promise<boolean>
 	{
-		if (this.#inXR)
+		if (this.inXR || this.#enteringXR || this.#xrIsSupported === false)
 		{
-			return;
+			return false;
 		}
+
+		this.#enteringXR = true;
 
 		if (!this.#useWebXR)
 		{
 			throw new Error("[Wilson] `useWebXR` must be `true` in the constructor options in order to call `enterXR`.");
 		}
 
-		if (!navigator.xr || !(await this.isXRSupported()))
+		if (!navigator.xr || !(await this.#checkXRSupport()))
 		{
-			return;
+			return false;
 		}
 
-		const session = await navigator.xr.requestSession(XR_MODE, {
-			requiredFeatures: [REFERENCE_SPACE]
-		});
-		
+		let session: XRSession;
+
 		try
 		{
-			// WebXR owns this framebuffer and builds the per-eye projections from depthNear/depthFar.
-			const baseLayer = new XRWebGLLayer(session, this.gl);
-			session.updateRenderState({ baseLayer, depthNear: 0.1, depthFar: 1000 });
-		
-			const refSpace = await session.requestReferenceSpace(REFERENCE_SPACE);
-
-			this.#webXRData = { session, refSpace };
-
-			this.#inXR = true;
-			this.inXR = this.#inXR;
-
-			this.#webXRCallbacks.onEnter();
-		
-			session.addEventListener("end", () => this.#onXREnd);
-			session.requestAnimationFrame((time, frame) => this.#onXRFrame(frame));
+			session = await navigator.xr.requestSession(XR_MODE, {
+				requiredFeatures: this.#xrRequiredFeatures,
+				optionalFeatures: this.#xrOptionalFeatures,
+			});
 		}
 
 		catch(ex)
 		{
-			await session.end();
+			if (this.verbose)
+			{
+				console.error(`[Wilson] Couldn't create XR session: ${ex}`);
+			}
+
+			this.#enteringXR = false;
+
+			return false;
+		}
+
+
+		
+		try
+		{
+			const baseLayer = new XRWebGLLayer(session, this.gl, {
+				antialias: false,
+				depth: false,
+				stencil: false,
+				alpha: false,
+				framebufferScaleFactor: 0.8 * XRWebGLLayer.getNativeFramebufferScaleFactor(session)
+			});
+			
+			session.updateRenderState({
+				baseLayer,
+				depthNear: this.#xrDepthNear,
+				depthFar: this.#xrDepthFar
+			});
+		
+			const refSpace = await session.requestReferenceSpace(REFERENCE_SPACE);
+		
+			session.addEventListener("end", () => this.#onXREnd());
+			session.requestAnimationFrame((time, frame) => this.#onXRFrame(frame));
+
+			this.#xrData = { session, refSpace };
+			this.#enteringXR = false;
+
+			this.#webXRCallbacks.onEnter();
+
+			return true;
+		}
+
+		catch(ex)
+		{
+			if (this.verbose)
+			{
+				console.error(`[Wilson] Couldn't enter XR: ${ex}`);
+			}
+
+			this.#xrData = undefined;
+			this.#enteringXR = false;
+
+			await session.end().catch(() => {});
+
+			return false;
 		}
 	}
 
 	#onXRFrame(frame: XRFrame)
 	{
-		if (!this.#webXRData)
+		if (!this.#xrData)
 		{
 			return;
 		}
 
 		// Queue the next frame first so an exception mid-render doesn't stall the loop.
-		this.#webXRData.session.requestAnimationFrame(
+		this.#xrData.session.requestAnimationFrame(
 			(time, nextFrame) => this.#onXRFrame(nextFrame)
 		);
 	
-		const pose = frame.getViewerPose(this.#webXRData.refSpace);
+		const pose = frame.getViewerPose(this.#xrData.refSpace);
 	
 		// Null when tracking is temporarily lost — skip the frame.
 		if (!pose)
@@ -4954,7 +5070,7 @@ export class WilsonGPU extends Wilson
 			return;
 		}
 	
-		const glLayer = this.#webXRData.session.renderState.baseLayer;
+		const glLayer = this.#xrData.session.renderState.baseLayer;
 
 		if (!glLayer)
 		{
@@ -4963,10 +5079,19 @@ export class WilsonGPU extends Wilson
 
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, glLayer.framebuffer);
 		this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-	
+
+
+
 		// One view per eye (two for stereo VR), sharing the framebuffer via side-by-side viewports.
 		for (const view of pose.views)
 		{
+			const scale = this.#xrViewportScale ?? view.recommendedViewportScale;
+
+			if (scale)
+			{
+				view.requestViewportScale(scale);
+			}
+			
 			const viewport = glLayer.getViewport(view);
 
 			if (!viewport)
@@ -4977,42 +5102,44 @@ export class WilsonGPU extends Wilson
 
 			this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 	
-			// transform is the eye pose in reference space; its inverse is the view matrix.
-			this.#renderWebXRFrame(view.projectionMatrix, view.transform.matrix);
+			this.#renderXRFrame(/* TODO: add parameters. */);
 		}
 	}
 
 	#onXREnd()
 	{
-		this.#inXR = false;
-		this.inXR = this.#inXR;
-
 		this.#webXRCallbacks.onExit();
 
-		this.#webXRData = null;
+		this.#xrData = undefined;
 
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
 		this.resizeCanvasGPU();
 	}
 	
-	exitXR()
+	async exitXR()
 	{
-		if (!this.#inXR)
+		if (!this.#xrData)
 		{
 			return;
 		}
 
-		this.#webXRData?.session.end?.();
+		await this.#xrData.session.end();
 	}
 
 
 
 
-    destroy()
+    async destroy()
 	{
 		super.destroy();
 
-		this.#webXRData?.session.end?.();
+
+
+		await this.exitXR();
+
+		navigator.xr?.removeEventListener("devicechange", this.#onDeviceChange);
+
+
 
 		// Delete all textures.
 		for (const id in this.#textures)
