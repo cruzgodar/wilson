@@ -2,6 +2,7 @@
 	"compilerOptions": {
 		"target": "ES2018",                                  
 		"module": "ESNext",
+		"types": ["webxr"],
 		"lib": ["ES2021", "dom"],
 		"rootDir": "./",
 		"forceConsistentCasingInFileNames": true,

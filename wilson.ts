@@ -3851,11 +3851,23 @@ type MultipleShaders = {
 	uniforms?: {[id: ShaderProgramId]: UniformInitializers},
 };
 
+const XR_MODE = "immersive-vr";
+const REFERENCE_SPACE = "local-floor";
+
+type WilsonGPUWebXRData = {
+	session: XRSession,
+	refSpace: XRReferenceSpace | XRBoundedReferenceSpace
+};
+
+export type WilsonGPUWebXROptions = { useWebXR?: false } | {
+	useWebXR: true,
+	renderWebXRFrame: (projectionMatrix: Float32Array<ArrayBufferLike>, viewMatrix: Float32Array<ArrayBufferLike>) => void,
+};
+
 export type WilsonGPUOptions = WilsonOptions
 	& (SingleShader | MultipleShaders)
-	& {
-		useWebGL2?: boolean,
-	}
+	& { useWebGL2?: boolean }
+	& WilsonGPUWebXROptions
 
 export class WilsonGPU extends Wilson
 {
@@ -3876,6 +3888,23 @@ export class WilsonGPU extends Wilson
 			}
 		}
 	} = {};
+
+	
+	#useWebXR: boolean;
+	#renderWebXRFrame: (projectionMatrix: Float32Array<ArrayBufferLike>, viewMatrix: Float32Array<ArrayBufferLike>) => void = () => {};
+	#webXRData: WilsonGPUWebXRData | null = null;
+
+	async #isXRSupported()
+	{
+		if (!navigator.xr)
+		{
+			return false;
+		}
+	
+		return navigator.xr.isSessionSupported(XR_MODE);
+	}
+
+
 
 	#logShaderSource(source: string, infoLog: string)
 	{
@@ -3917,12 +3946,23 @@ export class WilsonGPU extends Wilson
 
 		this.#useWebGL2 = options.useWebGL2 ?? true;
 
-		const gl = this.#useWebGL2
-			? canvas.getContext("webgl2") ?? canvas.getContext("webgl")
-			: canvas.getContext("webgl");
+		this.#useWebXR = options.useWebXR ?? false;
 
-		if (!gl)
+		if (options.useWebXR)
 		{
+			this.#renderWebXRFrame = options.renderWebXRFrame;
+		}
+
+		const getContextOptions = { xrCompatible: this.#useWebXR };
+
+		const gl = this.#useWebGL2
+			? canvas.getContext("webgl2", getContextOptions) ?? canvas.getContext("webgl", getContextOptions)
+			: canvas.getContext("webgl", getContextOptions);
+
+		if (
+			!gl
+			|| (!(gl instanceof WebGLRenderingContext) && !(gl instanceof WebGL2RenderingContext))
+		) {
 			throw new Error("[Wilson] Failed to get WebGL or WebGL2 context.");
 		}
 
@@ -4809,6 +4849,92 @@ export class WilsonGPU extends Wilson
 			link.remove();
 		});
 	}
+
+
+
+	async enterXR()
+	{
+		if (!navigator.xr || !(await this.#isXRSupported()))
+		{
+			return;
+		}
+
+		const session = await navigator.xr.requestSession(XR_MODE, {
+			requiredFeatures: [REFERENCE_SPACE]
+		});
+	
+		// WebXR owns this framebuffer and builds the per-eye projections from depthNear/depthFar.
+		const baseLayer = new XRWebGLLayer(session, this.gl);
+		session.updateRenderState({ baseLayer, depthNear: 0.1, depthFar: 1000 });
+	
+		const refSpace = await session.requestReferenceSpace(REFERENCE_SPACE);
+
+		this.#webXRData = { session, refSpace };
+	
+		session.addEventListener("end", this.#onXREnd);
+		session.requestAnimationFrame((time, frame) => this.#onXRFrame(frame));
+	}
+
+	#onXRFrame(frame: XRFrame)
+	{
+		if (!this.#webXRData)
+		{
+			this.#onXREnd();
+			return;
+		}
+
+		// Queue the next frame first so an exception mid-render doesn't stall the loop.
+		this.#webXRData.session.requestAnimationFrame(
+			(time, nextFrame) => this.#onXRFrame(nextFrame)
+		);
+	
+		const pose = frame.getViewerPose(this.#webXRData.refSpace);
+	
+		// Null when tracking is temporarily lost — skip the frame.
+		if (!pose)
+		{
+			return;
+		}
+	
+		const glLayer = this.#webXRData.session.renderState.baseLayer;
+
+		if (!glLayer)
+		{
+			return;
+		}
+
+		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, glLayer.framebuffer);
+		this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+	
+		// One view per eye (two for stereo VR), sharing the framebuffer via side-by-side viewports.
+		for (const view of pose.views)
+		{
+			const viewport = glLayer.getViewport(view);
+
+			if (!viewport)
+			{
+				return;
+			}
+
+			this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+	
+			// transform is the eye pose in reference space; its inverse is the view matrix.
+			this.#renderWebXRFrame(view.projectionMatrix, view.transform.inverse.matrix);
+		}
+	}
+
+	#onXREnd()
+	{
+		this.#webXRData = null;
+	
+		// Restart your normal window.requestAnimationFrame loop here.
+	}
+	
+	#exitXR()
+	{
+		this.#webXRData?.session.end?.();
+	}
+
 
 
 
