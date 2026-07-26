@@ -4055,7 +4055,7 @@ export class WilsonGPU extends Wilson
 		{
 			// WebXR declares fixedFoveation as nullable, but the WebXR type is number | undefined,
 			// so this normalizes null away.
-			return this.#xrData.baseLayer.fixedFoveation ?? undefined;;
+			return this.#xrData.baseLayer.fixedFoveation ?? undefined;
 		}
 
 		return this.#xrFixedFoveation;
@@ -5368,6 +5368,9 @@ export class WilsonGPU extends Wilson
 			return;
 		}
 
+		const deltaTime = time - (this.#lastXRTime ?? time);
+		this.#lastXRTime = time;
+
 		const { session, refSpace, baseLayer } = this.#xrData;
 
 		// Queue the next frame first so an exception mid-render doesn't stall the loop.
@@ -5375,6 +5378,8 @@ export class WilsonGPU extends Wilson
 
 		if (session.visibilityState === "hidden")
 		{
+			// Treat skipped frames as a discontinuity.
+			this.#lastXRTime = undefined;
 			return;
 		}
 	
@@ -5383,6 +5388,7 @@ export class WilsonGPU extends Wilson
 		// Null when tracking is temporarily lost — skip the frame.
 		if (!pose)
 		{
+			this.#lastXRTime = undefined;
 			return;
 		}
 
@@ -5396,10 +5402,7 @@ export class WilsonGPU extends Wilson
 
 
 
-		const { views, emulatedPosition } = pose; 
-
-		const deltaTime = time - (this.#lastXRTime ?? time);
-		this.#lastXRTime = time;
+		const { views, emulatedPosition } = pose;		
 
 		// Give the callback a predictable, full-framebuffer viewport; the loop below
 		// sets the per-eye viewport before each view renders.

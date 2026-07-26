@@ -2304,11 +2304,14 @@ export class WilsonGPU extends Wilson {
     get xrFramebufferWidth() { var _a, _b; return (_b = (_a = __classPrivateFieldGet(this, _WilsonGPU_xrData, "f")) === null || _a === void 0 ? void 0 : _a.baseLayer) === null || _b === void 0 ? void 0 : _b.framebufferWidth; }
     get xrFramebufferHeight() { var _a, _b; return (_b = (_a = __classPrivateFieldGet(this, _WilsonGPU_xrData, "f")) === null || _a === void 0 ? void 0 : _a.baseLayer) === null || _b === void 0 ? void 0 : _b.framebufferHeight; }
     get xrFixedFoveation() {
+        var _a;
         // When in an XR session, return the actual foveation value; it may be undefined if
         // the headset doesn't support it. Outside a session, the base layer doesn't exist,
         // so return the value that was passed in, if any.
         if (__classPrivateFieldGet(this, _WilsonGPU_xrData, "f")) {
-            return __classPrivateFieldGet(this, _WilsonGPU_xrData, "f").baseLayer.fixedFoveation;
+            // WebXR declares fixedFoveation as nullable, but the WebXR type is number | undefined,
+            // so this normalizes null away.
+            return (_a = __classPrivateFieldGet(this, _WilsonGPU_xrData, "f").baseLayer.fixedFoveation) !== null && _a !== void 0 ? _a : undefined;
         }
         return __classPrivateFieldGet(this, _WilsonGPU_xrFixedFoveation, "f");
     }
@@ -2378,15 +2381,20 @@ export class WilsonGPU extends Wilson {
             if (!__classPrivateFieldGet(this, _WilsonGPU_xrData, "f")) {
                 return;
             }
+            const deltaTime = time - ((_a = __classPrivateFieldGet(this, _WilsonGPU_lastXRTime, "f")) !== null && _a !== void 0 ? _a : time);
+            __classPrivateFieldSet(this, _WilsonGPU_lastXRTime, time, "f");
             const { session, refSpace, baseLayer } = __classPrivateFieldGet(this, _WilsonGPU_xrData, "f");
             // Queue the next frame first so an exception mid-render doesn't stall the loop.
             session.requestAnimationFrame(__classPrivateFieldGet(this, _WilsonGPU_onXRFrame, "f"));
             if (session.visibilityState === "hidden") {
+                // Treat skipped frames as a discontinuity.
+                __classPrivateFieldSet(this, _WilsonGPU_lastXRTime, undefined, "f");
                 return;
             }
             const pose = frame.getViewerPose(refSpace);
             // Null when tracking is temporarily lost — skip the frame.
             if (!pose) {
+                __classPrivateFieldSet(this, _WilsonGPU_lastXRTime, undefined, "f");
                 return;
             }
             // This binds the framebuffer directly since useFramebuffer() early-returns
@@ -2396,8 +2404,17 @@ export class WilsonGPU extends Wilson {
             __classPrivateFieldSet(this, _WilsonGPU_currentFramebufferId, null, "f");
             this.gl.clear(this.gl.COLOR_BUFFER_BIT);
             const { views, emulatedPosition } = pose;
-            const deltaTime = time - ((_a = __classPrivateFieldGet(this, _WilsonGPU_lastXRTime, "f")) !== null && _a !== void 0 ? _a : time);
-            __classPrivateFieldSet(this, _WilsonGPU_lastXRTime, time, "f");
+            // Give the callback a predictable, full-framebuffer viewport; the loop below
+            // sets the per-eye viewport before each view renders.
+            this.gl.viewport(0, 0, baseLayer.framebufferWidth, baseLayer.framebufferHeight);
+            __classPrivateFieldGet(this, _WilsonGPU_xrCallbacks, "f").onFrameStart({
+                time,
+                deltaTime,
+                frame,
+                session,
+                refSpace,
+                pose
+            });
             try {
                 // One view per eye (two for stereo VR), sharing the framebuffer via side-by-side viewports.
                 for (let viewIndex = 0; viewIndex < views.length; viewIndex++) {
@@ -2414,16 +2431,6 @@ export class WilsonGPU extends Wilson {
                     }
                     __classPrivateFieldSet(this, _WilsonGPU_xrViewport, viewport, "f");
                     this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-                    if (viewIndex === 0) {
-                        __classPrivateFieldGet(this, _WilsonGPU_xrCallbacks, "f").onFrameStart({
-                            time,
-                            deltaTime,
-                            frame,
-                            session,
-                            refSpace,
-                            pose
-                        });
-                    }
                     __classPrivateFieldGet(this, _WilsonGPU_renderXRFrame, "f").call(this, {
                         view,
                         projectionMatrix: view.projectionMatrix,
@@ -2673,6 +2680,8 @@ export class WilsonGPU extends Wilson {
     createFramebufferTexturePair({ id, width, height, textureType }) {
         const currentFramebufferId = __classPrivateFieldGet(this, _WilsonGPU_currentFramebufferId, "f");
         const currentTextureId = __classPrivateFieldGet(this, _WilsonGPU_currentTextureId, "f");
+        // Delete any existing pair with this ID so they don't leak.
+        this.deleteFramebufferTexturePair(id);
         // Set default width and height.
         if (__classPrivateFieldGet(this, _WilsonGPU_useWebXR, "f") && this.inXR) {
             width !== null && width !== void 0 ? width : (width = this.xrFramebufferWidth);
@@ -2720,9 +2729,31 @@ export class WilsonGPU extends Wilson {
         this.useFramebuffer(currentFramebufferId);
         this.useTexture(currentTextureId);
     }
+    deleteFramebufferTexturePair(id) {
+        if (__classPrivateFieldGet(this, _WilsonGPU_framebuffers, "f")[id]) {
+            // Deleting a bound framebuffer makes WebGL revert the binding to the default one,
+            // so the cached ID has to follow.
+            if (__classPrivateFieldGet(this, _WilsonGPU_currentFramebufferId, "f") === id) {
+                __classPrivateFieldSet(this, _WilsonGPU_currentFramebufferId, null, "f");
+            }
+            this.gl.deleteFramebuffer(__classPrivateFieldGet(this, _WilsonGPU_framebuffers, "f")[id]);
+            delete __classPrivateFieldGet(this, _WilsonGPU_framebuffers, "f")[id];
+        }
+        if (__classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id]) {
+            // Likewise, deleting a bound texture reverts the binding to null.
+            if (__classPrivateFieldGet(this, _WilsonGPU_currentTextureId, "f") === id) {
+                __classPrivateFieldSet(this, _WilsonGPU_currentTextureId, null, "f");
+            }
+            this.gl.deleteTexture(__classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id].texture);
+            delete __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id];
+        }
+    }
     useFramebuffer(id) {
         if (id === __classPrivateFieldGet(this, _WilsonGPU_currentFramebufferId, "f")) {
             return;
+        }
+        if (id !== null && !__classPrivateFieldGet(this, _WilsonGPU_framebuffers, "f")[id]) {
+            throw new Error(`[Wilson] No framebuffer with ID ${id}.`);
         }
         __classPrivateFieldSet(this, _WilsonGPU_currentFramebufferId, id, "f");
         if (id === null) {
@@ -2742,6 +2773,9 @@ export class WilsonGPU extends Wilson {
     useTexture(id) {
         if (id === __classPrivateFieldGet(this, _WilsonGPU_currentTextureId, "f")) {
             return;
+        }
+        if (id !== null && !__classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id]) {
+            throw new Error(`[Wilson] No texture with ID ${id}.`);
         }
         __classPrivateFieldSet(this, _WilsonGPU_currentTextureId, id, "f");
         if (id === null) {
