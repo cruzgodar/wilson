@@ -3931,12 +3931,12 @@ export type RenderXRFrame = (data: {
 }) => void;
 
 export type OnXRFrameStart = (data: {
-    time: number,
-    deltaTime: number,
-    frame: XRFrame,
-    session: XRSession,
-    refSpace: XRReferenceSpace,
-    pose: XRViewerPose,
+	time: number,
+	deltaTime: number,
+	frame: XRFrame,
+	session: XRSession,
+	refSpace: XRReferenceSpace,
+	pose: XRViewerPose,
 }) => void;
 
 type WilsonGPUXROptions = { useWebXR?: false } | {
@@ -3998,6 +3998,8 @@ export class WilsonGPU extends Wilson
 
 	#renderXRFrame: RenderXRFrame = () => {};
 
+	// The single source of truth about the base layer; if that ever gets changed,
+	// this needs to reflect it.
 	#xrData?: WilsonGPUXRData;
 
 	#xrRequiredFeatures: string[] = [];
@@ -4039,12 +4041,23 @@ export class WilsonGPU extends Wilson
 	get inXR() { return this.#xrData !== undefined; }
 	#enteringXR: boolean = false;
 
-	get xrFramebufferWidth() { return this.#xrData?.session.renderState.baseLayer?.framebufferWidth; }
-	get xrFramebufferHeight() { return this.#xrData?.session.renderState.baseLayer?.framebufferHeight; }
+	get xrFramebufferWidth() { return this.#xrData?.baseLayer?.framebufferWidth; }
+	get xrFramebufferHeight() { return this.#xrData?.baseLayer?.framebufferHeight; }
 	
 	#xrFixedFoveation: number | undefined;
 
-	get xrFixedFoveation() { return this.#xrData?.session.renderState.baseLayer?.fixedFoveation ?? this.#xrFixedFoveation; }
+	get xrFixedFoveation()
+	{
+		// When in an XR session, return the actual foveation value; it may be undefined if
+		// the headset doesn't support it. Outside a session, the base layer doesn't exist,
+		// so return the value that was passed in, if any.
+		if (this.#xrData)
+		{
+			return this.#xrData.baseLayer.fixedFoveation;
+		}
+
+		return this.#xrFixedFoveation;
+	}
 
 	set xrFixedFoveation(value: number | undefined)
 	{
@@ -4058,19 +4071,18 @@ export class WilsonGPU extends Wilson
 		}
 	}
 
-	#xrCallbacks = {
+	#xrCallbacks: {
+		onEnter: () => void,
+		onExit: () => void,
+		onFrameStart: OnXRFrameStart,
+		onVisibilityChange: (state: XRVisibilityState) => void,
+		onFrameRateChange: (frameRate: number | undefined) => void,
+	} = {
 		onEnter: () => {},
 		onExit: () => {},
-		onFrameStart: (data: {
-			time: number,
-			deltaTime: number,
-			frame: XRFrame,
-			session: XRSession,
-			refSpace: XRReferenceSpace,
-			pose: XRViewerPose,
-		}) => {},
-		onVisibilityChange: (state: XRVisibilityState) => {},
-		onFrameRateChange: (frameRate: number | undefined) => {}
+		onFrameStart: () => {},
+		onVisibilityChange: () => {},
+		onFrameRateChange: () => {}
 	};
 
 	// Used to restore the eye viewport correctly when switching back to the
@@ -4605,14 +4617,7 @@ export class WilsonGPU extends Wilson
 		{
 			if (this.#xrData)
 			{
-				const baseLayer = this.#xrData.session.renderState.baseLayer;
-
-				if (!baseLayer)
-				{
-					throw new Error("[Wilson] WebXR base layer is undefined.");
-				}
-
-				this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, baseLayer.framebuffer);
+				this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.#xrData.baseLayer.framebuffer);
 
 				if (this.#xrViewport)
 				{
@@ -4667,7 +4672,9 @@ export class WilsonGPU extends Wilson
 			throw new Error(`[Wilson] Tried to set a texture with id ${id}, but the data type does not match the texture type (the data type should be a ${this.#textures[id].type === 'unsignedByte' ? 'Uint8Array' : 'Float32Array'}).`);
 		}
 
-		this.gl.bindTexture(this.gl.TEXTURE_2D, this.#textures[id].texture);
+		const oldId = this.#currentTextureId;
+
+		this.useTexture(id);
 
 		if (data === null || data instanceof Uint8Array || data instanceof Float32Array)
 		{
@@ -4699,6 +4706,8 @@ export class WilsonGPU extends Wilson
 				data
 			);
 		}
+
+		this.useTexture(oldId);
 	}
 
 	readPixels(options: ReadPixelsOptions)
@@ -5316,7 +5325,7 @@ export class WilsonGPU extends Wilson
 			return;
 		}
 
-		const { session, refSpace } = this.#xrData;
+		const { session, refSpace, baseLayer } = this.#xrData;
 
 		// Queue the next frame first so an exception mid-render doesn't stall the loop.
 		session.requestAnimationFrame(this.#onXRFrame);
@@ -5333,18 +5342,11 @@ export class WilsonGPU extends Wilson
 		{
 			return;
 		}
-	
-		const glLayer = session.renderState.baseLayer;
-
-		if (!glLayer)
-		{
-			return;
-		}
 
 		// This binds the framebuffer directly since useFramebuffer() early-returns
 		// if the ID matches the current one, and both the canvas and the XR framebuffer
 		// use null as their ID.
-		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, glLayer.framebuffer);
+		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, baseLayer.framebuffer);
 		this.#currentFramebufferId = null;
 
 		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
@@ -5355,15 +5357,6 @@ export class WilsonGPU extends Wilson
 
 		const deltaTime = time - (this.#lastXRTime ?? time);
 		this.#lastXRTime = time;
-
-		this.#xrCallbacks.onFrameStart({
-			time,
-			deltaTime,
-			frame,
-			session,
-			refSpace,
-			pose
-		});
 
 		try
 		{
@@ -5380,7 +5373,7 @@ export class WilsonGPU extends Wilson
 					this.#lastAppliedXRViewportScales[viewIndex] = scale;
 				}
 				
-				const viewport = glLayer.getViewport(view);
+				const viewport = baseLayer.getViewport(view);
 
 				if (!viewport)
 				{
@@ -5390,6 +5383,18 @@ export class WilsonGPU extends Wilson
 
 				this.#xrViewport = viewport;
 				this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+
+				if (viewIndex === 0)
+				{
+					this.#xrCallbacks.onFrameStart({
+						time,
+						deltaTime,
+						frame,
+						session,
+						refSpace,
+						pose
+					});
+				}
 		
 				this.#renderXRFrame({
 					view,
