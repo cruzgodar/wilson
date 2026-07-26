@@ -281,6 +281,7 @@ The above guide, along with the example project, are a great way to get started 
 - `closeFullscreenWithEscape`: a boolean for whether to close fullscreen when the escape key is pressed. Can be changed dynamically.
 - `fullscreenRestoreScroll`: a boolean for whether to restore the scroll position when exiting fullscreen. Can be changed dynamically.
 - `onSwitchFullscreen: (isFullscreen: boolean) => void`: a function that is called whenever the canvas enters or exits fullscreen mode. Can be changed dynamically.
+- `beforeSwitchFullscreen: (isFullscreen: boolean) => void`: a function that is called immediately before the canvas enters or exits fullscreen mode. Can be changed dynamically. Can be changed dynamically.
 - `draggables`: a readonly object containing the current draggables, of the form
 ```ts
 {

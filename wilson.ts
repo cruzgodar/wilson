@@ -1024,7 +1024,7 @@ class Wilson
 	
 	
 
-	resizeCanvasGPU = () => {}
+	protected resizeCanvasGPU = () => {}
 
 	#resizeCanvas(
 		dimensions: { width: number, height?: undefined }
@@ -3909,6 +3909,7 @@ const REFERENCE_SPACE = "local";
 type WilsonGPUXRData = {
 	session: XRSession,
 	refSpace: XRReferenceSpace,
+	baseLayer: XRWebGLLayer,
 };
 
 export type RenderXRFrame = (data: {
@@ -3929,6 +3930,15 @@ export type RenderXRFrame = (data: {
 	pose: XRViewerPose,
 }) => void;
 
+export type OnXRFrameStart = (data: {
+    time: number,
+    deltaTime: number,
+    frame: XRFrame,
+    session: XRSession,
+    refSpace: XRReferenceSpace,
+    pose: XRViewerPose,
+}) => void;
+
 type WilsonGPUXROptions = { useWebXR?: false } | {
 	useWebXR: true,
 
@@ -3936,6 +3946,7 @@ type WilsonGPUXROptions = { useWebXR?: false } | {
 
 	onEnterXR?: () => void,
 	onExitXR?: () => void,
+	onXRFrameStart?: OnXRFrameStart,
 	onXRVisibilityChange?: (state: XRVisibilityState) => void,
 	onXRFrameRateChange?: (frameRate: number | undefined) => void,
 
@@ -4039,7 +4050,7 @@ export class WilsonGPU extends Wilson
 	{
 		this.#xrFixedFoveation = value;
 
-		const baseLayer = this.#xrData?.session.renderState.baseLayer;
+		const baseLayer = this.#xrData?.baseLayer;
 
 		if (baseLayer)
 		{
@@ -4050,6 +4061,14 @@ export class WilsonGPU extends Wilson
 	#xrCallbacks = {
 		onEnter: () => {},
 		onExit: () => {},
+		onFrameStart: (data: {
+			time: number,
+			deltaTime: number,
+			frame: XRFrame,
+			session: XRSession,
+			refSpace: XRReferenceSpace,
+			pose: XRViewerPose,
+		}) => {},
 		onVisibilityChange: (state: XRVisibilityState) => {},
 		onFrameRateChange: (frameRate: number | undefined) => {}
 	};
@@ -4139,6 +4158,7 @@ export class WilsonGPU extends Wilson
 			this.#xrCallbacks = {
 				onEnter: options.onEnterXR ?? (() => {}),
 				onExit: options.onExitXR ?? (() => {}),
+				onFrameStart: options.onXRFrameStart ?? (() => {}),
 				onVisibilityChange: options.onXRVisibilityChange ?? ((state: XRVisibilityState) => {}),
 				onFrameRateChange: options.onXRFrameRateChange ?? ((frameRate: number | undefined) => {})
 			};
@@ -4155,7 +4175,6 @@ export class WilsonGPU extends Wilson
 			// Foveated rendering defaults to on.
 			this.#xrFixedFoveation = options.xrFixedFoveation ?? 0.3;
 
-			// Foveated rendering defaults to on.
 			this.#xrTargetFrameRate = options.xrTargetFrameRate;
 		}
 
@@ -4527,6 +4546,8 @@ export class WilsonGPU extends Wilson
 
 
 		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+		this.#currentTextureId = id;
+
 		this.gl.texImage2D(
 			this.gl.TEXTURE_2D,
 			0,
@@ -4549,6 +4570,8 @@ export class WilsonGPU extends Wilson
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
 
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+		this.#currentFramebufferId = id;
+
 		this.gl.framebufferTexture2D(
 			this.gl.FRAMEBUFFER,
 			this.gl.COLOR_ATTACHMENT0,
@@ -4711,7 +4734,7 @@ export class WilsonGPU extends Wilson
 
 
 
-	resizeCanvasGPU = () =>
+	protected resizeCanvasGPU = () =>
 	{
 		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
 	};
@@ -5240,13 +5263,14 @@ export class WilsonGPU extends Wilson
 				depthNear: this.#xrDepthNear,
 				depthFar: this.#xrDepthFar
 			});
-
-			this.#applyXRTargetFrameRate();
-
-			// Calls the setter, so it updates on baseLayer.
-			this.xrFixedFoveation = this.#xrFixedFoveation;
 		
 			const refSpace = await session.requestReferenceSpace(REFERENCE_SPACE);
+
+			this.#xrData = { session, refSpace, baseLayer };
+
+			this.#applyXRTargetFrameRate();
+			// Calls the setter, so it updates on baseLayer.
+			this.xrFixedFoveation = this.#xrFixedFoveation;
 
 			session.addEventListener("visibilitychange", () =>
 			{
@@ -5261,7 +5285,6 @@ export class WilsonGPU extends Wilson
 			session.addEventListener("end", this.#onXREnd);
 			session.requestAnimationFrame(this.#onXRFrame);
 
-			this.#xrData = { session, refSpace };
 			this.#enteringXR = false;
 
 			this.#xrCallbacks.onEnter();
@@ -5318,7 +5341,12 @@ export class WilsonGPU extends Wilson
 			return;
 		}
 
+		// This binds the framebuffer directly since useFramebuffer() early-returns
+		// if the ID matches the current one, and both the canvas and the XR framebuffer
+		// use null as their ID.
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, glLayer.framebuffer);
+		this.#currentFramebufferId = null;
+
 		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
 
@@ -5327,6 +5355,15 @@ export class WilsonGPU extends Wilson
 
 		const deltaTime = time - (this.#lastXRTime ?? time);
 		this.#lastXRTime = time;
+
+		this.#xrCallbacks.onFrameStart({
+			time,
+			deltaTime,
+			frame,
+			session,
+			refSpace,
+			pose
+		});
 
 		try
 		{
@@ -5390,7 +5427,11 @@ export class WilsonGPU extends Wilson
 
 		this.animationFrameLoopPaused = false;
 
+		// This binds the framebuffer directly since useFramebuffer() early-returns
+		// if the ID matches the current one, and both the canvas and the XR framebuffer
+		// use null as their ID.
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+		this.#currentFramebufferId = null;
 		this.resizeCanvasGPU();
 	}
 
@@ -5399,6 +5440,7 @@ export class WilsonGPU extends Wilson
 		this.#xrCallbacks = {
 			onEnter: () => {},
 			onExit: () => {},
+			onFrameStart: () => {},
 			onVisibilityChange: (state: XRVisibilityState) => {},
 			onFrameRateChange: (frameRate: number | undefined) => {}
 		};
