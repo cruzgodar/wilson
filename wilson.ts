@@ -2211,9 +2211,28 @@ class Wilson
 		this.#lastInteractionCol = e.clientX;
 	}
 	
+	#animationFrameLoopPaused = false;
 	#lastPanAndZoomTimestamp = -1;
+	
+	set animationFrameLoopPaused(value: boolean)
+	{
+		this.#animationFrameLoopPaused = value;
+		this.#lastPanAndZoomTimestamp = -1;
+
+		if (!this.#animationFrameLoopPaused)
+		{
+			requestAnimationFrame(this.#animationFrameLoop);
+		}
+	}
+
 	#animationFrameLoop = (timestamp: number) =>
 	{
+		if (this.#animationFrameLoopPaused)
+		{
+			this.#lastPanAndZoomTimestamp = -1;
+			return;
+		}
+
 		const timeElapsed = timestamp - this.#lastPanAndZoomTimestamp;
 		this.#lastPanAndZoomTimestamp = timestamp;
 
@@ -3908,7 +3927,7 @@ type WilsonGPUXROptions = { useWebXR?: false } | {
 
 	onEnterXR?: () => void,
 	onExitXR?: () => void,
-	onXRVisibilityChange: (state: XRVisibilityState) => void
+	onXRVisibilityChange?: (state: XRVisibilityState) => void,
 
 	xrRequiredFeatures?: string[],
 	xrOptionalFeatures?: string[],
@@ -3965,8 +3984,19 @@ export class WilsonGPU extends Wilson
 
 	#xrFramebufferScaleFactor: number = 1;
 
-	xrViewportScale: number | null = null;
-	#lastAppliedXRViewportScale: number | null = null;
+	#xrViewportScale: number | null = null;
+	#lastAppliedXRViewportScales: number[] = [];
+
+	get xrViewportScale() { return this.#xrViewportScale; }
+	set xrViewportScale(value: number | null)
+	{
+		if (typeof value === "number" && value > 1 && this.verbose)
+		{
+			console.warn("[Wilson] Setting xrViewportScale > 1 has no effect.");
+		}
+
+		this.#xrViewportScale = value;
+	}
 
 	#lastXRTime: number | undefined = undefined;
 
@@ -3978,7 +4008,7 @@ export class WilsonGPU extends Wilson
 	
 	#xrFixedFoveation: number | undefined;
 
-	get xrFixedFoveation() { return this.#xrData?.session.renderState.baseLayer?.fixedFoveation; }
+	get xrFixedFoveation() { return this.#xrData?.session.renderState.baseLayer?.fixedFoveation ?? this.#xrFixedFoveation; }
 
 	set xrFixedFoveation(value: number | undefined)
 	{
@@ -4093,13 +4123,16 @@ export class WilsonGPU extends Wilson
 
 			this.#xrFramebufferScaleFactor = options.xrFramebufferScaleFactor ?? 1;
 
-			this.xrViewportScale = options.xrViewportScale ?? null;
+			this.#xrViewportScale = options.xrViewportScale ?? null;
 
 			// Foveated rendering defaults to on.
 			this.#xrFixedFoveation = options.xrFixedFoveation ?? 0.3;
 		}
 
-		const getContextOptions: WebGLContextAttributes = { xrCompatible: this.#useWebXR };
+		const getContextOptions: WebGLContextAttributes = {
+			xrCompatible: this.#useWebXR,
+			powerPreference: "high-performance"
+		};
 
 		const gl = this.#useWebGL2
 			? canvas.getContext("webgl2", getContextOptions) ?? canvas.getContext("webgl", getContextOptions)
@@ -4416,6 +4449,26 @@ export class WilsonGPU extends Wilson
 		height?: number,
 		textureType: "unsignedByte" | "float"
 	}) {
+		// Set default width and height.
+		if (this.#useWebXR && this.inXR)
+		{
+			width ??= this.xrFramebufferWidth;
+			height ??= this.xrFramebufferHeight;
+
+			if (width === undefined || height === undefined)
+			{
+				throw new Error("[Wilson] Cannot get XR framebuffer size.")
+			}
+		}
+
+		else
+		{
+			width ??= this.canvasWidth;
+			height ??= this.canvasHeight;
+		}
+
+
+
 		if (textureType !== "unsignedByte" && textureType !== "float")
 		{
 			throw new Error(`[Wilson] Invalid texture type "${textureType}".`);
@@ -4433,26 +4486,6 @@ export class WilsonGPU extends Wilson
 		if (!texture)
 		{
 			throw new Error(`[Wilson] Couldn't create a texture with id ${id}.`);
-		}
-
-
-
-		// Set default width and height.
-		if (this.#useWebXR)
-		{
-			width ??= this.xrFramebufferWidth;
-			height ??= this.xrFramebufferHeight;
-
-			if (width === undefined || height === undefined)
-			{
-				throw new Error("[Wilson] Cannot get XR framebuffer size.")
-			}
-		}
-
-		else
-		{
-			width ??= this.canvasWidth;
-			height ??= this.canvasHeight;
 		}
 
 
@@ -5168,6 +5201,8 @@ export class WilsonGPU extends Wilson
 			{
 				this.#xrCallbacks.onVisibilityChange(session.visibilityState);
 			});
+
+			this.animationFrameLoopPaused = true;
 		
 			session.addEventListener("end", this.#onXREnd);
 			session.requestAnimationFrame(this.#onXRFrame);
@@ -5203,15 +5238,17 @@ export class WilsonGPU extends Wilson
 			return;
 		}
 
-		// Queue the next frame first so an exception mid-render doesn't stall the loop.
-		this.#xrData.session.requestAnimationFrame(this.#onXRFrame);
+		const { session, refSpace } = this.#xrData;
 
-		if (this.#xrData.session.visibilityState === "hidden")
+		// Queue the next frame first so an exception mid-render doesn't stall the loop.
+		session.requestAnimationFrame(this.#onXRFrame);
+
+		if (session.visibilityState === "hidden")
 		{
 			return;
 		}
 	
-		const pose = frame.getViewerPose(this.#xrData.refSpace);
+		const pose = frame.getViewerPose(refSpace);
 	
 		// Null when tracking is temporarily lost — skip the frame.
 		if (!pose)
@@ -5219,7 +5256,7 @@ export class WilsonGPU extends Wilson
 			return;
 		}
 	
-		const glLayer = this.#xrData.session.renderState.baseLayer;
+		const glLayer = session.renderState.baseLayer;
 
 		if (!glLayer)
 		{
@@ -5231,75 +5268,86 @@ export class WilsonGPU extends Wilson
 
 
 
-		const { session, refSpace } = this.#xrData;
 		const { views, emulatedPosition } = pose; 
 
 		const deltaTime = time - (this.#lastXRTime ?? time);
 		this.#lastXRTime = time;
 
-		// One view per eye (two for stereo VR), sharing the framebuffer via side-by-side viewports.
-		for (let viewIndex = 0; viewIndex < views.length; viewIndex++)
+		try
 		{
-			const view = views[viewIndex];
-			
-			const scale = this.xrViewportScale ?? view.recommendedViewportScale;
-
-			if (scale && scale !== this.#lastAppliedXRViewportScale)
+			// One view per eye (two for stereo VR), sharing the framebuffer via side-by-side viewports.
+			for (let viewIndex = 0; viewIndex < views.length; viewIndex++)
 			{
-				view.requestViewportScale(scale);
-				this.#lastAppliedXRViewportScale = scale;
-			}
-			
-			const viewport = glLayer.getViewport(view);
+				const view = views[viewIndex];
+				
+				const scale = this.#xrViewportScale ?? view.recommendedViewportScale;
 
-			if (!viewport)
-			{
-				// Skip this eye, not the whole frame
-				continue;
-			}
+				if (scale && scale !== this.#lastAppliedXRViewportScales[viewIndex])
+				{
+					view.requestViewportScale(scale);
+					this.#lastAppliedXRViewportScales[viewIndex] = scale;
+				}
+				
+				const viewport = glLayer.getViewport(view);
 
-			this.#xrViewport = viewport;
-			this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-	
-			this.#renderXRFrame({
-				view,
-				projectionMatrix: view.projectionMatrix,
-				cameraToWorld: view.transform.matrix,
-				eye: view.eye,
-				viewIndex,
-				numViews: views.length,
-				viewport,
-				time,
-				deltaTime,
-				frame,
-				refSpace,
-				position: view.transform.position,
-				emulatedPosition: emulatedPosition,
-				session,
-				pose,
-			});
+				if (!viewport)
+				{
+					// Skip this eye, not the whole frame
+					continue;
+				}
+
+				this.#xrViewport = viewport;
+				this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+		
+				this.#renderXRFrame({
+					view,
+					projectionMatrix: view.projectionMatrix,
+					cameraToWorld: view.transform.matrix,
+					eye: view.eye,
+					viewIndex,
+					numViews: views.length,
+					viewport,
+					time,
+					deltaTime,
+					frame,
+					refSpace,
+					position: view.transform.position,
+					emulatedPosition: emulatedPosition,
+					session,
+					pose,
+				});
+			}
 		}
-
-		this.#xrViewport = null;
+		
+		finally
+		{
+			this.#xrViewport = null;
+		}
 	}
 
 	#onXREnd = () =>
 	{
 		this.#xrData = undefined;
+		this.#lastAppliedXRViewportScales = [];
+		this.#lastXRTime = undefined;
 
 		this.#xrCallbacks.onExit();
+
+		this.animationFrameLoopPaused = false;
 
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
 		this.resizeCanvasGPU();
 	}
 
-	#clearXRCallbacks()
+	#clearXRFunctions()
 	{
 		this.#xrCallbacks = {
 			onEnter: () => {},
 			onExit: () => {},
 			onVisibilityChange: (state: XRVisibilityState) => {}
 		};
+
+		this.#renderXRFrame = () => {};
 	}
 	
 	async exitXR()
@@ -5321,7 +5369,7 @@ export class WilsonGPU extends Wilson
 
 		
 
-		this.#clearXRCallbacks();
+		this.#clearXRFunctions();
 
 		this.exitXR().catch(() => {});
 
