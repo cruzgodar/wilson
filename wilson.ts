@@ -4053,7 +4053,9 @@ export class WilsonGPU extends Wilson
 		// so return the value that was passed in, if any.
 		if (this.#xrData)
 		{
-			return this.#xrData.baseLayer.fixedFoveation;
+			// WebXR declares fixedFoveation as nullable, but the WebXR type is number | undefined,
+			// so this normalizes null away.
+			return this.#xrData.baseLayer.fixedFoveation ?? undefined;;
 		}
 
 		return this.#xrFixedFoveation;
@@ -4515,6 +4517,9 @@ export class WilsonGPU extends Wilson
 	}) {
 		const currentFramebufferId = this.#currentFramebufferId;
 		const currentTextureId = this.#currentTextureId;
+		
+		// Delete any existing pair with this ID so they don't leak.
+		this.deleteFramebufferTexturePair(id);
 
 		// Set default width and height.
 		if (this.#useWebXR && this.inXR)
@@ -4604,11 +4609,44 @@ export class WilsonGPU extends Wilson
 		this.useTexture(currentTextureId);
 	}
 
+	deleteFramebufferTexturePair(id: string)
+	{
+		if (this.#framebuffers[id])
+		{
+			// Deleting a bound framebuffer makes WebGL revert the binding to the default one,
+			// so the cached ID has to follow.
+			if (this.#currentFramebufferId === id)
+			{
+				this.#currentFramebufferId = null;
+			}
+
+			this.gl.deleteFramebuffer(this.#framebuffers[id]);
+			delete this.#framebuffers[id];
+		}
+
+		if (this.#textures[id])
+		{
+			// Likewise, deleting a bound texture reverts the binding to null.
+			if (this.#currentTextureId === id)
+			{
+				this.#currentTextureId = null;
+			}
+
+			this.gl.deleteTexture(this.#textures[id].texture);
+			delete this.#textures[id];
+		}
+	}
+
 	useFramebuffer(id: string | null)
 	{
 		if (id === this.#currentFramebufferId)
 		{
 			return;
+		}
+
+		if (id !== null && !this.#framebuffers[id])
+		{
+			throw new Error(`[Wilson] No framebuffer with ID ${id}.`);
 		}
 
 		this.#currentFramebufferId = id;
@@ -4640,6 +4678,11 @@ export class WilsonGPU extends Wilson
 		if (id === this.#currentTextureId)
 		{
 			return;
+		}
+
+		if (id !== null && !this.#textures[id])
+		{
+			throw new Error(`[Wilson] No texture with ID ${id}.`);
 		}
 		
 		this.#currentTextureId = id;
@@ -5358,6 +5401,19 @@ export class WilsonGPU extends Wilson
 		const deltaTime = time - (this.#lastXRTime ?? time);
 		this.#lastXRTime = time;
 
+		// Give the callback a predictable, full-framebuffer viewport; the loop below
+		// sets the per-eye viewport before each view renders.
+		this.gl.viewport(0, 0, baseLayer.framebufferWidth, baseLayer.framebufferHeight);
+
+		this.#xrCallbacks.onFrameStart({
+			time,
+			deltaTime,
+			frame,
+			session,
+			refSpace,
+			pose
+		});
+
 		try
 		{
 			// One view per eye (two for stereo VR), sharing the framebuffer via side-by-side viewports.
@@ -5383,18 +5439,6 @@ export class WilsonGPU extends Wilson
 
 				this.#xrViewport = viewport;
 				this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-
-				if (viewIndex === 0)
-				{
-					this.#xrCallbacks.onFrameStart({
-						time,
-						deltaTime,
-						frame,
-						session,
-						refSpace,
-						pose
-					});
-				}
 		
 				this.#renderXRFrame({
 					view,
