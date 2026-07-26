@@ -2234,7 +2234,7 @@ class Wilson
 			// It would seem like we should divide by timeElapsed,
 			// but this is a lag compensation measure --- if we're dropping
 			// frames, we increase the velocity factor so that the inertia effect
-			// isn't halted so quickly
+			// isn't halted so quickly.
 			this.#lastVelocityFactors.shift();
 			this.#lastVelocityFactors.push(
 				Math.max(timeElapsed / (1000 / 60), 1)
@@ -3803,7 +3803,7 @@ const uniformFunctions: {[key in UniformType]: any} = {
 	) => {
 		return value instanceof Float32Array
 			? gl.uniform2fv(location, value)
-			: gl.uniform2fv(location, value.flat())
+			: gl.uniform2fv(location, value.flat());
 	},
 
 	vec3Array: (
@@ -3813,7 +3813,7 @@ const uniformFunctions: {[key in UniformType]: any} = {
 	) => {
 		return value instanceof Float32Array
 			? gl.uniform3fv(location, value)
-			: gl.uniform3fv(location, value.flat())
+			: gl.uniform3fv(location, value.flat());
 	},
 	
 	vec4Array: (
@@ -3823,7 +3823,7 @@ const uniformFunctions: {[key in UniformType]: any} = {
 	) => {
 		return value instanceof Float32Array
 			? gl.uniform4fv(location, value)
-			: gl.uniform4fv(location, value.flat())
+			: gl.uniform4fv(location, value.flat());
 	},
 
 	mat2: (
@@ -3833,7 +3833,7 @@ const uniformFunctions: {[key in UniformType]: any} = {
 	) => {
 		return value instanceof Float32Array
 			? gl.uniformMatrix2fv(location, false, value)
-			: gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]])
+			: gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]]);
 	},
 	
 	mat3: (
@@ -3843,7 +3843,7 @@ const uniformFunctions: {[key in UniformType]: any} = {
 	) => {
 		return value instanceof Float32Array
 			? gl.uniformMatrix3fv(location, false, value)
-			: gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]])
+			: gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]]);
 	},
 	
 	mat4: (
@@ -3853,7 +3853,7 @@ const uniformFunctions: {[key in UniformType]: any} = {
 	) => {
 		return value instanceof Float32Array
 			? gl.uniformMatrix4fv(location, false, value)
-			: gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]])
+			: gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]);
 	},
 };
 
@@ -3892,6 +3892,7 @@ export type RenderXRFrame = (data: {
 	numViews: number,
 	viewport: XRViewport,
 	time: number,
+	deltaTime: number,
 	frame: XRFrame,
 	refSpace: XRReferenceSpace,
 	position: DOMPointReadOnly,
@@ -3965,16 +3966,19 @@ export class WilsonGPU extends Wilson
 	#xrFramebufferScaleFactor: number = 1;
 
 	xrViewportScale: number | null = null;
+	#lastAppliedXRViewportScale: number | null = null;
+
+	#lastXRTime: number | undefined = undefined;
 
 	get inXR() { return this.#xrData !== undefined; }
 	#enteringXR: boolean = false;
+
+	get xrFramebufferWidth() { return this.#xrData?.session.renderState.baseLayer?.framebufferWidth; }
+	get xrFramebufferHeight() { return this.#xrData?.session.renderState.baseLayer?.framebufferHeight; }
 	
 	#xrFixedFoveation: number | undefined;
 
-	get xrFixedFoveation()
-	{
-		return this.#xrData?.session.renderState.baseLayer?.fixedFoveation;
-	}
+	get xrFixedFoveation() { return this.#xrData?.session.renderState.baseLayer?.fixedFoveation; }
 
 	set xrFixedFoveation(value: number | undefined)
 	{
@@ -4091,7 +4095,8 @@ export class WilsonGPU extends Wilson
 
 			this.xrViewportScale = options.xrViewportScale ?? null;
 
-			this.#xrFixedFoveation = options.xrFixedFoveation ?? undefined;
+			// Foveated rendering defaults to on.
+			this.#xrFixedFoveation = options.xrFixedFoveation ?? 0.3;
 		}
 
 		const getContextOptions: WebGLContextAttributes = { xrCompatible: this.#useWebXR };
@@ -4332,9 +4337,33 @@ export class WilsonGPU extends Wilson
 		}
 	}
 
+	setUniform(name: string, value: UniformValue, shader: ShaderProgramId = this.#currentShaderId)
+	{
+		if (shader !== this.#currentShaderId)
+		{
+			this.gl.useProgram(this.#shaderPrograms[shader]);
+		}
+		
+		if (this.#uniforms[shader][name] !== undefined)
+		{
+			const { location, type } = this.#uniforms[shader][name];
+			const uniformFunction = uniformFunctions[type];
+			this.#uniforms[shader][name].value = value;
+			uniformFunction(this.gl, location, value);
+		}
+		
+		if (shader !== this.#currentShaderId)
+		{
+			this.gl.useProgram(this.#shaderPrograms[this.#currentShaderId]);
+		}
+	}
+
 	setUniforms(uniforms: UniformInitializers, shader: ShaderProgramId = this.#currentShaderId)
 	{
-		this.gl.useProgram(this.#shaderPrograms[shader]);
+		if (shader !== this.#currentShaderId)
+		{
+			this.gl.useProgram(this.#shaderPrograms[shader]);
+		}
 		
 		for (const [name, value] of Object.entries(uniforms))
 		{
@@ -4348,8 +4377,11 @@ export class WilsonGPU extends Wilson
 			this.#uniforms[shader][name].value = value;
 			uniformFunction(this.gl, location, value);
 		}
-
-		this.gl.useProgram(this.#shaderPrograms[this.#currentShaderId]);
+		
+		if (shader !== this.#currentShaderId)
+		{
+			this.gl.useProgram(this.#shaderPrograms[this.#currentShaderId]);
+		}
 	}
 
 	useShader(id: ShaderProgramId)
@@ -4375,8 +4407,8 @@ export class WilsonGPU extends Wilson
 
 	createFramebufferTexturePair({
 		id,
-		width = this.canvasWidth,
-		height = this.canvasHeight,
+		width,
+		height,
 		textureType
 	}: {
 		id: string,
@@ -4402,6 +4434,28 @@ export class WilsonGPU extends Wilson
 		{
 			throw new Error(`[Wilson] Couldn't create a texture with id ${id}.`);
 		}
+
+
+
+		// Set default width and height.
+		if (this.#useWebXR)
+		{
+			width ??= this.xrFramebufferWidth;
+			height ??= this.xrFramebufferHeight;
+
+			if (width === undefined || height === undefined)
+			{
+				throw new Error("[Wilson] Cannot get XR framebuffer size.")
+			}
+		}
+
+		else
+		{
+			width ??= this.canvasWidth;
+			height ??= this.canvasHeight;
+		}
+
+
 
 		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
 		this.gl.texImage2D(
@@ -4669,7 +4723,7 @@ export class WilsonGPU extends Wilson
 				) => {
 					return value instanceof Float32Array
 						? gl.uniform2fv(location, value)
-						: gl.uniform2fv(location, value.flat())
+						: gl.uniform2fv(location, value.flat());
 				},
 
 				vec3Array: (
@@ -4679,7 +4733,7 @@ export class WilsonGPU extends Wilson
 				) => {
 					return value instanceof Float32Array
 						? gl.uniform3fv(location, value)
-						: gl.uniform3fv(location, value.flat())
+						: gl.uniform3fv(location, value.flat());
 				},
 				
 				vec4Array: (
@@ -4689,7 +4743,7 @@ export class WilsonGPU extends Wilson
 				) => {
 					return value instanceof Float32Array
 						? gl.uniform4fv(location, value)
-						: gl.uniform4fv(location, value.flat())
+						: gl.uniform4fv(location, value.flat());
 				},
 
 				mat2: (
@@ -4699,7 +4753,7 @@ export class WilsonGPU extends Wilson
 				) => {
 					return value instanceof Float32Array
 						? gl.uniformMatrix2fv(location, false, value)
-						: gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]])
+						: gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]]);
 				},
 				
 				mat3: (
@@ -4709,7 +4763,7 @@ export class WilsonGPU extends Wilson
 				) => {
 					return value instanceof Float32Array
 						? gl.uniformMatrix3fv(location, false, value)
-						: gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]])
+						: gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]]);
 				},
 				
 				mat4: (
@@ -4719,7 +4773,7 @@ export class WilsonGPU extends Wilson
 				) => {
 					return value instanceof Float32Array
 						? gl.uniformMatrix4fv(location, false, value)
-						: gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]])
+						: gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]);
 				},
 			};
 
@@ -5115,8 +5169,8 @@ export class WilsonGPU extends Wilson
 				this.#xrCallbacks.onVisibilityChange(session.visibilityState);
 			});
 		
-			session.addEventListener("end", () => this.#onXREnd());
-			session.requestAnimationFrame((time, frame) => this.#onXRFrame(time, frame));
+			session.addEventListener("end", this.#onXREnd);
+			session.requestAnimationFrame(this.#onXRFrame);
 
 			this.#xrData = { session, refSpace };
 			this.#enteringXR = false;
@@ -5142,7 +5196,7 @@ export class WilsonGPU extends Wilson
 		}
 	}
 
-	#onXRFrame(time: number, frame: XRFrame)
+	#onXRFrame = (time: number, frame: XRFrame) =>
 	{
 		if (!this.#xrData)
 		{
@@ -5150,9 +5204,7 @@ export class WilsonGPU extends Wilson
 		}
 
 		// Queue the next frame first so an exception mid-render doesn't stall the loop.
-		this.#xrData.session.requestAnimationFrame(
-			(nextTime, nextFrame) => this.#onXRFrame(nextTime, nextFrame)
-		);
+		this.#xrData.session.requestAnimationFrame(this.#onXRFrame);
 
 		if (this.#xrData.session.visibilityState === "hidden")
 		{
@@ -5179,18 +5231,23 @@ export class WilsonGPU extends Wilson
 
 
 
-		const { session, refSpace } = this.#xrData; 
+		const { session, refSpace } = this.#xrData;
+		const { views, emulatedPosition } = pose; 
+
+		const deltaTime = time - (this.#lastXRTime ?? time);
+		this.#lastXRTime = time;
 
 		// One view per eye (two for stereo VR), sharing the framebuffer via side-by-side viewports.
-		for (let viewIndex = 0; viewIndex < pose.views.length; viewIndex++)
+		for (let viewIndex = 0; viewIndex < views.length; viewIndex++)
 		{
-			const view = pose.views[viewIndex];
+			const view = views[viewIndex];
 			
 			const scale = this.xrViewportScale ?? view.recommendedViewportScale;
 
-			if (scale)
+			if (scale && scale !== this.#lastAppliedXRViewportScale)
 			{
 				view.requestViewportScale(scale);
+				this.#lastAppliedXRViewportScale = scale;
 			}
 			
 			const viewport = glLayer.getViewport(view);
@@ -5210,13 +5267,14 @@ export class WilsonGPU extends Wilson
 				cameraToWorld: view.transform.matrix,
 				eye: view.eye,
 				viewIndex,
-				numViews: pose.views.length,
+				numViews: views.length,
 				viewport,
 				time,
+				deltaTime,
 				frame,
 				refSpace,
 				position: view.transform.position,
-				emulatedPosition: pose.emulatedPosition,
+				emulatedPosition: emulatedPosition,
 				session,
 				pose,
 			});
@@ -5225,7 +5283,7 @@ export class WilsonGPU extends Wilson
 		this.#xrViewport = null;
 	}
 
-	#onXREnd()
+	#onXREnd = () =>
 	{
 		this.#xrData = undefined;
 
