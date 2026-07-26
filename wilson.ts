@@ -2237,7 +2237,7 @@ class Wilson
 
 	#animationFrameLoop = (timestamp: number) =>
 	{
-		if (this.#animationFrameLoopPaused)
+		if (this.#animationFrameLoopPaused || this.#destroyed)
 		{
 			return;
 		}
@@ -4015,7 +4015,7 @@ export class WilsonGPU extends Wilson
 	get xrViewportScale() { return this.#xrViewportScale; }
 	set xrViewportScale(value: number | null)
 	{
-		if (typeof value === "number" && (value <= 0 || value > 1) && this.verbose)
+		if (value !== null && (value <= 0 || value > 1) && this.verbose)
 		{
 			console.warn("[Wilson] Setting xrViewportScale outside of (0, 1] has no effect.");
 		}
@@ -4041,8 +4041,8 @@ export class WilsonGPU extends Wilson
 	get inXR() { return this.#xrData !== undefined; }
 	#enteringXR: boolean = false;
 
-	get xrFramebufferWidth() { return this.#xrData?.baseLayer?.framebufferWidth; }
-	get xrFramebufferHeight() { return this.#xrData?.baseLayer?.framebufferHeight; }
+	get xrFramebufferWidth() { return this.#xrData?.baseLayer.framebufferWidth; }
+	get xrFramebufferHeight() { return this.#xrData?.baseLayer.framebufferHeight; }
 	
 	#xrFixedFoveation: number | undefined;
 
@@ -4173,8 +4173,8 @@ export class WilsonGPU extends Wilson
 				onEnter: options.onEnterXR ?? (() => {}),
 				onExit: options.onExitXR ?? (() => {}),
 				onFrameStart: options.onXRFrameStart ?? (() => {}),
-				onVisibilityChange: options.onXRVisibilityChange ?? ((state: XRVisibilityState) => {}),
-				onFrameRateChange: options.onXRFrameRateChange ?? ((frameRate: number | undefined) => {})
+				onVisibilityChange: options.onXRVisibilityChange ?? (() => {}),
+				onFrameRateChange: options.onXRFrameRateChange ?? (() => {})
 			};
 
 			this.#xrRequiredFeatures = options.xrRequiredFeatures ?? [];
@@ -4482,6 +4482,11 @@ export class WilsonGPU extends Wilson
 
 	useShader(id: ShaderProgramId)
 	{
+		if (id === this.#currentShaderId)
+		{
+			return;
+		}
+		
 		this.#currentShaderId = id;
 		this.gl.useProgram(this.#shaderPrograms[id]);
 	}
@@ -5303,9 +5308,9 @@ export class WilsonGPU extends Wilson
 				stencil: false,
 				alpha: false,
 				// Initialize the framebuffer (both eyes, side-by-side). Headsets can run in a low-res
-				// mode by default for headroom, so the first factor here ensure we're rendering all the
+				// mode by default for headroom, so the first factor here ensures we're rendering all the
 				// pixels available. The second factor is per-applet and can scale it down for a
-				// compile-time quality cap.
+				// construction-time quality cap.
 				framebufferScaleFactor: XRWebGLLayer.getNativeFramebufferScaleFactor(session)
 					* this.#xrFramebufferScaleFactor
 			});
@@ -5402,7 +5407,7 @@ export class WilsonGPU extends Wilson
 
 
 
-		const { views, emulatedPosition } = pose;		
+		const { views, emulatedPosition } = pose;
 
 		// Give the callback a predictable, full-framebuffer viewport; the loop below
 		// sets the per-eye viewport before each view renders.
@@ -5456,7 +5461,7 @@ export class WilsonGPU extends Wilson
 					frame,
 					refSpace,
 					position: view.transform.position,
-					emulatedPosition: emulatedPosition,
+					emulatedPosition,
 					session,
 					pose,
 				});
@@ -5475,16 +5480,16 @@ export class WilsonGPU extends Wilson
 		this.#lastAppliedXRViewportScales = [];
 		this.#lastXRTime = undefined;
 
-		this.#xrCallbacks.onExit();
-
-		this.animationFrameLoopPaused = false;
-
 		// This binds the framebuffer directly since useFramebuffer() early-returns
 		// if the ID matches the current one, and both the canvas and the XR framebuffer
 		// use null as their ID.
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
 		this.#currentFramebufferId = null;
 		this.resizeCanvasGPU();
+
+		this.animationFrameLoopPaused = false;
+
+		this.#xrCallbacks.onExit();
 	}
 
 	#clearXRFunctions()

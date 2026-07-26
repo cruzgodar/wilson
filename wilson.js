@@ -183,7 +183,7 @@ class Wilson {
         _Wilson_animationFrameLoopPaused.set(this, false);
         _Wilson_lastPanAndZoomTimestamp.set(this, -1);
         _Wilson_animationFrameLoop.set(this, (timestamp) => {
-            if (__classPrivateFieldGet(this, _Wilson_animationFrameLoopPaused, "f")) {
+            if (__classPrivateFieldGet(this, _Wilson_animationFrameLoopPaused, "f") || __classPrivateFieldGet(this, _Wilson_destroyed, "f")) {
                 return;
             }
             const timeElapsed = timestamp - __classPrivateFieldGet(this, _Wilson_lastPanAndZoomTimestamp, "f");
@@ -2288,7 +2288,7 @@ const REFERENCE_SPACE = "local";
 export class WilsonGPU extends Wilson {
     get xrViewportScale() { return __classPrivateFieldGet(this, _WilsonGPU_xrViewportScale, "f"); }
     set xrViewportScale(value) {
-        if (typeof value === "number" && (value <= 0 || value > 1) && this.verbose) {
+        if (value !== null && (value <= 0 || value > 1) && this.verbose) {
             console.warn("[Wilson] Setting xrViewportScale outside of (0, 1] has no effect.");
         }
         __classPrivateFieldSet(this, _WilsonGPU_xrViewportScale, value, "f");
@@ -2301,8 +2301,8 @@ export class WilsonGPU extends Wilson {
         __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_applyXRTargetFrameRate).call(this);
     }
     get inXR() { return __classPrivateFieldGet(this, _WilsonGPU_xrData, "f") !== undefined; }
-    get xrFramebufferWidth() { var _a, _b; return (_b = (_a = __classPrivateFieldGet(this, _WilsonGPU_xrData, "f")) === null || _a === void 0 ? void 0 : _a.baseLayer) === null || _b === void 0 ? void 0 : _b.framebufferWidth; }
-    get xrFramebufferHeight() { var _a, _b; return (_b = (_a = __classPrivateFieldGet(this, _WilsonGPU_xrData, "f")) === null || _a === void 0 ? void 0 : _a.baseLayer) === null || _b === void 0 ? void 0 : _b.framebufferHeight; }
+    get xrFramebufferWidth() { var _a; return (_a = __classPrivateFieldGet(this, _WilsonGPU_xrData, "f")) === null || _a === void 0 ? void 0 : _a.baseLayer.framebufferWidth; }
+    get xrFramebufferHeight() { var _a; return (_a = __classPrivateFieldGet(this, _WilsonGPU_xrData, "f")) === null || _a === void 0 ? void 0 : _a.baseLayer.framebufferHeight; }
     get xrFixedFoveation() {
         var _a;
         // When in an XR session, return the actual foveation value; it may be undefined if
@@ -2444,7 +2444,7 @@ export class WilsonGPU extends Wilson {
                         frame,
                         refSpace,
                         position: view.transform.position,
-                        emulatedPosition: emulatedPosition,
+                        emulatedPosition,
                         session,
                         pose,
                     });
@@ -2458,14 +2458,14 @@ export class WilsonGPU extends Wilson {
             __classPrivateFieldSet(this, _WilsonGPU_xrData, undefined, "f");
             __classPrivateFieldSet(this, _WilsonGPU_lastAppliedXRViewportScales, [], "f");
             __classPrivateFieldSet(this, _WilsonGPU_lastXRTime, undefined, "f");
-            __classPrivateFieldGet(this, _WilsonGPU_xrCallbacks, "f").onExit();
-            this.animationFrameLoopPaused = false;
             // This binds the framebuffer directly since useFramebuffer() early-returns
             // if the ID matches the current one, and both the canvas and the XR framebuffer
             // use null as their ID.
             this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
             __classPrivateFieldSet(this, _WilsonGPU_currentFramebufferId, null, "f");
             this.resizeCanvasGPU();
+            this.animationFrameLoopPaused = false;
+            __classPrivateFieldGet(this, _WilsonGPU_xrCallbacks, "f").onExit();
         });
         __classPrivateFieldSet(this, _WilsonGPU_useWebGL2, (_a = options.useWebGL2) !== null && _a !== void 0 ? _a : true, "f");
         __classPrivateFieldSet(this, _WilsonGPU_useWebXR, (_b = options.useWebXR) !== null && _b !== void 0 ? _b : false, "f");
@@ -2477,8 +2477,8 @@ export class WilsonGPU extends Wilson {
                 onEnter: (_d = options.onEnterXR) !== null && _d !== void 0 ? _d : (() => { }),
                 onExit: (_e = options.onExitXR) !== null && _e !== void 0 ? _e : (() => { }),
                 onFrameStart: (_f = options.onXRFrameStart) !== null && _f !== void 0 ? _f : (() => { }),
-                onVisibilityChange: (_g = options.onXRVisibilityChange) !== null && _g !== void 0 ? _g : ((state) => { }),
-                onFrameRateChange: (_h = options.onXRFrameRateChange) !== null && _h !== void 0 ? _h : ((frameRate) => { })
+                onVisibilityChange: (_g = options.onXRVisibilityChange) !== null && _g !== void 0 ? _g : (() => { }),
+                onFrameRateChange: (_h = options.onXRFrameRateChange) !== null && _h !== void 0 ? _h : (() => { })
             }, "f");
             __classPrivateFieldSet(this, _WilsonGPU_xrRequiredFeatures, (_j = options.xrRequiredFeatures) !== null && _j !== void 0 ? _j : [], "f");
             __classPrivateFieldSet(this, _WilsonGPU_xrOptionalFeatures, (_k = options.xrOptionalFeatures) !== null && _k !== void 0 ? _k : [], "f");
@@ -2674,6 +2674,9 @@ export class WilsonGPU extends Wilson {
         }
     }
     useShader(id) {
+        if (id === __classPrivateFieldGet(this, _WilsonGPU_currentShaderId, "f")) {
+            return;
+        }
         __classPrivateFieldSet(this, _WilsonGPU_currentShaderId, id, "f");
         this.gl.useProgram(__classPrivateFieldGet(this, _WilsonGPU_shaderPrograms, "f")[id]);
     }
@@ -3226,9 +3229,9 @@ export class WilsonGPU extends Wilson {
                 stencil: false,
                 alpha: false,
                 // Initialize the framebuffer (both eyes, side-by-side). Headsets can run in a low-res
-                // mode by default for headroom, so the first factor here ensure we're rendering all the
+                // mode by default for headroom, so the first factor here ensures we're rendering all the
                 // pixels available. The second factor is per-applet and can scale it down for a
-                // compile-time quality cap.
+                // construction-time quality cap.
                 framebufferScaleFactor: XRWebGLLayer.getNativeFramebufferScaleFactor(session)
                     * __classPrivateFieldGet(this, _WilsonGPU_xrFramebufferScaleFactor, "f")
             });
