@@ -2214,12 +2214,22 @@ class Wilson
 	#animationFrameLoopPaused = false;
 	#lastPanAndZoomTimestamp = -1;
 	
-	set animationFrameLoopPaused(value: boolean)
+	protected set animationFrameLoopPaused(value: boolean)
 	{
+		if (value === this.#animationFrameLoopPaused)
+		{
+			return;
+		}
+		
 		this.#animationFrameLoopPaused = value;
 		this.#lastPanAndZoomTimestamp = -1;
 
-		if (!this.#animationFrameLoopPaused)
+		if (this.#animationFrameLoopPaused)
+		{
+			this.#zeroVelocities();
+		}
+
+		else
 		{
 			requestAnimationFrame(this.#animationFrameLoop);
 		}
@@ -2229,7 +2239,6 @@ class Wilson
 	{
 		if (this.#animationFrameLoopPaused)
 		{
-			this.#lastPanAndZoomTimestamp = -1;
 			return;
 		}
 
@@ -3928,6 +3937,7 @@ type WilsonGPUXROptions = { useWebXR?: false } | {
 	onEnterXR?: () => void,
 	onExitXR?: () => void,
 	onXRVisibilityChange?: (state: XRVisibilityState) => void,
+	onXRFrameRateChange?: (frameRate: number | undefined) => void,
 
 	xrRequiredFeatures?: string[],
 	xrOptionalFeatures?: string[],
@@ -3939,6 +3949,8 @@ type WilsonGPUXROptions = { useWebXR?: false } | {
 	xrViewportScale?: number | null; // null uses the device's own recommended value.
 
 	xrFixedFoveation?: number;
+
+	xrTargetFrameRate?: number;
 };
 
 export type WilsonGPUOptions = WilsonOptions
@@ -3990,12 +4002,25 @@ export class WilsonGPU extends Wilson
 	get xrViewportScale() { return this.#xrViewportScale; }
 	set xrViewportScale(value: number | null)
 	{
-		if (typeof value === "number" && value > 1 && this.verbose)
+		if (typeof value === "number" && (value <= 0 || value > 1) && this.verbose)
 		{
-			console.warn("[Wilson] Setting xrViewportScale > 1 has no effect.");
+			console.warn("[Wilson] Setting xrViewportScale outside of (0, 1] has no effect.");
 		}
 
 		this.#xrViewportScale = value;
+	}
+
+	#xrTargetFrameRate: number | undefined;
+
+	get xrSupportedFrameRates() { return this.#xrData?.session.supportedFrameRates; }
+	get xrFrameRate() { return this.#xrData?.session.frameRate; }
+
+	get xrTargetFrameRate() { return this.#xrTargetFrameRate; }
+
+	set xrTargetFrameRate(value: number | undefined)
+	{
+		this.#xrTargetFrameRate = value;
+		this.#applyXRTargetFrameRate();
 	}
 
 	#lastXRTime: number | undefined = undefined;
@@ -4025,7 +4050,8 @@ export class WilsonGPU extends Wilson
 	#xrCallbacks = {
 		onEnter: () => {},
 		onExit: () => {},
-		onVisibilityChange: (state: XRVisibilityState) => {}
+		onVisibilityChange: (state: XRVisibilityState) => {},
+		onFrameRateChange: (frameRate: number | undefined) => {}
 	};
 
 	// Used to restore the eye viewport correctly when switching back to the
@@ -4114,6 +4140,7 @@ export class WilsonGPU extends Wilson
 				onEnter: options.onEnterXR ?? (() => {}),
 				onExit: options.onExitXR ?? (() => {}),
 				onVisibilityChange: options.onXRVisibilityChange ?? ((state: XRVisibilityState) => {}),
+				onFrameRateChange: options.onXRFrameRateChange ?? ((frameRate: number | undefined) => {})
 			};
 
 			this.#xrRequiredFeatures = options.xrRequiredFeatures ?? [];
@@ -4127,6 +4154,9 @@ export class WilsonGPU extends Wilson
 
 			// Foveated rendering defaults to on.
 			this.#xrFixedFoveation = options.xrFixedFoveation ?? 0.3;
+
+			// Foveated rendering defaults to on.
+			this.#xrTargetFrameRate = options.xrTargetFrameRate;
 		}
 
 		const getContextOptions: WebGLContextAttributes = {
@@ -4435,6 +4465,9 @@ export class WilsonGPU extends Wilson
 		}
 	} = {};
 
+	#currentFramebufferId: string | null = null;
+	#currentTextureId: string | null = null;
+
 	#positionBuffers: WebGLBuffer[] = [];
 	#shaders: WebGLShader[] = [];
 
@@ -4449,6 +4482,9 @@ export class WilsonGPU extends Wilson
 		height?: number,
 		textureType: "unsignedByte" | "float"
 	}) {
+		const currentFramebufferId = this.#currentFramebufferId;
+		const currentTextureId = this.#currentTextureId;
+
 		// Set default width and height.
 		if (this.#useWebXR && this.inXR)
 		{
@@ -4512,8 +4548,6 @@ export class WilsonGPU extends Wilson
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
 
-		this.gl.disable(this.gl.DEPTH_TEST);
-
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
 		this.gl.framebufferTexture2D(
 			this.gl.FRAMEBUFFER,
@@ -4530,10 +4564,20 @@ export class WilsonGPU extends Wilson
 			height,
 			type: textureType,
 		};
+
+		this.useFramebuffer(currentFramebufferId);
+		this.useTexture(currentTextureId);
 	}
 
 	useFramebuffer(id: string | null)
 	{
+		if (id === this.#currentFramebufferId)
+		{
+			return;
+		}
+
+		this.#currentFramebufferId = id;
+
 		if (id === null)
 		{
 			if (this.#xrData)
@@ -4565,6 +4609,13 @@ export class WilsonGPU extends Wilson
 
 	useTexture(id: string | null)
 	{
+		if (id === this.#currentTextureId)
+		{
+			return;
+		}
+		
+		this.#currentTextureId = id;
+		
 		if (id === null)
 		{
 			this.gl.bindTexture(this.gl.TEXTURE_2D, null);
@@ -4951,8 +5002,6 @@ export class WilsonGPU extends Wilson
 				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-				gl.disable(gl.DEPTH_TEST);
-
 				gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
 				gl.framebufferTexture2D(
@@ -5192,6 +5241,8 @@ export class WilsonGPU extends Wilson
 				depthFar: this.#xrDepthFar
 			});
 
+			this.#applyXRTargetFrameRate();
+
 			// Calls the setter, so it updates on baseLayer.
 			this.xrFixedFoveation = this.#xrFixedFoveation;
 		
@@ -5202,7 +5253,10 @@ export class WilsonGPU extends Wilson
 				this.#xrCallbacks.onVisibilityChange(session.visibilityState);
 			});
 
-			this.animationFrameLoopPaused = true;
+			session.addEventListener("frameratechange", () =>
+			{
+				this.#xrCallbacks.onFrameRateChange(session.frameRate);
+			});
 		
 			session.addEventListener("end", this.#onXREnd);
 			session.requestAnimationFrame(this.#onXRFrame);
@@ -5211,6 +5265,7 @@ export class WilsonGPU extends Wilson
 			this.#enteringXR = false;
 
 			this.#xrCallbacks.onEnter();
+			this.animationFrameLoopPaused = true;
 
 			return true;
 		}
@@ -5344,7 +5399,8 @@ export class WilsonGPU extends Wilson
 		this.#xrCallbacks = {
 			onEnter: () => {},
 			onExit: () => {},
-			onVisibilityChange: (state: XRVisibilityState) => {}
+			onVisibilityChange: (state: XRVisibilityState) => {},
+			onFrameRateChange: (frameRate: number | undefined) => {}
 		};
 
 		this.#renderXRFrame = () => {};
@@ -5358,6 +5414,49 @@ export class WilsonGPU extends Wilson
 		}
 
 		await this.#xrData.session.end();
+	}
+
+	#applyXRTargetFrameRate()
+	{
+		const session = this.#xrData?.session;
+
+		if (!session || this.#xrTargetFrameRate === undefined)
+		{
+			return;
+		}
+
+		const supportedFrameRates = session.supportedFrameRates;
+
+		if (!supportedFrameRates || supportedFrameRates.length === 0)
+		{
+			if (this.verbose)
+			{
+				console.warn("[Wilson] This device doesn't support setting the XR frame rate.");
+			}
+
+			return;
+		}
+
+		// updateTargetFrameRate rejects on anything not in supportedFrameRates.
+		let closestRate = supportedFrameRates[0];
+
+		for (const rate of supportedFrameRates)
+		{
+			if (
+				Math.abs(rate - this.#xrTargetFrameRate)
+					< Math.abs(closestRate - this.#xrTargetFrameRate)
+			) {
+				closestRate = rate;
+			}
+		}
+
+		session.updateTargetFrameRate(closestRate).catch((ex) =>
+		{
+			if (this.verbose)
+			{
+				console.warn(`[Wilson] Couldn't set the XR frame rate: ${ex}`);
+			}
+		});
 	}
 
 
