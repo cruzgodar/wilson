@@ -3907,6 +3907,7 @@ type WilsonGPUXROptions = { useWebXR?: false } | {
 
 	onEnterXR?: () => void,
 	onExitXR?: () => void,
+	onXRVisibilityChange: (state: XRVisibilityState) => void
 
 	xrRequiredFeatures?: string[],
 	xrOptionalFeatures?: string[],
@@ -3969,6 +3970,12 @@ export class WilsonGPU extends Wilson
 	#enteringXR: boolean = false;
 	
 	#xrFixedFoveation: number | undefined;
+
+	get xrFixedFoveation()
+	{
+		return this.#xrData?.session.renderState.baseLayer?.fixedFoveation;
+	}
+
 	set xrFixedFoveation(value: number | undefined)
 	{
 		this.#xrFixedFoveation = value;
@@ -3981,11 +3988,17 @@ export class WilsonGPU extends Wilson
 		}
 	}
 
-
 	#xrCallbacks = {
 		onEnter: () => {},
-		onExit: () => {}
+		onExit: () => {},
+		onVisibilityChange: (state: XRVisibilityState) => {}
 	};
+
+	// Used to restore the eye viewport correctly when switching back to the
+	// headset's framebuffer
+	#xrViewport: XRViewport | null = null;
+
+
 
 	#checkXRSupport()
 	{
@@ -4065,7 +4078,8 @@ export class WilsonGPU extends Wilson
 
 			this.#xrCallbacks = {
 				onEnter: options.onEnterXR ?? (() => {}),
-				onExit: options.onExitXR ?? (() => {})
+				onExit: options.onExitXR ?? (() => {}),
+				onVisibilityChange: options.onXRVisibilityChange ?? ((state: XRVisibilityState) => {}),
 			};
 
 			this.#xrRequiredFeatures = options.xrRequiredFeatures ?? [];
@@ -4435,17 +4449,24 @@ export class WilsonGPU extends Wilson
 	{
 		if (id === null)
 		{
-			if (this.inXR && this.#xrData)
+			if (this.#xrData)
 			{
 				const baseLayer = this.#xrData.session.renderState.baseLayer;
 
-				if (baseLayer)
+				if (!baseLayer)
 				{
-					this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, baseLayer.framebuffer);
-					return;
+					throw new Error("[Wilson] WebXR base layer is undefined.");
 				}
 
-				throw new Error("[Wilson] WebXR base layer is undefined.");
+				this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, baseLayer.framebuffer);
+
+				if (this.#xrViewport)
+				{
+					const { x, y, width, height } = this.#xrViewport;
+					this.gl.viewport(x, y, width, height);
+				}
+
+				return;
 			}
 
 			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
@@ -5088,6 +5109,11 @@ export class WilsonGPU extends Wilson
 			this.xrFixedFoveation = this.#xrFixedFoveation;
 		
 			const refSpace = await session.requestReferenceSpace(REFERENCE_SPACE);
+
+			session.addEventListener("visibilitychange", () =>
+			{
+				this.#xrCallbacks.onVisibilityChange(session.visibilityState);
+			});
 		
 			session.addEventListener("end", () => this.#onXREnd());
 			session.requestAnimationFrame((time, frame) => this.#onXRFrame(time, frame));
@@ -5125,8 +5151,13 @@ export class WilsonGPU extends Wilson
 
 		// Queue the next frame first so an exception mid-render doesn't stall the loop.
 		this.#xrData.session.requestAnimationFrame(
-			(time, nextFrame) => this.#onXRFrame(time, nextFrame)
+			(nextTime, nextFrame) => this.#onXRFrame(nextTime, nextFrame)
 		);
+
+		if (this.#xrData.session.visibilityState === "hidden")
+		{
+			return;
+		}
 	
 		const pose = frame.getViewerPose(this.#xrData.refSpace);
 	
@@ -5145,6 +5176,10 @@ export class WilsonGPU extends Wilson
 
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, glLayer.framebuffer);
 		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
+
+
+		const { session, refSpace } = this.#xrData; 
 
 		// One view per eye (two for stereo VR), sharing the framebuffer via side-by-side viewports.
 		for (let viewIndex = 0; viewIndex < pose.views.length; viewIndex++)
@@ -5166,6 +5201,7 @@ export class WilsonGPU extends Wilson
 				continue;
 			}
 
+			this.#xrViewport = viewport;
 			this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 	
 			this.#renderXRFrame({
@@ -5178,13 +5214,15 @@ export class WilsonGPU extends Wilson
 				viewport,
 				time,
 				frame,
-				refSpace: this.#xrData.refSpace,
+				refSpace,
 				position: view.transform.position,
 				emulatedPosition: pose.emulatedPosition,
-				session: this.#xrData.session,
+				session,
 				pose,
 			});
 		}
+
+		this.#xrViewport = null;
 	}
 
 	#onXREnd()
@@ -5195,6 +5233,15 @@ export class WilsonGPU extends Wilson
 
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
 		this.resizeCanvasGPU();
+	}
+
+	#clearXRCallbacks()
+	{
+		this.#xrCallbacks = {
+			onEnter: () => {},
+			onExit: () => {},
+			onVisibilityChange: (state: XRVisibilityState) => {}
+		};
 	}
 	
 	async exitXR()
@@ -5214,10 +5261,11 @@ export class WilsonGPU extends Wilson
 	{
 		super.destroy();
 
+		
 
+		this.#clearXRCallbacks();
 
-		try { this.exitXR(); }
-		catch(ex) {}
+		this.exitXR().catch(() => {});
 
 		navigator.xr?.removeEventListener("devicechange", this.#onDeviceChange);
 
