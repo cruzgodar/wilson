@@ -4007,8 +4007,8 @@ export class WilsonGPU extends Wilson
 	#xrButtonIconPath?: string;
 	#xrButton: HTMLElement | null = null;
 
-	#xrSupportPromise: Promise<boolean> | null = null;
-	#xrIsSupported: boolean | null = null; // Resolves to a boolean once known.
+	xrIsSupported: Promise<boolean> = Promise.resolve(false);
+	#xrIsSupportedNow: boolean | null = null; // Resolves to a boolean once known.
 
 	#renderXRFrame: RenderXRFrame = () => {};
 
@@ -4253,35 +4253,32 @@ export class WilsonGPU extends Wilson
 
 	#checkXRSupport()
 	{
-		if (!this.#xrSupportPromise)
-		{
-			this.#xrSupportPromise = (
-				navigator.xr
-					? navigator.xr.isSessionSupported(XR_MODE)
-					: Promise.resolve(false)
-			)
-				.catch(() => false)
-				.then(supported =>
+		this.#xrIsSupportedNow = null;
+
+		this.xrIsSupported = (
+			navigator.xr
+				? navigator.xr.isSessionSupported(XR_MODE)
+				: Promise.resolve(false)
+		)
+			.catch(() => false)
+			.then(supported =>
+			{
+				this.#xrIsSupportedNow = supported;
+
+				if (this.#xrButton)
 				{
-					this.#xrIsSupported = supported;
+					this.#xrButton.style.display = supported ? "block" : "none";
+				}
 
-					if (this.#xrButton)
-					{
-						this.#xrButton.style.display = this.#xrIsSupported ? "block" : "none";
-					}
+				return supported;
+			});
 
-					return this.#xrIsSupported;
-				});
-		}
-
-		return this.#xrSupportPromise;
+		return this.xrIsSupported;
 	}
 
 	// Needs to be an arrow function to maintain its binding when passed to addEventListener
 	#onDeviceChange = () =>
 	{
-		this.#xrSupportPromise = null;
-		this.#xrIsSupported = null;
 		this.#checkXRSupport();
 	};
 
@@ -4293,9 +4290,9 @@ export class WilsonGPU extends Wilson
 			this.#xrButton.classList.add("WILSON_xr-button");
 			this.#xrButton.classList.add("WILSON_button");
 
-			// If #xrIsSupported is a boolean already, this will correctly set the style.
+			// If #xrIsSupportedNow is a boolean already, this will correctly set the style.
 			// If it's still null, it will keep it hidden until #checkXRSupport finishes.
-			this.#xrButton.style.display = this.#xrIsSupported ? "block" : "none";
+			this.#xrButton.style.display = this.#xrIsSupportedNow ? "block" : "none";
 
 			this.buttonContainer.appendChild(this.#xrButton);
 
@@ -4315,7 +4312,8 @@ export class WilsonGPU extends Wilson
 	}
 
 	#numShaders = 0;
-	#currentShaderId = null;
+	#currentShaderId: ShaderProgramId = "0";
+	#currentProgram: WebGLProgram | null = null;
 
 	loadShader({
 		id = this.#numShaders.toString(),
@@ -4358,6 +4356,7 @@ export class WilsonGPU extends Wilson
 
 		this.#shaderPrograms[id] = shaderProgram;
 		this.#shaderProgramSources[id] = shader;
+		this.#numShaders++;
 
 		this.gl.attachShader(this.#shaderPrograms[id], vertexShader);
 		this.gl.attachShader(this.#shaderPrograms[id], fragShader);
@@ -4485,10 +4484,7 @@ export class WilsonGPU extends Wilson
 
 	setUniform(name: string, value: UniformValue, shader: ShaderProgramId = this.#currentShaderId)
 	{
-		if (shader !== this.#currentShaderId)
-		{
-			this.gl.useProgram(this.#shaderPrograms[shader]);
-		}
+		this.#useProgram(this.#shaderPrograms[shader]);
 		
 		if (this.#uniforms[shader][name] !== undefined)
 		{
@@ -4498,18 +4494,12 @@ export class WilsonGPU extends Wilson
 			uniformFunction(this.gl, location, value);
 		}
 		
-		if (shader !== this.#currentShaderId)
-		{
-			this.gl.useProgram(this.#shaderPrograms[this.#currentShaderId]);
-		}
+		this.#useProgram(this.#shaderPrograms[this.#currentShaderId]);
 	}
 
 	setUniforms(uniforms: UniformInitializers, shader: ShaderProgramId = this.#currentShaderId)
 	{
-		if (shader !== this.#currentShaderId)
-		{
-			this.gl.useProgram(this.#shaderPrograms[shader]);
-		}
+		this.#useProgram(this.#shaderPrograms[shader]);
 		
 		for (const [name, value] of Object.entries(uniforms))
 		{
@@ -4524,21 +4514,24 @@ export class WilsonGPU extends Wilson
 			uniformFunction(this.gl, location, value);
 		}
 		
-		if (shader !== this.#currentShaderId)
-		{
-			this.gl.useProgram(this.#shaderPrograms[this.#currentShaderId]);
-		}
+		this.#useProgram(this.#shaderPrograms[this.#currentShaderId]);
 	}
 
 	useShader(id: ShaderProgramId)
 	{
-		if (id === this.#currentShaderId)
+		this.#currentShaderId = id;
+		this.#useProgram(this.#shaderPrograms[id]);
+	}
+
+	#useProgram(program: WebGLProgram)
+	{
+		if (program === this.#currentProgram)
 		{
 			return;
 		}
 
-		this.#currentShaderId = id;
-		this.gl.useProgram(this.#shaderPrograms[id]);
+		this.#currentProgram = program;
+		this.gl.useProgram(program);
 	}
 
 	
@@ -5308,7 +5301,7 @@ export class WilsonGPU extends Wilson
 			throw new Error("[Wilson] `useXR` must be `true` in the constructor options in order to call `enterXR`.");
 		}
 
-		if (this.inXR || this.#enteringXR || this.#xrIsSupported === false)
+		if (this.inXR || this.#enteringXR || this.#xrIsSupportedNow === false)
 		{
 			return false;
 		}
@@ -5319,7 +5312,7 @@ export class WilsonGPU extends Wilson
 
 		if (
 			!navigator.xr
-			|| this.#xrIsSupported !== true && !(await this.#checkXRSupport()))
+			|| this.#xrIsSupportedNow !== true && !(await this.#checkXRSupport()))
 		{
 			this.#enteringXR = false;
 
@@ -5646,6 +5639,7 @@ export class WilsonGPU extends Wilson
 		}
 		this.#shaderPrograms = {};
 		this.#shaderProgramSources = {};
+		this.#currentProgram = null;
 
 		// Delete all buffers.
 		for (const buffer of this.#positionBuffers)
