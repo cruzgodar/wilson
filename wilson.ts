@@ -359,7 +359,7 @@ class Wilson
 	#appletContainer: HTMLDivElement;
 	#canvasContainer: HTMLDivElement;
 	#draggablesContainer: HTMLDivElement;
-	#buttonContainer: HTMLDivElement;
+	protected buttonContainer: HTMLDivElement;
 	#fullscreenContainer: HTMLDivElement;
 	#fullscreenContainerLocation: HTMLDivElement;
 
@@ -603,9 +603,9 @@ class Wilson
 
 
 
-		this.#buttonContainer = document.createElement("div");
-		this.#buttonContainer.classList.add("WILSON_button-container");
-		this.#canvasContainer.appendChild(this.#buttonContainer);
+		this.buttonContainer = document.createElement("div");
+		this.buttonContainer.classList.add("WILSON_button-container");
+		this.#canvasContainer.appendChild(this.buttonContainer);
 
 
 
@@ -2821,8 +2821,9 @@ class Wilson
 			this.#fullscreenEnterFullscreenButton = document.createElement("div");
 
 			this.#fullscreenEnterFullscreenButton.classList.add("WILSON_enter-fullscreen-button");
+			this.#fullscreenEnterFullscreenButton.classList.add("WILSON_button");
 
-			this.#buttonContainer.appendChild(this.#fullscreenEnterFullscreenButton);
+			this.buttonContainer.appendChild(this.#fullscreenEnterFullscreenButton);
 
 			const img = document.createElement("img");
 			img.src = this.#fullscreenEnterFullscreenButtonIconPath as string;
@@ -2838,8 +2839,9 @@ class Wilson
 			this.#fullscreenExitFullscreenButton = document.createElement("div");
 
 			this.#fullscreenExitFullscreenButton.classList.add("WILSON_exit-fullscreen-button");
+			this.#fullscreenExitFullscreenButton.classList.add("WILSON_button");
 
-			this.#buttonContainer.appendChild(this.#fullscreenExitFullscreenButton);
+			this.buttonContainer.appendChild(this.#fullscreenExitFullscreenButton);
 
 			const img2 = document.createElement("img");
 			img2.src = this.#fullscreenExitFullscreenButtonIconPath as string;
@@ -2860,7 +2862,8 @@ class Wilson
 		{
 			this.#resetButton = document.createElement("div");
 			this.#resetButton.classList.add("WILSON_reset-button");
-			this.#buttonContainer.appendChild(this.#resetButton);
+			this.#resetButton.classList.add("WILSON_button");
+			this.buttonContainer.appendChild(this.#resetButton);
 
 			const img = document.createElement("img");
 			img.src = this.#resetButtonIconPath as string;
@@ -3939,8 +3942,15 @@ export type OnXRFrameStart = (data: {
 	pose: XRViewerPose,
 }) => void;
 
-type WilsonGPUXROptions = { useWebXR?: false } | {
-	useWebXR: true,
+type XRButtonOptions = {
+	useXRButton?: true,
+	xrButtonIconPath?: string,
+} | {
+	useXRButton?: false,
+};
+
+type WilsonGPUXROptions = { useXR?: false } | ({
+	useXR: true,
 
 	renderXRFrame: RenderXRFrame,
 
@@ -3962,7 +3972,7 @@ type WilsonGPUXROptions = { useWebXR?: false } | {
 	xrFixedFoveation?: number;
 
 	xrTargetFrameRate?: number;
-};
+} & XRButtonOptions);
 
 export type WilsonGPUOptions = WilsonOptions
 	& (SingleShader | MultipleShaders)
@@ -3991,7 +4001,11 @@ export class WilsonGPU extends Wilson
 
 
 	
-	#useWebXR: boolean;
+	#useXR: boolean;
+
+	#useXRButton: boolean = false;
+	#xrButtonIconPath?: string;
+	#xrButton: HTMLElement | null = null;
 
 	#xrSupportPromise: Promise<boolean> | null = null;
 	#xrIsSupported: boolean | null = null; // Resolves to a boolean once known.
@@ -4088,34 +4102,8 @@ export class WilsonGPU extends Wilson
 	};
 
 	// Used to restore the eye viewport correctly when switching back to the
-	// headset's framebuffer
+	// headset's framebuffer.
 	#xrViewport: XRViewport | null = null;
-
-
-
-	#checkXRSupport()
-	{
-		if (!this.#xrSupportPromise)
-		{
-			this.#xrSupportPromise = (
-				navigator.xr
-					? navigator.xr.isSessionSupported(XR_MODE)
-					: Promise.resolve(false)
-			)
-				.catch(() => false)
-				.then(supported => (this.#xrIsSupported = supported));
-		}
-
-		return this.#xrSupportPromise;
-	}
-
-	// Needs to be an arrow function to maintain its binding when passed to addEventListener
-	#onDeviceChange = () =>
-	{
-		this.#xrSupportPromise = null;
-		this.#xrIsSupported = null;
-		this.#checkXRSupport();
-	};
 
 
 
@@ -4159,10 +4147,14 @@ export class WilsonGPU extends Wilson
 
 		this.#useWebGL2 = options.useWebGL2 ?? true;
 
-		this.#useWebXR = options.useWebXR ?? false;
+		this.#useXR = options.useXR ?? false;
 
-		if (options.useWebXR)
+		if (options.useXR)
 		{
+			this.#useXRButton = options.useXRButton ?? false;
+			this.#xrButtonIconPath = options.useXRButton ? options.xrButtonIconPath : undefined;
+			this.#initXRButton();
+
 			this.#checkXRSupport();
 
 			navigator.xr?.addEventListener("devicechange", this.#onDeviceChange);
@@ -4193,7 +4185,7 @@ export class WilsonGPU extends Wilson
 		}
 
 		const getContextOptions: WebGLContextAttributes = {
-			xrCompatible: this.#useWebXR,
+			xrCompatible: this.#useXR,
 			powerPreference: "high-performance"
 		};
 
@@ -4259,13 +4251,71 @@ export class WilsonGPU extends Wilson
 		}
 	}
 
+	#checkXRSupport()
+	{
+		if (!this.#xrSupportPromise)
+		{
+			this.#xrSupportPromise = (
+				navigator.xr
+					? navigator.xr.isSessionSupported(XR_MODE)
+					: Promise.resolve(false)
+			)
+				.catch(() => false)
+				.then(supported =>
+				{
+					this.#xrIsSupported = supported;
+
+					if (this.#xrButton)
+					{
+						this.#xrButton.style.display = this.#xrIsSupported ? "block" : "none";
+					}
+
+					return this.#xrIsSupported;
+				});
+		}
+
+		return this.#xrSupportPromise;
+	}
+
+	// Needs to be an arrow function to maintain its binding when passed to addEventListener
+	#onDeviceChange = () =>
+	{
+		this.#xrSupportPromise = null;
+		this.#xrIsSupported = null;
+		this.#checkXRSupport();
+	};
+
+	#initXRButton()
+	{
+		if (this.#useXRButton)
+		{
+			this.#xrButton = document.createElement("div");
+			this.#xrButton.classList.add("WILSON_xr-button");
+			this.#xrButton.classList.add("WILSON_button");
+
+			// If #xrIsSupported is a boolean already, this will correctly set the style.
+			// If it's still null, it will keep it hidden until #checkXRSupport finishes.
+			this.#xrButton.style.display = this.#xrIsSupported ? "block" : "none";
+
+			this.buttonContainer.appendChild(this.#xrButton);
+
+			const img = document.createElement("img");
+			img.src = this.#xrButtonIconPath as string;
+			this.#xrButton.appendChild(img);
+
+			this.#xrButton.addEventListener("click", () => this.enterXR());
+		}
+	}
+
+
+
 	drawFrame()
 	{
 		this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 	}
 
 	#numShaders = 0;
-	#currentShaderId = "0";
+	#currentShaderId = null;
 
 	loadShader({
 		id = this.#numShaders.toString(),
@@ -4486,7 +4536,7 @@ export class WilsonGPU extends Wilson
 		{
 			return;
 		}
-		
+
 		this.#currentShaderId = id;
 		this.gl.useProgram(this.#shaderPrograms[id]);
 	}
@@ -4527,7 +4577,7 @@ export class WilsonGPU extends Wilson
 		this.deleteFramebufferTexturePair(id);
 
 		// Set default width and height.
-		if (this.#useWebXR && this.inXR)
+		if (this.#useXR && this.inXR)
 		{
 			width ??= this.xrFramebufferWidth;
 			height ??= this.xrFramebufferHeight;
@@ -5253,9 +5303,9 @@ export class WilsonGPU extends Wilson
 
 	async enterXR(): Promise<boolean>
 	{
-		if (!this.#useWebXR)
+		if (!this.#useXR)
 		{
-			throw new Error("[Wilson] `useWebXR` must be `true` in the constructor options in order to call `enterXR`.");
+			throw new Error("[Wilson] `useXR` must be `true` in the constructor options in order to call `enterXR`.");
 		}
 
 		if (this.inXR || this.#enteringXR || this.#xrIsSupported === false)

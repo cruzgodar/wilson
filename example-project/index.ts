@@ -136,6 +136,11 @@ function initWilson2()
 		useResetButton: true,
 		resetButtonIconPath: "/reset.png",
 
+		useXR: true,
+		useXRButton: true,
+		xrButtonIconPath: "/xr.png",
+		renderXRFrame: () => {},
+
 		interactionOptions: {
 			useForPanAndZoom: true,
 			onPanAndZoom: drawFrame,

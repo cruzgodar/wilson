@@ -129,6 +129,7 @@
 	z-index: 50;
 
 	display: flex;
+	flex-direction: row-reverse;
 	column-gap: 10px;
 }
 
@@ -144,7 +145,7 @@
 
 
 
-.WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button, .WILSON_reset-button
+.WILSON_button
 {
 	width: 16px;
 	height: 16px;
@@ -158,9 +159,23 @@
 	outline: none;
 }
 
+.WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button
+{
+	order: 0;
+}
+
 .WILSON_exit-fullscreen-button
 {
 	display: none;
+}
+
+.WILSON_xr-button
+{
+	order: 1;
+
+	width: 19px;
+	height: 19px;
+	padding: 3.5px;
 }
 
 .WILSON_reset-button
@@ -168,6 +183,8 @@
 	opacity: 0;
 	display: none;
 	transition: opacity .15s ease-out;
+
+	order: 2;
 
 	width: 20px;
 	height: 20px;
@@ -184,7 +201,7 @@
 	display: block;
 }
 
-.WILSON_enter-fullscreen-button img, .WILSON_exit-fullscreen-button img, .WILSON_reset-button img
+.WILSON_button img
 {
 	width: 100%;
 	height: 100%;
