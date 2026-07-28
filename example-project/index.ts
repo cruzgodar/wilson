@@ -136,12 +136,6 @@ function initWilson2()
 		useResetButton: true,
 		resetButtonIconPath: "/reset.png",
 
-		useXR: true,
-		useXRButton: true,
-		xrButtonIconPath: "/xr.png",
-		xrButtonLoadingIconPath: "/xr-loading.png",
-		renderXRFrame: () => {},
-
 		interactionOptions: {
 			useForPanAndZoom: true,
 			onPanAndZoom: drawFrame,
@@ -168,6 +162,14 @@ function initWilson2()
 					}
 				}
 			}
+		},
+
+		xrOptions:
+		{
+			useButton: true,
+			buttonIconPath: "/xr.png",
+			buttonLoadingIconPath: "/xr-loading.png",
+			renderFrame: () => {},
 		}
 	};
 

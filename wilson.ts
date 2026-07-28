@@ -1,4 +1,4 @@
-type InteractionCallbacks = {
+export type InteractionCallbacks = {
 	mousedown: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
 
 	mouseup: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
@@ -79,7 +79,7 @@ const defaultInteractionCallbacks: InteractionCallbacks = {
 	wheel: ({ x, y, scrollDelta, event }) => {},
 };
 
-type DraggableCallBacks = {
+export type DraggableCallBacks = {
 	grab: ({ id, x, y, event }: { id: string, x: number, y: number, event?: Event }) => void,
 
 	drag: ({
@@ -107,7 +107,7 @@ const defaultDraggableCallbacks: DraggableCallBacks = {
 	release: ({ id, x, y, event }) => {},
 };
 
-type InteractionOptions = ({
+export type InteractionOptions = ({
 	useForPanAndZoom?: false
 } | {
 	useForPanAndZoom?: true,
@@ -123,16 +123,16 @@ type InteractionOptions = ({
 	callbacks?: Partial<InteractionCallbacks>,
 };
 
-type DraggableLocations = {[id: string]: [number, number]};
+export type DraggableLocations = {[id: string]: [number, number]};
 
-type DraggableOptions = {
+export type DraggableOptions = {
 	draggables?: DraggableLocations,
 	radius?: number,
 	static?: boolean,
 	callbacks?: Partial<DraggableCallBacks>,
 };
 
-type DraggablesData = {
+export type DraggablesData = {
 	[id: string]: {
 		element: HTMLDivElement,
 		location: [number, number],
@@ -140,7 +140,7 @@ type DraggablesData = {
 	}
 };
 
-type FullscreenOptions = {
+export type FullscreenOptions = {
 	fillScreen?: boolean,
 	animate?: boolean,
 	crossfade?: boolean,
@@ -3888,7 +3888,7 @@ const uniformFunctions: {[key in UniformType]: any} = {
 	},
 };
 
-type ReadPixelsOptions = {
+export type ReadPixelsOptions = {
 	row: number,
 	col: number,
 	height: number,
@@ -4079,58 +4079,53 @@ function createXRControllerPose(): XRControllerPose
 }
 
 type XRButtonOptions = {
-	useXRButton?: true,
-	xrButtonIconPath: string,
-	xrButtonLoadingIconPath: string,
+	useButton?: true,
+	buttonIconPath: string,
+	buttonLoadingIconPath: string,
 } | {
-	useXRButton?: false,
+	useButton?: false,
 };
 
-type WilsonGPUXROptions = { useXR?: false } | ({
-	useXR: true,
+export type XROptions = {
+	renderFrame: RenderXRFrame,
 
-	renderXRFrame: RenderXRFrame,
+	onEnter?: () => void,
+	onExit?: () => void,
+	onFrameStart?: OnXRFrameStart,
+	onVisibilityChange?: (state: XRVisibilityState) => void,
+	onFrameRateChange?: (frameRate: number | undefined) => void,
 
-	onEnterXR?: () => void,
-	onExitXR?: () => void,
-	onXRFrameStart?: OnXRFrameStart,
-	onXRVisibilityChange?: (state: XRVisibilityState) => void,
-	onXRFrameRateChange?: (frameRate: number | undefined) => void,
+	onControllerConnect?: OnXRControllerChange,
+	onControllerDisconnect?: OnXRControllerChange,
 
-	onXRControllerConnect?: OnXRControllerChange,
-	onXRControllerDisconnect?: OnXRControllerChange,
-
-	onXRSelectStart?: OnXRInputSourceEvent,
-	onXRSelect?: OnXRInputSourceEvent,
-	onXRSelectEnd?: OnXRInputSourceEvent,
+	onSelectStart?: OnXRInputSourceEvent,
+	onSelect?: OnXRInputSourceEvent,
+	onSelectEnd?: OnXRInputSourceEvent,
 	
-	onXRSqueezeStart?: OnXRInputSourceEvent,
-	onXRSqueeze?: OnXRInputSourceEvent,
-	onXRSqueezeEnd?: OnXRInputSourceEvent,
+	onSqueezeStart?: OnXRInputSourceEvent,
+	onSqueeze?: OnXRInputSourceEvent,
+	onSqueezeEnd?: OnXRInputSourceEvent,
 
-	onXRButtonDown?: OnXRButtonEvent,
-	onXRButtonUp?: OnXRButtonEvent,
+	onButtonDown?: OnXRButtonEvent,
+	onButtonUp?: OnXRButtonEvent,
 
-	useXRHandTracking?: boolean,
+	useHandTracking?: boolean,
 
-	xrRequiredFeatures?: string[],
-	xrOptionalFeatures?: string[],
-	xrDepthNear?: number,
-	xrDepthFar?: number,
+	requiredFeatures?: string[],
+	optionalFeatures?: string[],
+	depthNear?: number,
+	depthFar?: number,
 
-	xrFramebufferScale?: number;
-
-	xrViewportScale?: number | null; // null uses the device's own recommended value.
-
-	xrFixedFoveation?: number;
-
-	xrTargetFrameRate?: number;
-} & XRButtonOptions);
+	framebufferScale?: number;
+	viewportScale?: number | null; // null uses the device's own recommended value.
+	fixedFoveation?: number;
+	targetFrameRate?: number;
+} & XRButtonOptions;
 
 export type WilsonGPUOptions = WilsonOptions
 	& (SingleShader | MultipleShaders)
 	& { useWebGL2?: boolean }
-	& WilsonGPUXROptions
+	& { xrOptions?: XROptions}
 
 export class WilsonGPU extends Wilson
 {
@@ -4154,8 +4149,6 @@ export class WilsonGPU extends Wilson
 
 
 	
-	#useXR: boolean;
-
 	#useXRButton: boolean = false;
 	#xrButtonIconPath?: string;
 	#xrButtonLoadingIconPath?: string;
@@ -4339,79 +4332,10 @@ export class WilsonGPU extends Wilson
 
 		this.#useWebGL2 = options.useWebGL2 ?? true;
 
-		this.#useXR = options.useXR ?? false;
-
-		if (options.useXR)
-		{
-			this.#useXRButton = options.useXRButton ?? false;
-			this.#xrButtonIconPath = options.useXRButton ? options.xrButtonIconPath : undefined;
-			this.#xrButtonLoadingIconPath = options.useXRButton
-				? options.xrButtonLoadingIconPath
-				: undefined;
-			this.#initXRButton();
-
-			this.#checkXRSupport();
-
-			navigator.xr?.addEventListener("devicechange", this.#onDeviceChange);
-
-			// Chrome on Windows doesn't reliably fire devicechange when an OpenXR runtime starts
-			// after the page has already checked, so a headset connected mid-session never shows
-			// the button. Re-checking when the tab regains focus covers the usual flow of leaving
-			// to connect the headset and coming back.
-			window.addEventListener("focus", this.#onPageFocus);
-			document.addEventListener("visibilitychange", this.#onPageFocus);
-
-			this.#renderXRFrame = options.renderXRFrame;
-
-			this.#xrCallbacks = {
-				onEnter: options.onEnterXR ?? (() => {}),
-				onExit: options.onExitXR ?? (() => {}),
-				onFrameStart: options.onXRFrameStart ?? (() => {}),
-				onVisibilityChange: options.onXRVisibilityChange ?? (() => {}),
-				onFrameRateChange: options.onXRFrameRateChange ?? (() => {}),
-				onControllerConnect: options.onXRControllerConnect ?? (() => {}),
-				onControllerDisconnect: options.onXRControllerDisconnect ?? (() => {}),
-				onSelectStart: options.onXRSelectStart ?? (() => {}),
-				onSelect: options.onXRSelect ?? (() => {}),
-				onSelectEnd: options.onXRSelectEnd ?? (() => {}),
-				onSqueezeStart: options.onXRSqueezeStart ?? (() => {}),
-				onSqueeze: options.onXRSqueeze ?? (() => {}),
-				onSqueezeEnd: options.onXRSqueezeEnd ?? (() => {}),
-				onButtonDown: options.onXRButtonDown ?? (() => {}),
-				onButtonUp: options.onXRButtonUp ?? (() => {})
-			};
-
-			this.#xrRequiredFeatures = options.xrRequiredFeatures ?? [];
-			this.#xrOptionalFeatures = options.xrOptionalFeatures ?? [];
-
-			this.#useXRHandTracking = options.useXRHandTracking ?? false;
-
-			// Hand tracking only produces input sources with a `hand` if the session was asked
-			// for it. Optional rather than required, so that a headset without it can still
-			// start a session.
-			if (
-				this.#useXRHandTracking
-				&& !this.#xrRequiredFeatures.includes("hand-tracking")
-				&& !this.#xrOptionalFeatures.includes("hand-tracking"))
-			{
-				this.#xrOptionalFeatures = [...this.#xrOptionalFeatures, "hand-tracking"];
-			}
-
-			this.#xrDepthNear = options.xrDepthNear ?? 0.1;
-			this.#xrDepthFar = options.xrDepthFar ?? 1000;
-
-			this.#xrFramebufferScale = options.xrFramebufferScale ?? 1;
-
-			this.#xrViewportScale = options.xrViewportScale ?? null;
-
-			// Foveated rendering defaults to on.
-			this.#xrFixedFoveation = options.xrFixedFoveation ?? 0.3;
-
-			this.#xrTargetFrameRate = options.xrTargetFrameRate;
-		}
+		this.#initXR(options.xrOptions);
 
 		const getContextOptions: WebGLContextAttributes = {
-			xrCompatible: this.#useXR,
+			xrCompatible: true,
 			powerPreference: "high-performance",
 			antialias: false,
 			depth: false,
@@ -4478,6 +4402,75 @@ export class WilsonGPU extends Wilson
 		{
 			throw new Error("[Wilson] Must provide either a single shader or multiple shaders.");
 		}
+	}
+
+	#initXR(options?: XROptions)
+	{
+		this.#useXRButton = options?.useButton ?? false;
+		this.#xrButtonIconPath = options?.useButton ? options.buttonIconPath : undefined;
+		this.#xrButtonLoadingIconPath = options?.useButton
+			? options.buttonLoadingIconPath
+			: undefined;
+		this.#initXRButton();
+
+		this.#checkXRSupport();
+
+		navigator.xr?.addEventListener("devicechange", this.#onDeviceChange);
+
+		// Chrome on Windows doesn't reliably fire devicechange when an OpenXR runtime starts
+		// after the page has already checked, so a headset connected mid-session never shows
+		// the button. Re-checking when the tab regains focus covers the usual flow of leaving
+		// to connect the headset and coming back.
+		window.addEventListener("focus", this.#onPageFocus);
+		document.addEventListener("visibilitychange", this.#onPageFocus);
+
+		this.#renderXRFrame = options?.renderFrame ?? (() => {});
+
+		this.#xrCallbacks = {
+			onEnter: options?.onEnter ?? (() => {}),
+			onExit: options?.onExit ?? (() => {}),
+			onFrameStart: options?.onFrameStart ?? (() => {}),
+			onVisibilityChange: options?.onVisibilityChange ?? (() => {}),
+			onFrameRateChange: options?.onFrameRateChange ?? (() => {}),
+			onControllerConnect: options?.onControllerConnect ?? (() => {}),
+			onControllerDisconnect: options?.onControllerDisconnect ?? (() => {}),
+			onSelectStart: options?.onSelectStart ?? (() => {}),
+			onSelect: options?.onSelect ?? (() => {}),
+			onSelectEnd: options?.onSelectEnd ?? (() => {}),
+			onSqueezeStart: options?.onSqueezeStart ?? (() => {}),
+			onSqueeze: options?.onSqueeze ?? (() => {}),
+			onSqueezeEnd: options?.onSqueezeEnd ?? (() => {}),
+			onButtonDown: options?.onButtonDown ?? (() => {}),
+			onButtonUp: options?.onButtonUp ?? (() => {})
+		};
+
+		this.#xrRequiredFeatures = options?.requiredFeatures ?? [];
+		this.#xrOptionalFeatures = options?.optionalFeatures ?? [];
+
+		this.#useXRHandTracking = options?.useHandTracking ?? false;
+
+		// Hand tracking only produces input sources with a `hand` if the session was asked
+		// for it. Optional rather than required, so that a headset without it can still
+		// start a session.
+		if (
+			this.#useXRHandTracking
+			&& !this.#xrRequiredFeatures.includes("hand-tracking")
+			&& !this.#xrOptionalFeatures.includes("hand-tracking"))
+		{
+			this.#xrOptionalFeatures = [...this.#xrOptionalFeatures, "hand-tracking"];
+		}
+
+		this.#xrDepthNear = options?.depthNear ?? 0.1;
+		this.#xrDepthFar = options?.depthFar ?? 1000;
+
+		this.#xrFramebufferScale = options?.framebufferScale ?? 1;
+
+		this.#xrViewportScale = options?.viewportScale ?? null;
+
+		// Foveated rendering defaults to on.
+		this.#xrFixedFoveation = options?.fixedFoveation ?? 0.3;
+
+		this.#xrTargetFrameRate = options?.targetFrameRate;
 	}
 
 	#checkXRSupport()
@@ -4836,7 +4829,7 @@ export class WilsonGPU extends Wilson
 		this.deleteFramebufferTexturePair(id);
 
 		// Set default width and height.
-		if (this.#useXR && this.inXR)
+		if (this.inXR)
 		{
 			width ??= this.xrFramebufferWidth;
 			height ??= this.xrFramebufferHeight;
@@ -5562,11 +5555,6 @@ export class WilsonGPU extends Wilson
 
 	async enterXR(): Promise<boolean>
 	{
-		if (!this.#useXR)
-		{
-			throw new Error("[Wilson] `useXR` must be `true` in the constructor options in order to call `enterXR`.");
-		}
-
 		if (this.inXR || this.#enteringXR || this.#xrIsSupportedNow === false)
 		{
 			return false;
