@@ -4080,7 +4080,8 @@ function createXRControllerPose(): XRControllerPose
 
 type XRButtonOptions = {
 	useXRButton?: true,
-	xrButtonIconPath?: string,
+	xrButtonIconPath: string,
+	xrButtonLoadingIconPath: string,
 } | {
 	useXRButton?: false,
 };
@@ -4157,7 +4158,9 @@ export class WilsonGPU extends Wilson
 
 	#useXRButton: boolean = false;
 	#xrButtonIconPath?: string;
+	#xrButtonLoadingIconPath?: string;
 	#xrButton: HTMLElement | null = null;
+	#xrButtonImg: HTMLImageElement | null = null;
 
 	xrIsSupported: Promise<boolean> = Promise.resolve(false);
 	#xrIsSupportedNow: boolean | null = null; // Resolves to a boolean once known.
@@ -4342,11 +4345,21 @@ export class WilsonGPU extends Wilson
 		{
 			this.#useXRButton = options.useXRButton ?? false;
 			this.#xrButtonIconPath = options.useXRButton ? options.xrButtonIconPath : undefined;
+			this.#xrButtonLoadingIconPath = options.useXRButton
+				? options.xrButtonLoadingIconPath
+				: undefined;
 			this.#initXRButton();
 
 			this.#checkXRSupport();
 
 			navigator.xr?.addEventListener("devicechange", this.#onDeviceChange);
+
+			// Chrome on Windows doesn't reliably fire devicechange when an OpenXR runtime starts
+			// after the page has already checked, so a headset connected mid-session never shows
+			// the button. Re-checking when the tab regains focus covers the usual flow of leaving
+			// to connect the headset and coming back.
+			window.addEventListener("focus", this.#onPageFocus);
+			document.addEventListener("visibilitychange", this.#onPageFocus);
 
 			this.#renderXRFrame = options.renderXRFrame;
 
@@ -4498,6 +4511,28 @@ export class WilsonGPU extends Wilson
 		this.#checkXRSupport();
 	};
 
+	#onPageFocus = () =>
+	{
+		if (!document.hidden && this.#xrIsSupportedNow !== true && !this.inXR)
+		{
+			this.#checkXRSupport();
+		}
+	};
+
+	#setXRButtonLoading(loading: boolean)
+	{
+		if (!this.#xrButton || !this.#xrButtonImg)
+		{
+			return;
+		}
+
+		this.#xrButtonImg.src = (
+			loading ? this.#xrButtonLoadingIconPath : this.#xrButtonIconPath
+		) as string;
+
+		this.#xrButton.classList.toggle("WILSON_xr-button-loading", loading);
+	}
+
 	#initXRButton()
 	{
 		if (this.#useXRButton)
@@ -4515,8 +4550,23 @@ export class WilsonGPU extends Wilson
 			const img = document.createElement("img");
 			img.src = this.#xrButtonIconPath as string;
 			this.#xrButton.appendChild(img);
+			this.#xrButtonImg = img;
 
-			this.#xrButton.addEventListener("click", () => this.enterXR());
+			// Entering XR can take tens of seconds on tethered headsets, so the swap to the
+			// loading icon needs to be instant rather than waiting on a first fetch.
+			const preloadedLoadingIcon = new Image();
+			preloadedLoadingIcon.src = this.#xrButtonLoadingIconPath as string;
+
+			this.#xrButton.addEventListener("click", async () =>
+			{
+				this.#setXRButtonLoading(true);
+
+				// Resolves once the session is running, or immediately on any failure, so the
+				// icon never stays spinning after a cancelled or rejected launch.
+				await this.enterXR();
+
+				this.#setXRButtonLoading(false);
+			});
 		}
 	}
 
@@ -5526,9 +5576,7 @@ export class WilsonGPU extends Wilson
 
 		this.#enteringXR = true;
 
-		if (
-			!navigator.xr
-			|| this.#xrIsSupportedNow !== true && !(await this.#checkXRSupport()))
+		if (!navigator.xr)
 		{
 			this.#enteringXR = false;
 
@@ -5539,6 +5587,10 @@ export class WilsonGPU extends Wilson
 
 		try
 		{
+			// This has to happen before any other await, since requestSession consumes the
+			// transient user activation from the click that got us here, and that activation
+			// expires on a timer: awaiting a support check first can let it lapse and make this
+			// throw a SecurityError even though the headset is perfectly available.
 			session = await navigator.xr.requestSession(XR_MODE, {
 				requiredFeatures: this.#xrRequiredFeatures,
 				optionalFeatures: this.#xrOptionalFeatures,
@@ -5551,6 +5603,10 @@ export class WilsonGPU extends Wilson
 			{
 				console.error(`[Wilson] Couldn't create XR session: ${ex}`);
 			}
+
+			// The request may have failed because support changed since the last check, so this
+			// resyncs #xrIsSupportedNow and the button's visibility with reality.
+			this.#checkXRSupport();
 
 			this.#enteringXR = false;
 
@@ -6425,6 +6481,8 @@ export class WilsonGPU extends Wilson
 		this.#xrControllerList = [];
 
 		navigator.xr?.removeEventListener("devicechange", this.#onDeviceChange);
+		window.removeEventListener("focus", this.#onPageFocus);
+		document.removeEventListener("visibilitychange", this.#onPageFocus);
 
 
 

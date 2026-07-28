@@ -139,6 +139,7 @@ function initWilson2()
 		useXR: true,
 		useXRButton: true,
 		xrButtonIconPath: "/xr.png",
+		xrButtonLoadingIconPath: "/xr-loading.png",
 		renderXRFrame: () => {},
 
 		interactionOptions: {

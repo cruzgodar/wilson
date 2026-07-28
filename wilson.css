@@ -207,6 +207,24 @@
 	height: 100%;
 }
 
+.WILSON_xr-button.WILSON_xr-button-loading img
+{
+	animation: WILSON_xr-button-spin 1s linear infinite;
+}
+
+@keyframes WILSON_xr-button-spin
+{
+	from
+	{
+		transform: rotate(0deg);
+	}
+
+	to
+	{
+		transform: rotate(360deg);
+	}
+}
+
 ::view-transition-old(*)
 {
 	animation-duration: 300ms;

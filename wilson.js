@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Wilson_instances, _Wilson_destroyed, _Wilson_canvasWidth, _Wilson_canvasHeight, _Wilson_lastCanvasWidth, _Wilson_lastCanvasHeight, _Wilson_canvasAspectRatio, _Wilson_worldWidth, _Wilson_worldHeight, _Wilson_worldCenterX, _Wilson_worldCenterY, _Wilson_nonFullscreenWorldWidth, _Wilson_nonFullscreenWorldHeight, _Wilson_minWorldWidth, _Wilson_maxWorldWidth, _Wilson_minWorldHeight, _Wilson_maxWorldHeight, _Wilson_minWorldX, _Wilson_maxWorldX, _Wilson_minWorldY, _Wilson_maxWorldY, _Wilson_onResizeCanvasCallback, _Wilson_useP3ColorSpace, _Wilson_needDraggablesContainerSizeUpdate, _Wilson_interactionCallbacks, _Wilson_needPanAndZoomUpdate, _Wilson_interactionOnPanAndZoom, _Wilson_lastInteractionTimes, _Wilson_lastInteractionTypes, _Wilson_numPreviousVelocities, _Wilson_lastVelocityFactors, _Wilson_lastPanVelocityX, _Wilson_lastPanVelocityY, _Wilson_lastZoomVelocity, _Wilson_lastPanVelocitiesX, _Wilson_lastPanVelocitiesY, _Wilson_lastZoomVelocities, _Wilson_panVelocityX, _Wilson_panVelocityY, _Wilson_zoomVelocity, _Wilson_panFriction, _Wilson_zoomFriction, _Wilson_panVelocityThreshold, _Wilson_zoomVelocityThreshold, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_currentlyFullscreen, _Wilson_fullscreenOldScroll, _Wilson_fullscreenCanvasRect, _Wilson_fullscreenInitialWindowInnerWidth, _Wilson_fullscreenInitialWindowInnerHeight, _Wilson_fullscreenFillScreen, _Wilson_externalFullscreenOldFillScreen, _Wilson_externalFullscreenActive, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButton, _Wilson_fullscreenExitFullscreenButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_draggables, _Wilson_draggableDefaultId, _Wilson_currentMouseDraggableId, _Wilson_useResetButton, _Wilson_resetButton, _Wilson_resetButtonTimeoutId, _Wilson_resetButtonIconPath, _Wilson_defaultWorldCenterX, _Wilson_defaultWorldCenterY, _Wilson_defaultWorldWidth, _Wilson_defaultWorldHeight, _Wilson_defaultDraggableLocations, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_salt, _Wilson_getDefaultWorldSize, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_resizeCanvas, _Wilson_zeroVelocities, _Wilson_setLastZoomVelocity, _Wilson_setLastPanVelocity, _Wilson_setZoomVelocity, _Wilson_setPanVelocity, _Wilson_currentlyDragging, _Wilson_currentlyPinching, _Wilson_currentlyWheeling, _Wilson_currentlyWheelingTimeoutId, _Wilson_ignoreTouchendCooldown, _Wilson_atMaxWorldSize, _Wilson_atMinWorldSize, _Wilson_lastInteractionRow, _Wilson_lastInteractionCol, _Wilson_lastInteractionRow2, _Wilson_lastInteractionCol2, _Wilson_clampWorldCoordinates, _Wilson_getPanOverscroll, _Wilson_getZoomOverscroll, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMouseenter, _Wilson_onMouseleave, _Wilson_onMousemove, _Wilson_updateFromPinching, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_zoomFixedPoint, _Wilson_zoomCanvas, _Wilson_onWheel, _Wilson_animationFrameLoopPaused, _Wilson_lastPanAndZoomTimestamp, _Wilson_animationFrameLoop, _Wilson_initInteraction, _Wilson_documentDraggableMousemoveListener, _Wilson_documentDraggableMouseupListener, _Wilson_initDraggables, _Wilson_setDraggables, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_updateDraggablesLocation, _Wilson_initFullscreen, _Wilson_initResetButton, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_enterFullscreen, _Wilson_addEnterFullscreenFillScreenTransitionStyle, _Wilson_exitFullscreen, _Wilson_addExitFullscreenFillScreenTransitionStyle, _Wilson_interpolatePageToWorld, _WilsonGPU_instances, _WilsonGPU_useWebGL2, _WilsonGPU_shaderPrograms, _WilsonGPU_shaderProgramSources, _WilsonGPU_uniforms, _WilsonGPU_useXR, _WilsonGPU_useXRButton, _WilsonGPU_xrButtonIconPath, _WilsonGPU_xrButton, _WilsonGPU_xrIsSupportedNow, _WilsonGPU_renderXRFrame, _WilsonGPU_xrData, _WilsonGPU_xrRequiredFeatures, _WilsonGPU_xrOptionalFeatures, _WilsonGPU_xrDepthNear, _WilsonGPU_xrDepthFar, _WilsonGPU_xrFramebufferScale, _WilsonGPU_xrViewportScale, _WilsonGPU_lastAppliedXRViewportScales, _WilsonGPU_xrTargetFrameRate, _WilsonGPU_lastXRTime, _WilsonGPU_enteringXR, _WilsonGPU_xrFixedFoveation, _WilsonGPU_xrCallbacks, _WilsonGPU_useXRHandTracking, _WilsonGPU_xrControllerData, _WilsonGPU_xrControllerList, _WilsonGPU_xrViewport, _WilsonGPU_logShaderSource, _WilsonGPU_checkXRSupport, _WilsonGPU_onDeviceChange, _WilsonGPU_initXRButton, _WilsonGPU_numShaders, _WilsonGPU_currentShaderId, _WilsonGPU_currentProgram, _WilsonGPU_useProgram, _WilsonGPU_framebuffers, _WilsonGPU_textures, _WilsonGPU_currentFramebufferId, _WilsonGPU_currentTextureId, _WilsonGPU_positionBuffers, _WilsonGPU_shaders, _WilsonGPU_onXRFrame, _WilsonGPU_onXRInputSourcesChange, _WilsonGPU_syncXRControllers, _WilsonGPU_createXRControllerData, _WilsonGPU_readXRPose, _WilsonGPU_updateXRControllers, _WilsonGPU_clearXRButtonEdges, _WilsonGPU_releaseXRControllerButtons, _WilsonGPU_dispatchXRInputSourceEvent, _WilsonGPU_onXREnd, _WilsonGPU_clearXRFunctions, _WilsonGPU_applyXRTargetFrameRate;
+var _Wilson_instances, _Wilson_destroyed, _Wilson_canvasWidth, _Wilson_canvasHeight, _Wilson_lastCanvasWidth, _Wilson_lastCanvasHeight, _Wilson_canvasAspectRatio, _Wilson_worldWidth, _Wilson_worldHeight, _Wilson_worldCenterX, _Wilson_worldCenterY, _Wilson_nonFullscreenWorldWidth, _Wilson_nonFullscreenWorldHeight, _Wilson_minWorldWidth, _Wilson_maxWorldWidth, _Wilson_minWorldHeight, _Wilson_maxWorldHeight, _Wilson_minWorldX, _Wilson_maxWorldX, _Wilson_minWorldY, _Wilson_maxWorldY, _Wilson_onResizeCanvasCallback, _Wilson_useP3ColorSpace, _Wilson_needDraggablesContainerSizeUpdate, _Wilson_interactionCallbacks, _Wilson_needPanAndZoomUpdate, _Wilson_interactionOnPanAndZoom, _Wilson_lastInteractionTimes, _Wilson_lastInteractionTypes, _Wilson_numPreviousVelocities, _Wilson_lastVelocityFactors, _Wilson_lastPanVelocityX, _Wilson_lastPanVelocityY, _Wilson_lastZoomVelocity, _Wilson_lastPanVelocitiesX, _Wilson_lastPanVelocitiesY, _Wilson_lastZoomVelocities, _Wilson_panVelocityX, _Wilson_panVelocityY, _Wilson_zoomVelocity, _Wilson_panFriction, _Wilson_zoomFriction, _Wilson_panVelocityThreshold, _Wilson_zoomVelocityThreshold, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_currentlyFullscreen, _Wilson_fullscreenOldScroll, _Wilson_fullscreenCanvasRect, _Wilson_fullscreenInitialWindowInnerWidth, _Wilson_fullscreenInitialWindowInnerHeight, _Wilson_fullscreenFillScreen, _Wilson_externalFullscreenOldFillScreen, _Wilson_externalFullscreenActive, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButton, _Wilson_fullscreenExitFullscreenButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_draggables, _Wilson_draggableDefaultId, _Wilson_currentMouseDraggableId, _Wilson_useResetButton, _Wilson_resetButton, _Wilson_resetButtonTimeoutId, _Wilson_resetButtonIconPath, _Wilson_defaultWorldCenterX, _Wilson_defaultWorldCenterY, _Wilson_defaultWorldWidth, _Wilson_defaultWorldHeight, _Wilson_defaultDraggableLocations, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_salt, _Wilson_getDefaultWorldSize, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_resizeCanvas, _Wilson_zeroVelocities, _Wilson_setLastZoomVelocity, _Wilson_setLastPanVelocity, _Wilson_setZoomVelocity, _Wilson_setPanVelocity, _Wilson_currentlyDragging, _Wilson_currentlyPinching, _Wilson_currentlyWheeling, _Wilson_currentlyWheelingTimeoutId, _Wilson_ignoreTouchendCooldown, _Wilson_atMaxWorldSize, _Wilson_atMinWorldSize, _Wilson_lastInteractionRow, _Wilson_lastInteractionCol, _Wilson_lastInteractionRow2, _Wilson_lastInteractionCol2, _Wilson_clampWorldCoordinates, _Wilson_getPanOverscroll, _Wilson_getZoomOverscroll, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMouseenter, _Wilson_onMouseleave, _Wilson_onMousemove, _Wilson_updateFromPinching, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_zoomFixedPoint, _Wilson_zoomCanvas, _Wilson_onWheel, _Wilson_animationFrameLoopPaused, _Wilson_lastPanAndZoomTimestamp, _Wilson_animationFrameLoop, _Wilson_initInteraction, _Wilson_documentDraggableMousemoveListener, _Wilson_documentDraggableMouseupListener, _Wilson_initDraggables, _Wilson_setDraggables, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_updateDraggablesLocation, _Wilson_initFullscreen, _Wilson_initResetButton, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_enterFullscreen, _Wilson_addEnterFullscreenFillScreenTransitionStyle, _Wilson_exitFullscreen, _Wilson_addExitFullscreenFillScreenTransitionStyle, _Wilson_interpolatePageToWorld, _WilsonGPU_instances, _WilsonGPU_useWebGL2, _WilsonGPU_shaderPrograms, _WilsonGPU_shaderProgramSources, _WilsonGPU_uniforms, _WilsonGPU_useXR, _WilsonGPU_useXRButton, _WilsonGPU_xrButtonIconPath, _WilsonGPU_xrButtonLoadingIconPath, _WilsonGPU_xrButton, _WilsonGPU_xrButtonImg, _WilsonGPU_xrIsSupportedNow, _WilsonGPU_renderXRFrame, _WilsonGPU_xrData, _WilsonGPU_xrRequiredFeatures, _WilsonGPU_xrOptionalFeatures, _WilsonGPU_xrDepthNear, _WilsonGPU_xrDepthFar, _WilsonGPU_xrFramebufferScale, _WilsonGPU_xrViewportScale, _WilsonGPU_lastAppliedXRViewportScales, _WilsonGPU_xrTargetFrameRate, _WilsonGPU_lastXRTime, _WilsonGPU_enteringXR, _WilsonGPU_xrFixedFoveation, _WilsonGPU_xrCallbacks, _WilsonGPU_useXRHandTracking, _WilsonGPU_xrControllerData, _WilsonGPU_xrControllerList, _WilsonGPU_xrViewport, _WilsonGPU_logShaderSource, _WilsonGPU_checkXRSupport, _WilsonGPU_onDeviceChange, _WilsonGPU_onPageFocus, _WilsonGPU_setXRButtonLoading, _WilsonGPU_initXRButton, _WilsonGPU_numShaders, _WilsonGPU_currentShaderId, _WilsonGPU_currentProgram, _WilsonGPU_useProgram, _WilsonGPU_framebuffers, _WilsonGPU_textures, _WilsonGPU_currentFramebufferId, _WilsonGPU_currentTextureId, _WilsonGPU_positionBuffers, _WilsonGPU_shaders, _WilsonGPU_onXRFrame, _WilsonGPU_onXRInputSourcesChange, _WilsonGPU_syncXRControllers, _WilsonGPU_createXRControllerData, _WilsonGPU_readXRPose, _WilsonGPU_updateXRControllers, _WilsonGPU_clearXRButtonEdges, _WilsonGPU_releaseXRControllerButtons, _WilsonGPU_dispatchXRInputSourceEvent, _WilsonGPU_onXREnd, _WilsonGPU_clearXRFunctions, _WilsonGPU_applyXRTargetFrameRate;
 const defaultInteractionCallbacks = {
     mousedown: ({ x, y, event }) => { },
     mouseup: ({ x, y, event }) => { },
@@ -2363,7 +2363,9 @@ export class WilsonGPU extends Wilson {
         _WilsonGPU_useXR.set(this, void 0);
         _WilsonGPU_useXRButton.set(this, false);
         _WilsonGPU_xrButtonIconPath.set(this, void 0);
+        _WilsonGPU_xrButtonLoadingIconPath.set(this, void 0);
         _WilsonGPU_xrButton.set(this, null);
+        _WilsonGPU_xrButtonImg.set(this, null);
         this.xrIsSupported = Promise.resolve(false);
         _WilsonGPU_xrIsSupportedNow.set(this, null); // Resolves to a boolean once known.
         _WilsonGPU_renderXRFrame.set(this, () => { });
@@ -2411,6 +2413,11 @@ export class WilsonGPU extends Wilson {
         // Needs to be an arrow function to maintain its binding when passed to addEventListener
         _WilsonGPU_onDeviceChange.set(this, () => {
             __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_checkXRSupport).call(this);
+        });
+        _WilsonGPU_onPageFocus.set(this, () => {
+            if (!document.hidden && __classPrivateFieldGet(this, _WilsonGPU_xrIsSupportedNow, "f") !== true && !this.inXR) {
+                __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_checkXRSupport).call(this);
+            }
         });
         _WilsonGPU_numShaders.set(this, 0);
         _WilsonGPU_currentShaderId.set(this, "0");
@@ -2557,9 +2564,18 @@ export class WilsonGPU extends Wilson {
         if (options.useXR) {
             __classPrivateFieldSet(this, _WilsonGPU_useXRButton, (_c = options.useXRButton) !== null && _c !== void 0 ? _c : false, "f");
             __classPrivateFieldSet(this, _WilsonGPU_xrButtonIconPath, options.useXRButton ? options.xrButtonIconPath : undefined, "f");
+            __classPrivateFieldSet(this, _WilsonGPU_xrButtonLoadingIconPath, options.useXRButton
+                ? options.xrButtonLoadingIconPath
+                : undefined, "f");
             __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_initXRButton).call(this);
             __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_checkXRSupport).call(this);
             (_d = navigator.xr) === null || _d === void 0 ? void 0 : _d.addEventListener("devicechange", __classPrivateFieldGet(this, _WilsonGPU_onDeviceChange, "f"));
+            // Chrome on Windows doesn't reliably fire devicechange when an OpenXR runtime starts
+            // after the page has already checked, so a headset connected mid-session never shows
+            // the button. Re-checking when the tab regains focus covers the usual flow of leaving
+            // to connect the headset and coming back.
+            window.addEventListener("focus", __classPrivateFieldGet(this, _WilsonGPU_onPageFocus, "f"));
+            document.addEventListener("visibilitychange", __classPrivateFieldGet(this, _WilsonGPU_onPageFocus, "f"));
             __classPrivateFieldSet(this, _WilsonGPU_renderXRFrame, options.renderXRFrame, "f");
             __classPrivateFieldSet(this, _WilsonGPU_xrCallbacks, {
                 onEnter: (_e = options.onEnterXR) !== null && _e !== void 0 ? _e : (() => { }),
@@ -3304,13 +3320,16 @@ export class WilsonGPU extends Wilson {
             return false;
         }
         __classPrivateFieldSet(this, _WilsonGPU_enteringXR, true, "f");
-        if (!navigator.xr
-            || __classPrivateFieldGet(this, _WilsonGPU_xrIsSupportedNow, "f") !== true && !(await __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_checkXRSupport).call(this))) {
+        if (!navigator.xr) {
             __classPrivateFieldSet(this, _WilsonGPU_enteringXR, false, "f");
             return false;
         }
         let session;
         try {
+            // This has to happen before any other await, since requestSession consumes the
+            // transient user activation from the click that got us here, and that activation
+            // expires on a timer: awaiting a support check first can let it lapse and make this
+            // throw a SecurityError even though the headset is perfectly available.
             session = await navigator.xr.requestSession(XR_MODE, {
                 requiredFeatures: __classPrivateFieldGet(this, _WilsonGPU_xrRequiredFeatures, "f"),
                 optionalFeatures: __classPrivateFieldGet(this, _WilsonGPU_xrOptionalFeatures, "f"),
@@ -3320,6 +3339,9 @@ export class WilsonGPU extends Wilson {
             if (this.verbose) {
                 console.error(`[Wilson] Couldn't create XR session: ${ex}`);
             }
+            // The request may have failed because support changed since the last check, so this
+            // resyncs #xrIsSupportedNow and the button's visibility with reality.
+            __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_checkXRSupport).call(this);
             __classPrivateFieldSet(this, _WilsonGPU_enteringXR, false, "f");
             return false;
         }
@@ -3395,6 +3417,8 @@ export class WilsonGPU extends Wilson {
         __classPrivateFieldGet(this, _WilsonGPU_xrControllerData, "f").clear();
         __classPrivateFieldSet(this, _WilsonGPU_xrControllerList, [], "f");
         (_a = navigator.xr) === null || _a === void 0 ? void 0 : _a.removeEventListener("devicechange", __classPrivateFieldGet(this, _WilsonGPU_onDeviceChange, "f"));
+        window.removeEventListener("focus", __classPrivateFieldGet(this, _WilsonGPU_onPageFocus, "f"));
+        document.removeEventListener("visibilitychange", __classPrivateFieldGet(this, _WilsonGPU_onPageFocus, "f"));
         // Delete all textures.
         for (const id in __classPrivateFieldGet(this, _WilsonGPU_textures, "f")) {
             this.gl.deleteTexture(__classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id].texture);
@@ -3431,7 +3455,7 @@ export class WilsonGPU extends Wilson {
         }
     }
 }
-_WilsonGPU_useWebGL2 = new WeakMap(), _WilsonGPU_shaderPrograms = new WeakMap(), _WilsonGPU_shaderProgramSources = new WeakMap(), _WilsonGPU_uniforms = new WeakMap(), _WilsonGPU_useXR = new WeakMap(), _WilsonGPU_useXRButton = new WeakMap(), _WilsonGPU_xrButtonIconPath = new WeakMap(), _WilsonGPU_xrButton = new WeakMap(), _WilsonGPU_xrIsSupportedNow = new WeakMap(), _WilsonGPU_renderXRFrame = new WeakMap(), _WilsonGPU_xrData = new WeakMap(), _WilsonGPU_xrRequiredFeatures = new WeakMap(), _WilsonGPU_xrOptionalFeatures = new WeakMap(), _WilsonGPU_xrDepthNear = new WeakMap(), _WilsonGPU_xrDepthFar = new WeakMap(), _WilsonGPU_xrFramebufferScale = new WeakMap(), _WilsonGPU_xrViewportScale = new WeakMap(), _WilsonGPU_lastAppliedXRViewportScales = new WeakMap(), _WilsonGPU_xrTargetFrameRate = new WeakMap(), _WilsonGPU_lastXRTime = new WeakMap(), _WilsonGPU_enteringXR = new WeakMap(), _WilsonGPU_xrFixedFoveation = new WeakMap(), _WilsonGPU_xrCallbacks = new WeakMap(), _WilsonGPU_useXRHandTracking = new WeakMap(), _WilsonGPU_xrControllerData = new WeakMap(), _WilsonGPU_xrControllerList = new WeakMap(), _WilsonGPU_xrViewport = new WeakMap(), _WilsonGPU_onDeviceChange = new WeakMap(), _WilsonGPU_numShaders = new WeakMap(), _WilsonGPU_currentShaderId = new WeakMap(), _WilsonGPU_currentProgram = new WeakMap(), _WilsonGPU_framebuffers = new WeakMap(), _WilsonGPU_textures = new WeakMap(), _WilsonGPU_currentFramebufferId = new WeakMap(), _WilsonGPU_currentTextureId = new WeakMap(), _WilsonGPU_positionBuffers = new WeakMap(), _WilsonGPU_shaders = new WeakMap(), _WilsonGPU_onXRFrame = new WeakMap(), _WilsonGPU_onXRInputSourcesChange = new WeakMap(), _WilsonGPU_onXREnd = new WeakMap(), _WilsonGPU_instances = new WeakSet(), _WilsonGPU_logShaderSource = function _WilsonGPU_logShaderSource(source, infoLog) {
+_WilsonGPU_useWebGL2 = new WeakMap(), _WilsonGPU_shaderPrograms = new WeakMap(), _WilsonGPU_shaderProgramSources = new WeakMap(), _WilsonGPU_uniforms = new WeakMap(), _WilsonGPU_useXR = new WeakMap(), _WilsonGPU_useXRButton = new WeakMap(), _WilsonGPU_xrButtonIconPath = new WeakMap(), _WilsonGPU_xrButtonLoadingIconPath = new WeakMap(), _WilsonGPU_xrButton = new WeakMap(), _WilsonGPU_xrButtonImg = new WeakMap(), _WilsonGPU_xrIsSupportedNow = new WeakMap(), _WilsonGPU_renderXRFrame = new WeakMap(), _WilsonGPU_xrData = new WeakMap(), _WilsonGPU_xrRequiredFeatures = new WeakMap(), _WilsonGPU_xrOptionalFeatures = new WeakMap(), _WilsonGPU_xrDepthNear = new WeakMap(), _WilsonGPU_xrDepthFar = new WeakMap(), _WilsonGPU_xrFramebufferScale = new WeakMap(), _WilsonGPU_xrViewportScale = new WeakMap(), _WilsonGPU_lastAppliedXRViewportScales = new WeakMap(), _WilsonGPU_xrTargetFrameRate = new WeakMap(), _WilsonGPU_lastXRTime = new WeakMap(), _WilsonGPU_enteringXR = new WeakMap(), _WilsonGPU_xrFixedFoveation = new WeakMap(), _WilsonGPU_xrCallbacks = new WeakMap(), _WilsonGPU_useXRHandTracking = new WeakMap(), _WilsonGPU_xrControllerData = new WeakMap(), _WilsonGPU_xrControllerList = new WeakMap(), _WilsonGPU_xrViewport = new WeakMap(), _WilsonGPU_onDeviceChange = new WeakMap(), _WilsonGPU_onPageFocus = new WeakMap(), _WilsonGPU_numShaders = new WeakMap(), _WilsonGPU_currentShaderId = new WeakMap(), _WilsonGPU_currentProgram = new WeakMap(), _WilsonGPU_framebuffers = new WeakMap(), _WilsonGPU_textures = new WeakMap(), _WilsonGPU_currentFramebufferId = new WeakMap(), _WilsonGPU_currentTextureId = new WeakMap(), _WilsonGPU_positionBuffers = new WeakMap(), _WilsonGPU_shaders = new WeakMap(), _WilsonGPU_onXRFrame = new WeakMap(), _WilsonGPU_onXRInputSourcesChange = new WeakMap(), _WilsonGPU_onXREnd = new WeakMap(), _WilsonGPU_instances = new WeakSet(), _WilsonGPU_logShaderSource = function _WilsonGPU_logShaderSource(source, infoLog) {
     const match = infoLog.match(/\b0:(\d+)/);
     if (!match) {
         console.log(source);
@@ -3466,6 +3490,12 @@ _WilsonGPU_useWebGL2 = new WeakMap(), _WilsonGPU_shaderPrograms = new WeakMap(),
         return supported;
     });
     return this.xrIsSupported;
+}, _WilsonGPU_setXRButtonLoading = function _WilsonGPU_setXRButtonLoading(loading) {
+    if (!__classPrivateFieldGet(this, _WilsonGPU_xrButton, "f") || !__classPrivateFieldGet(this, _WilsonGPU_xrButtonImg, "f")) {
+        return;
+    }
+    __classPrivateFieldGet(this, _WilsonGPU_xrButtonImg, "f").src = (loading ? __classPrivateFieldGet(this, _WilsonGPU_xrButtonLoadingIconPath, "f") : __classPrivateFieldGet(this, _WilsonGPU_xrButtonIconPath, "f"));
+    __classPrivateFieldGet(this, _WilsonGPU_xrButton, "f").classList.toggle("WILSON_xr-button-loading", loading);
 }, _WilsonGPU_initXRButton = function _WilsonGPU_initXRButton() {
     if (__classPrivateFieldGet(this, _WilsonGPU_useXRButton, "f")) {
         __classPrivateFieldSet(this, _WilsonGPU_xrButton, document.createElement("div"), "f");
@@ -3478,7 +3508,18 @@ _WilsonGPU_useWebGL2 = new WeakMap(), _WilsonGPU_shaderPrograms = new WeakMap(),
         const img = document.createElement("img");
         img.src = __classPrivateFieldGet(this, _WilsonGPU_xrButtonIconPath, "f");
         __classPrivateFieldGet(this, _WilsonGPU_xrButton, "f").appendChild(img);
-        __classPrivateFieldGet(this, _WilsonGPU_xrButton, "f").addEventListener("click", () => this.enterXR());
+        __classPrivateFieldSet(this, _WilsonGPU_xrButtonImg, img, "f");
+        // Entering XR can take tens of seconds on tethered headsets, so the swap to the
+        // loading icon needs to be instant rather than waiting on a first fetch.
+        const preloadedLoadingIcon = new Image();
+        preloadedLoadingIcon.src = __classPrivateFieldGet(this, _WilsonGPU_xrButtonLoadingIconPath, "f");
+        __classPrivateFieldGet(this, _WilsonGPU_xrButton, "f").addEventListener("click", async () => {
+            __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_setXRButtonLoading).call(this, true);
+            // Resolves once the session is running, or immediately on any failure, so the
+            // icon never stays spinning after a cancelled or rejected launch.
+            await this.enterXR();
+            __classPrivateFieldGet(this, _WilsonGPU_instances, "m", _WilsonGPU_setXRButtonLoading).call(this, false);
+        });
     }
 }, _WilsonGPU_useProgram = function _WilsonGPU_useProgram(program) {
     if (program === __classPrivateFieldGet(this, _WilsonGPU_currentProgram, "f")) {

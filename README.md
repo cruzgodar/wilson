@@ -383,6 +383,9 @@ The above guide, along with the example project, are a great way to get started 
 - `xrViewportScale`: a number in `(0, 1]` that scales the portion of the framebuffer each eye renders into, or `null` to use the headset's own recommendation. Unlike `xrFramebufferScaleFactor`, this can be changed at any time during a session. Defaults to `null`.
 - `xrFixedFoveation`: a number in `[0, 1]` for how aggressively to reduce resolution toward the edges of the view. Defaults to `0.3`. Headsets that don't support foveation ignore it.
 - `xrTargetFrameRate`: a number for the display refresh rate to request, in Hz. Wilson picks the closest rate the headset actually supports. If unspecified, the headset's default is used.
+- `useXRButton: boolean`: a boolean for whether to show a button that enters XR when clicked. Defaults to `false`. The button is hidden whenever no headset is available, and Wilson rechecks for one when the page regains focus, since browsers don't reliably report a headset connected after the page loaded.
+- `xrButtonIconPath: string`: a string for the path to the XR button image. Only allowed if `useXRButton` is `true`.
+- `xrButtonLoadingIconPath: string`: a string for the path to the image shown while a session is starting, which spins until the session begins or the attempt fails. Required (and only allowed) if `useXRButton` is `true`. Tethered headsets can take tens of seconds to hand off, so this is the only indication the user gets that the click did anything.
 
 
 
