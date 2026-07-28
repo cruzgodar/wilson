@@ -203,8 +203,8 @@ const options = {
 	shader,
 
 	uniforms: {
-		projectionMatrix: [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]],
-		cameraToWorld: [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]],
+		projectionMatrix: new Float32Array(16),
+		cameraToWorld: new Float32Array(16),
 	},
 
 	useXR: true,
@@ -232,6 +232,59 @@ Once a session starts, Wilson pauses its own animation frame loop and drives ren
 Rendering two eyes at a headset's native resolution is far more expensive than rendering one canvas, and Wilson provides four ways to buy back frame time. `xrTargetFrameRate` lowers the display's refresh rate, which lengthens the budget for every frame without reducing image quality at all; it's usually the first thing to reach for, because a headset that misses its deadline reprojects the previous frame rather than simply showing fewer frames, and reprojection on a raymarched scene looks considerably worse than a lower frame rate does. The other three trade quality directly: `xrFramebufferScaleFactor` scales the framebuffer allocated when the session starts and is fixed for its duration, `xrViewportScale` scales the portion of that framebuffer each eye actually renders into and can be changed at any time, and `xrFixedFoveation` reduces resolution toward the edges of the view, where the headset's lenses blur it anyway. Foveation defaults to `0.3` because a full-viewport fragment shader is close to the ideal case for it.
 
 Finally, note that the headset's framebuffer is not the same size as the canvas. While a session is active, `createFramebufferTexturePair` defaults to the headset's dimensions rather than the canvas's, `useFramebuffer(null)` returns to the headset's framebuffer and restores the current eye's viewport, and `xrFramebufferWidth` and `xrFramebufferHeight` report the size. Applets that use framebuffers should recreate them in `onEnterXR` and `onExitXR` so they always match.
+
+### XR Controllers
+
+Wilson tracks every input source the session reports and exposes them as `xrControllers`, updated once per frame before `onXRFrameStart` runs. Each entry stays the same object for as long as its device is connected, so an applet can hold onto one and read it every frame:
+
+```js
+const options = {
+	useXR: true,
+	renderXRFrame,
+
+	onXRFrameStart: ({ deltaTime }) =>
+	{
+		const controller = wilson.getXRController("right");
+
+		if (!controller)
+		{
+			return;
+		}
+
+		// Fly forward at a meter a second while the trigger is held.
+		if (controller.buttons.trigger.pressed && controller.grip)
+		{
+			moveAlong(controller.grip.matrix, deltaTime / 1000);
+		}
+
+		// Turn with the thumbstick; +y is forward and +x is right.
+		turn(controller.thumbstick[0] * deltaTime / 1000);
+	},
+
+	onXRButtonDown: ({ controller, name }) =>
+	{
+		if (name === "a")
+		{
+			controller.pulse(0.5, 50);
+			resetScene();
+		}
+	},
+};
+```
+
+Controllers are identified by `handedness` rather than by index, since the order they're reported in is not stable; `getXRController("left" | "right" | "none")` is the usual way to find one. They connect and disconnect freely during a session — a controller that goes to sleep or a user who switches to hand tracking both change the set — so `onXRControllerConnect` and `onXRControllerDisconnect` fire whenever it changes, and an applet should never assume a controller it saw last frame is still there.
+
+Each controller carries two poses, both given relative to the session's reference space. `grip` is where the device is actually held, which is what to use for drawing something in the user's hand, and `targetRay` is the ray it points along, whose -Z axis is the pointing direction. Both are `null` on frames where that device isn't tracked, which happens routinely when a controller leaves the headset's cameras' view; buttons keep working when it does. Each pose's `matrix` is a `Float32Array` in column-major order, ready to hand to `setUniform` — but it's a buffer that Wilson overwrites every frame rather than a fresh array, so copy it if it needs to outlive the frame.
+
+Buttons follow the `xr-standard` mapping, and are named `trigger`, `squeeze`, `touchpad`, `thumbstick`, `a`, and `b`. On a left controller the last two are the ones physically labeled X and Y; the system menu button is reserved by the headset's runtime and is never visible to the page at all. Anything a device exposes past those six — a Quest's thumbrest, say — lands in `extraButtons` in order. Every button reports `pressed`, `touched`, and an analog `value`, along with `justPressed` and `justReleased`, which are true only on the frame the button changed, so that an applet polling in `onXRFrameStart` can act on edges without tracking them itself. `onXRButtonDown` and `onXRButtonUp` report the same transitions as callbacks, and fire after every controller has been updated, so a callback reading a second controller sees the current frame's state rather than the last one's.
+
+Sticks and touchpads are reported as `thumbstick` and `touchpad`, each a `[x, y]` pair. WebXR's raw axes are +y **down**, which is backwards from how a stick is usually read, so Wilson negates them — pushing a stick forward gives a positive y. The unmodified values are still available as `axes`.
+
+Two things don't come from polling. `select` and `squeeze` are the only actions WebXR reports as real events, and they're also the only ones that work for input sources with no buttons at all, like tracked hands (where a select is a pinch) and gaze input — so an applet that wants to work on anything beyond controllers should treat `onXRSelect` as its primary action rather than the trigger. Those callbacks receive `targetRay` and `grip` resolved from the event's own frame, which is the pose at the moment of the action rather than at the last rendered frame, and `selecting` and `squeezing` on the controller report whether one is currently in progress.
+
+Hand tracking is off by default; setting `useXRHandTracking: true` requests it from the session and fills in `hand` on any input source that provides it. It's an object keyed by [joint name](https://developer.mozilla.org/en-US/docs/Web/API/XRHand), each with a `matrix`, `position`, `orientation`, and `radius`; joints the headset can't see in a given frame are absent rather than stale, so check before reading one. Hands have no gamepad, so their buttons all read as unpressed.
+
+Finally, two cases worth knowing about. When the user opens a system menu, the session's visibility state goes to `hidden` and the runtime takes input without reporting the releases; Wilson forces every button up and fires `onXRButtonUp` for them, so nothing stays stuck down when the applet comes back. And `profiles` lists the [input profiles](https://github.com/immersive-web/webxr-input-profiles) the device claims, most specific first, which is the way to special-case particular hardware; `mapping` is `"xr-standard"` on anything that follows the standard layout, and empty on the rare device that doesn't, in which case the named buttons are a best-effort guess and the raw `axes` and `extraButtons` are more trustworthy.
 
 
 
@@ -314,12 +367,16 @@ The above guide, along with the example project, are a great way to get started 
 	- `time`: the timestamp of the current frame, in milliseconds, on the same clock as `performance.now()`.
 	- `deltaTime`: the number of milliseconds since the previous rendered frame. This is `0` on the first frame of a session and on the first frame after a gap, so that integrating against it never jumps.
 	- `emulatedPosition`: a boolean for whether the headset is estimating its position rather than tracking it. Applets that move the camera may want to lock movement when this is `true`.
-	- `view`, `frame`, `pose`, `session`, `refSpace`: the underlying `XRView`, `XRFrame`, `XRViewerPose`, `XRSession`, and `XRReferenceSpace`. Controllers are read with `session.inputSources` and posed with `frame.getPose(inputSource.targetRaySpace, refSpace)`.
+	- `view`, `frame`, `pose`, `session`, `refSpace`: the underlying `XRView`, `XRFrame`, `XRViewerPose`, `XRSession`, and `XRReferenceSpace`, for anything Wilson doesn't wrap. Controllers are read with `xrControllers` rather than from these.
 - `onXRFrameStart: (data) => void`: a function called once per frame, before either eye is rendered, with the headset's framebuffer bound and the viewport set to all of it. This is where per-frame work belongs, since `renderXRFrame` runs once per eye. Its argument is an object containing the `time`, `deltaTime`, `frame`, `pose`, `session`, and `refSpace` fields described above. Only allowed if `useXR` is `true`.
 - `onEnterXR: () => void`: a function called after a session has started and the headset's framebuffer is ready to render into. Only allowed if `useXR` is `true`.
 - `onExitXR: () => void`: a function called after a session has ended and the canvas is ready to render into again. Sessions can be ended by the user from inside the headset, so this is not only called in response to `exitXR`. Only allowed if `useXR` is `true`.
 - `onXRVisibilityChange: (state: "visible" | "visible-blurred" | "hidden") => void`: a function called when the session's visibility changes — for example, when a system menu is opened over the scene, or the headset is taken off. Wilson skips rendering while the state is `"hidden"`. Only allowed if `useXR` is `true`.
 - `onXRFrameRateChange: (frameRate: number | undefined) => void`: a function called when the display's refresh rate changes, whether from `xrTargetFrameRate` or from the system changing it. Only allowed if `useXR` is `true`.
+- `onXRControllerConnect: (data) => void`, `onXRControllerDisconnect: (data) => void`: functions called when an input source appears or disappears, which happens throughout a session and not only at the start of one. The argument is an object containing the `controller` in question, the full `controllers` array as it stands after the change, and the `session`. Every remaining controller is disconnected when a session ends, before `onExitXR`. Only allowed if `useXR` is `true`.
+- `onXRSelectStart`, `onXRSelect`, `onXRSelectEnd`, `onXRSqueezeStart`, `onXRSqueeze`, `onXRSqueezeEnd: (data) => void`: functions called for the session's primary and grip actions. Unlike the buttons, these are reported by WebXR itself, and are the only actions that also work for input sources with no gamepad, such as tracked hands and gaze. The argument is an object with the `controller`, its `inputSource`, the `targetRay` and `grip` poses resolved from the event's own frame, and the `frame`, `refSpace`, and `session`. Only allowed if `useXR` is `true`.
+- `onXRButtonDown: (data) => void`, `onXRButtonUp: (data) => void`: functions called when a button changes state. WebXR has no events for buttons other than the select and squeeze actions, so Wilson polls for these once per frame and reports the edges. The argument is an object with the `controller`, the button's `name` (`null` for device-specific buttons past the end of the `xr-standard` mapping), its `index`, its `state`, and the `time`, `frame`, `refSpace`, and `session`. Only allowed if `useXR` is `true`.
+- `useXRHandTracking`: a boolean for whether to ask the session for hand tracking, which fills in each controller's `hand`. Defaults to `false`. Setting it adds `hand-tracking` to `xrOptionalFeatures`, so a headset without it will still start a session.
 - `xrRequiredFeatures`, `xrOptionalFeatures`: arrays of strings naming [WebXR features](https://developer.mozilla.org/en-US/docs/Web/API/XRSystem/requestSession#optionalfeatures) to request with the session. A session will fail to start if a required feature is unavailable, so prefer optional ones. Both default to `[]`.
 - `xrDepthNear`, `xrDepthFar`: the near and far clipping distances, in meters, used to build each eye's projection matrix. They default to `0.1` and `1000`.
 - `xrFramebufferScaleFactor`: a number that scales the framebuffer allocated for the session, relative to the headset's native resolution. Defaults to `1`, which renders every pixel the display has; lowering it is the largest single savings available, but it is fixed for the duration of the session. Only allowed if `useXR` is `true`.
@@ -409,3 +466,21 @@ All of these require `useXR` to have been set in the options; the fields that de
 - `xrTargetFrameRate`: the display refresh rate requested, in Hz. Can be changed dynamically. Wilson picks the closest rate the headset supports, so this may not match `xrFrameRate`.
 - `xrFrameRate`: the display refresh rate currently in use, in Hz. Readonly; use `xrTargetFrameRate` to change it.
 - `xrSupportedFrameRates`: a `Float32Array` of the refresh rates the headset supports, or `undefined` if it doesn't allow changing them. Readonly.
+- `xrControllers`: an array of the input sources currently connected, updated once per frame before `onXRFrameStart` runs, and empty outside a session. Readonly. The array itself is only rebuilt when the set of controllers changes, and each controller is the same object for as long as its device stays connected.
+- `getXRController(handedness: "left" | "right" | "none")`: the connected controller with the given handedness, or `undefined` if there isn't one. This is the right way to find a particular controller, since the order they appear in `xrControllers` is not stable.
+
+Each controller has the following fields:
+
+- `handedness`: `"left"`, `"right"`, or `"none"`.
+- `targetRay`, `grip`: the pose of the ray the device points along and of where it's actually held, relative to the session's reference space, or `null` on a frame where the device isn't tracked. Each has a `matrix` (a column-major `Float32Array` that Wilson overwrites every frame, so copy it if it needs to outlive one), a `position` and `orientation` as `DOMPointReadOnly`s, `linearVelocity` and `angularVelocity` if the headset reports them, and `emulatedPosition`. `grip` is always `null` for input sources that don't have one, such as gaze and hands.
+- `buttons`: an object with a state for each button in the `xr-standard` mapping — `trigger`, `squeeze`, `touchpad`, `thumbstick`, `a`, and `b`, the last two being the ones labeled X and Y on a left controller. Each has `pressed`, `touched`, an analog `value`, and `justPressed` and `justReleased`, which are true only on the frame the button changed.
+- `extraButtons`: an array of states, in the same form, for any device-specific buttons past the end of the `xr-standard` mapping.
+- `thumbstick`, `touchpad`: `[x, y]` pairs, with y negated from the raw axis value so that +y is forward.
+- `axes`: the raw, unmodified axis values.
+- `selecting`, `squeezing`: booleans for whether a select or squeeze action is currently in progress. Driven by the session's events rather than by polling, so they're also set for input sources with no gamepad.
+- `hand`: an object keyed by [joint name](https://developer.mozilla.org/en-US/docs/Web/API/XRHand), each with a `matrix`, `position`, `orientation`, and `radius`, or `null` if this isn't a tracked hand or `useXRHandTracking` wasn't set. Joints the headset can't see in a given frame are absent rather than stale.
+- `profiles`: the [input profiles](https://github.com/immersive-web/webxr-input-profiles) the device claims, most specific first.
+- `mapping`: `"xr-standard"` on devices that follow the standard button layout, and `""` on the rare one that doesn't, in which case the named buttons are a best-effort guess.
+- `targetRayMode`: `"tracked-pointer"`, `"gaze"`, `"screen"`, or `"transient-pointer"`.
+- `inputSource`: the underlying `XRInputSource`.
+- `pulse(intensity: number, duration: number)`: fires the device's haptics at an intensity in `[0, 1]` for a duration in milliseconds, resolving to whether it actually happened. Resolves to `false` on devices without haptics rather than throwing.
