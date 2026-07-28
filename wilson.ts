@@ -4117,7 +4117,7 @@ type WilsonGPUXROptions = { useXR?: false } | ({
 	xrDepthNear?: number,
 	xrDepthFar?: number,
 
-	xrFramebufferScaleFactor?: number;
+	xrFramebufferScale?: number;
 
 	xrViewportScale?: number | null; // null uses the device's own recommended value.
 
@@ -4173,7 +4173,7 @@ export class WilsonGPU extends Wilson
 	#xrDepthNear: number = 0.1;
 	#xrDepthFar: number = 1000;
 
-	#xrFramebufferScaleFactor: number = 1;
+	#xrFramebufferScale: number = 1;
 
 	#xrViewportScale: number | null = null;
 	#lastAppliedXRViewportScales: number[] = [];
@@ -4387,7 +4387,7 @@ export class WilsonGPU extends Wilson
 			this.#xrDepthNear = options.xrDepthNear ?? 0.1;
 			this.#xrDepthFar = options.xrDepthFar ?? 1000;
 
-			this.#xrFramebufferScaleFactor = options.xrFramebufferScaleFactor ?? 1;
+			this.#xrFramebufferScale = options.xrFramebufferScale ?? 1;
 
 			this.#xrViewportScale = options.xrViewportScale ?? null;
 
@@ -5571,7 +5571,7 @@ export class WilsonGPU extends Wilson
 				// pixels available. The second factor is per-applet and can scale it down for a
 				// construction-time quality cap.
 				framebufferScaleFactor: XRWebGLLayer.getNativeFramebufferScaleFactor(session)
-					* this.#xrFramebufferScaleFactor
+					* this.#xrFramebufferScale
 			});
 			
 			session.updateRenderState({
