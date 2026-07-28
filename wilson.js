@@ -3225,7 +3225,7 @@ export class WilsonGPU extends Wilson {
                 antialias: false,
                 depth: false,
                 stencil: false,
-                alpha: false,
+                alpha: true,
                 // Initialize the framebuffer (both eyes, side-by-side). Headsets can run in a low-res
                 // mode by default for headroom, so the first factor here ensures we're rendering all the
                 // pixels available. The second factor is per-applet and can scale it down for a
@@ -3398,6 +3398,9 @@ _WilsonGPU_useWebGL2 = new WeakMap(), _WilsonGPU_shaderPrograms = new WeakMap(),
             < Math.abs(closestRate - __classPrivateFieldGet(this, _WilsonGPU_xrTargetFrameRate, "f"))) {
             closestRate = rate;
         }
+    }
+    if (this.verbose) {
+        console.log(`[Wilson] Available XR framerates are ${supportedFrameRates}; using ${closestRate}.`);
     }
     session.updateTargetFrameRate(closestRate).catch((ex) => {
         if (this.verbose) {
