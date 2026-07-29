@@ -4156,6 +4156,16 @@ type MultipleShaders = {
 const XR_MODE = "immersive-vr";
 const REFERENCE_SPACE = "local";
 
+// Shared between the layer built when a session starts and every replacement that
+// xrFramebufferScale swaps in, so that changing the scale can't quietly change anything
+// else about the framebuffer.
+const XR_LAYER_OPTIONS: XRWebGLLayerInit = {
+	antialias: false,
+	depth: false,
+	stencil: false,
+	alpha: true,
+};
+
 type WilsonGPUXRData = {
 	session: XRSession,
 	refSpace: XRReferenceSpace,
@@ -4328,7 +4338,6 @@ function createXRControllerPose(): XRControllerPose
 type XRButtonOptions = {
 	useButton?: true,
 	buttonIconPath: string,
-	buttonLoadingIconPath: string,
 } | {
 	useButton?: false,
 };
@@ -4339,6 +4348,7 @@ export type XROptions = {
 	onEnter?: () => void,
 	onExit?: () => void,
 	onFrameStart?: OnXRFrameStart,
+	onAvailabilityChange?: (isSupported: boolean) => void,
 	onVisibilityChange?: (state: XRVisibilityState) => void,
 	onFrameRateChange?: (frameRate: number | undefined) => void,
 
@@ -4398,7 +4408,6 @@ export class WilsonGPU extends Wilson
 	
 	#useXRButton: boolean = false;
 	#xrButtonIconPath?: string;
-	#xrButtonLoadingIconPath?: string;
 	#xrButton: HTMLElement | null = null;
 	#xrButtonImg: HTMLImageElement | null = null;
 	#xrButtonText: HTMLElement | null = null;
@@ -4408,8 +4417,9 @@ export class WilsonGPU extends Wilson
 
 	#renderXRFrame: RenderXRFrame = () => {};
 
-	// The single source of truth about the base layer; if that ever gets changed,
-	// this needs to reflect it.
+	// The single source of truth about the base layer. Its baseLayer is always the one the
+	// current frame is rendering into, which is not necessarily the newest one handed to
+	// updateRenderState(); #onXRFrame resyncs it from the session at the top of every frame.
 	#xrData?: WilsonGPUXRData;
 
 	#xrRequiredFeatures: string[] = [];
@@ -4418,6 +4428,61 @@ export class WilsonGPU extends Wilson
 	#xrDepthFar: number = 1000;
 
 	#xrFramebufferScale: number = 1;
+
+	get xrFramebufferScale() { return this.#xrFramebufferScale; }
+	set xrFramebufferScale(value: number)
+	{
+		if (value <= 0)
+		{
+			if (this.verbose)
+			{
+				console.warn("[Wilson] Setting xrFramebufferScale to a nonpositive value has no effect.");
+			}
+
+			return;
+		}
+
+		// Rebuilding the layer is expensive enough that it's worth not doing it for a write
+		// that wouldn't change anything.
+		if (value === this.#xrFramebufferScale)
+		{
+			return;
+		}
+
+		this.#xrFramebufferScale = value;
+
+		if (!this.#xrData)
+		{
+			return;
+		}
+
+		// framebufferScaleFactor is fixed once a layer exists, so changing the render resolution
+		// means building a replacement and swapping it in. That's allowed mid-session, but it
+		// reallocates the swapchain and usually costs a frame or two, so this is a coarse quality
+		// step to be debounced rather than a per-frame knob — xrViewportScale is the free one,
+		// on the headsets that implement it.
+		this.#xrData.session.updateRenderState({
+			baseLayer: this.#createXRBaseLayer(this.#xrData.session)
+		});
+	}
+
+	#createXRBaseLayer(session: XRSession)
+	{
+		const baseLayer = new XRWebGLLayer(session, this.gl, {
+			...XR_LAYER_OPTIONS,
+			// Headsets can run in a low-res mode by default for headroom, so the native factor
+			// ensures we're rendering all the pixels available, and the applet's own factor
+			// scales down from there.
+			framebufferScaleFactor: XRWebGLLayer.getNativeFramebufferScaleFactor(session)
+				* this.#xrFramebufferScale
+		});
+
+		// Foveation is a property of the layer, so a replacement starts at the runtime's default
+		// instead of inheriting what the layer it's replacing had.
+		baseLayer.fixedFoveation = this.#xrFixedFoveation;
+
+		return baseLayer;
+	}
 
 	#xrViewportScale: number | null = null;
 	#lastAppliedXRViewportScales: number[] = [];
@@ -4487,6 +4552,7 @@ export class WilsonGPU extends Wilson
 		onEnter: () => void,
 		onExit: () => void,
 		onFrameStart: OnXRFrameStart,
+		onAvailabilityChange: (isSupported: boolean) => void,
 		onVisibilityChange: (state: XRVisibilityState) => void,
 		onFrameRateChange: (frameRate: number | undefined) => void,
 		onControllerConnect: OnXRControllerChange,
@@ -4503,6 +4569,7 @@ export class WilsonGPU extends Wilson
 		onEnter: () => {},
 		onExit: () => {},
 		onFrameStart: () => {},
+		onAvailabilityChange: () => {},
 		onVisibilityChange: () => {},
 		onFrameRateChange: () => {},
 		onControllerConnect: () => {},
@@ -4656,12 +4723,7 @@ export class WilsonGPU extends Wilson
 	{
 		this.#useXRButton = options?.useButton ?? false;
 		this.#xrButtonIconPath = options?.useButton ? options.buttonIconPath : undefined;
-		this.#xrButtonLoadingIconPath = options?.useButton
-			? options.buttonLoadingIconPath
-			: undefined;
 		this.#initXRButton();
-
-		this.#checkXRSupport();
 
 		navigator.xr?.addEventListener("devicechange", this.#onDeviceChange);
 
@@ -4678,6 +4740,7 @@ export class WilsonGPU extends Wilson
 			onEnter: options?.onEnter ?? (() => {}),
 			onExit: options?.onExit ?? (() => {}),
 			onFrameStart: options?.onFrameStart ?? (() => {}),
+			onAvailabilityChange: options?.onAvailabilityChange ?? (() => {}),
 			onVisibilityChange: options?.onVisibilityChange ?? (() => {}),
 			onFrameRateChange: options?.onFrameRateChange ?? (() => {}),
 			onControllerConnect: options?.onControllerConnect ?? (() => {}),
@@ -4691,6 +4754,10 @@ export class WilsonGPU extends Wilson
 			onButtonDown: options?.onButtonDown ?? (() => {}),
 			onButtonUp: options?.onButtonUp ?? (() => {})
 		};
+
+		// Deliberately after the callbacks are in place: the first check reports its result, and
+		// an applet that passed onAvailabilityChange should hear about it.
+		this.#checkXRSupport();
 
 		this.#xrRequiredFeatures = options?.requiredFeatures ?? [];
 		this.#xrOptionalFeatures = options?.optionalFeatures ?? [];
@@ -4721,6 +4788,10 @@ export class WilsonGPU extends Wilson
 		this.#xrTargetFrameRate = options?.targetFrameRate;
 	}
 
+	// Tracked separately from #xrIsSupportedNow, which every check resets to null before it
+	// knows the answer, so that a check whose result matches the last one reported can tell.
+	#lastReportedXRAvailability: boolean | null = null;
+
 	#checkXRSupport()
 	{
 		this.#xrIsSupportedNow = null;
@@ -4738,6 +4809,16 @@ export class WilsonGPU extends Wilson
 				if (this.#xrButton)
 				{
 					this.#xrButton.style.display = supported ? "flex" : "none";
+				}
+
+				// Rechecks happen on every devicechange and every time the page regains focus, so
+				// most of them find exactly what the last one did; only actual changes are worth
+				// reporting. The first check always is one, since availability starts unknown.
+				if (supported !== this.#lastReportedXRAvailability)
+				{
+					this.#lastReportedXRAvailability = supported;
+
+					this.#xrCallbacks.onAvailabilityChange(supported);
 				}
 
 				return supported;
@@ -4767,9 +4848,10 @@ export class WilsonGPU extends Wilson
 			return;
 		}
 
-		this.#xrButtonImg.src = (
-			loading ? this.#xrButtonLoadingIconPath : this.#xrButtonIconPath
-		) as string;
+		if (this.#xrButtonText)
+		{
+			this.#xrButtonText.textContent = loading ? "Loading..." : "Enter VR";
+		}
 
 		this.#xrButton.classList.toggle("WILSON_xr-button-loading", loading);
 	}
@@ -4804,18 +4886,18 @@ export class WilsonGPU extends Wilson
 				hideInFullscreen: true,
 			});
 
-			// Entering XR can take tens of seconds on tethered headsets, so the swap to the
-			// loading icon needs to be instant rather than waiting on a first fetch.
-			const preloadedLoadingIcon = new Image();
-			preloadedLoadingIcon.src = this.#xrButtonLoadingIconPath as string;
-
 			this.#xrButton.addEventListener("click", async () =>
 			{
 				this.#setXRButtonLoading(true);
 
 				// Resolves once the session is running, or immediately on any failure, so the
 				// icon never stays spinning after a cancelled or rejected launch.
-				await this.enterXR();
+				const result = await this.enterXR();
+
+				if (!result)
+				{
+					window.alert("Failed to enter VR. Try reconnecting your headset and restarting your browser.");
+				}
 
 				this.#setXRButtonLoading(false);
 			});
@@ -5864,19 +5946,9 @@ export class WilsonGPU extends Wilson
 		
 		try
 		{
-			const baseLayer = new XRWebGLLayer(session, this.gl, {
-				antialias: false,
-				depth: false,
-				stencil: false,
-				alpha: true,
-				// Initialize the framebuffer (both eyes, side-by-side). Headsets can run in a low-res
-				// mode by default for headroom, so the first factor here ensures we're rendering all the
-				// pixels available. The second factor is per-applet and can scale it down for a
-				// construction-time quality cap.
-				framebufferScaleFactor: XRWebGLLayer.getNativeFramebufferScaleFactor(session)
-					* this.#xrFramebufferScale
-			});
-			
+			// Initializes the framebuffer (both eyes, side-by-side).
+			const baseLayer = this.#createXRBaseLayer(session);
+
 			session.updateRenderState({
 				baseLayer,
 				depthNear: this.#xrDepthNear,
@@ -5888,8 +5960,6 @@ export class WilsonGPU extends Wilson
 			this.#xrData = { session, refSpace, baseLayer };
 
 			this.#applyXRTargetFrameRate();
-			// Calls the setter, so it updates on baseLayer.
-			this.xrFixedFoveation = this.#xrFixedFoveation;
 
 			session.addEventListener("visibilitychange", () =>
 			{
@@ -5964,10 +6034,32 @@ export class WilsonGPU extends Wilson
 		const deltaTime = time - (this.#lastXRTime ?? time);
 		this.#lastXRTime = time;
 
-		const { session, refSpace, baseLayer } = this.#xrData;
+		const { session, refSpace } = this.#xrData;
 
 		// Queue the next frame first so an exception mid-render doesn't stall the loop.
 		session.requestAnimationFrame(this.#onXRFrame);
+
+		// updateRenderState() takes effect asynchronously, so a layer swapped in by
+		// xrFramebufferScale isn't the one this frame renders into until the runtime says it is.
+		// The session's own render state is the only thing that knows which layer that is, so
+		// everything else reads #xrData.baseLayer and this keeps it honest.
+		const baseLayer = session.renderState.baseLayer;
+
+		if (!baseLayer)
+		{
+			this.#lastXRTime = undefined;
+			return;
+		}
+
+		if (baseLayer !== this.#xrData.baseLayer)
+		{
+			// A fresh layer starts at full size no matter what the one it replaced had applied,
+			// so these have to be forgotten or the scale below would be suppressed as redundant
+			// and never actually reapplied.
+			this.#lastAppliedXRViewportScales.length = 0;
+
+			this.#xrData.baseLayer = baseLayer;
+		}
 
 		if (session.visibilityState === "hidden")
 		{
@@ -6636,6 +6728,7 @@ export class WilsonGPU extends Wilson
 			onEnter: () => {},
 			onExit: () => {},
 			onFrameStart: () => {},
+			onAvailabilityChange: () => {},
 			onVisibilityChange: (state: XRVisibilityState) => {},
 			onFrameRateChange: (frameRate: number | undefined) => {},
 			onControllerConnect: () => {},

@@ -168,7 +168,6 @@ function initWilson2()
 		{
 			useButton: true,
 			buttonIconPath: "/xr.png",
-			buttonLoadingIconPath: "/xr-loading.png",
 			renderFrame: () => {},
 		}
 	};
