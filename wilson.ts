@@ -158,6 +158,27 @@ export type FullscreenOptions = {
 	}
 );
 
+/*
+	An extra element that travels with the built-in buttons during a fullscreen
+	transition. Elements that aren't shown in one of the two states declare it
+	here rather than hiding themselves in CSS: a view transition has nothing to
+	animate a one-sided element against, so a stylesheet `display: none` leaves
+	its snapshot fading in place while everything around it slides. Wilson
+	instead does the hiding itself and animates the element to (or from) the spot
+	it would have occupied, so it moves along with its neighbors while they close
+	the gap where it was.
+*/
+export type FullscreenViewTransitionElement = {
+	element: HTMLElement,
+	hideInFullscreen?: boolean,
+	hideOutOfFullscreen?: boolean,
+};
+
+type FullscreenTransitionElementRect = {
+	rect: DOMRect,
+	hidden: boolean,
+};
+
 type ResetButtonOptions = {
 	useResetButton?: true,
 	resetButtonIconPath?: string,
@@ -366,6 +387,7 @@ class Wilson
 	#metaThemeColorElement: HTMLMetaElement | null = document.querySelector("meta[name='theme-color']");
 	#oldMetaThemeColor: string | null = null;
 
+	protected additionalFullscreenViewTransitionElements: FullscreenViewTransitionElement[] = [];
 	#salt = Date.now().toString(36) + Math.random().toString(36).slice(2);
 
 
@@ -2935,6 +2957,8 @@ class Wilson
 		this.#canvasContainer.classList.add("WILSON_fullscreen");
 		this.#fullscreenContainer.classList.add("WILSON_fullscreen");
 
+		this.#syncFullscreenHiddenElements();
+
 
 
 		document.documentElement.style.userSelect = "none";
@@ -3122,6 +3146,150 @@ class Wilson
 		return styleElement;
 	}
 
+
+
+	protected addFullscreenViewTransitionElement(entry: FullscreenViewTransitionElement)
+	{
+		this.additionalFullscreenViewTransitionElements.push(entry);
+		this.#syncFullscreenHiddenElements();
+	}
+
+	// Wilson owns the hiding of one-sided transition elements so that it can briefly
+	// undo it to measure them -- see #fullscreenTransitionElementRect.
+	#syncFullscreenHiddenElements()
+	{
+		for (const entry of this.additionalFullscreenViewTransitionElements)
+		{
+			entry.element.classList.toggle(
+				"WILSON_fullscreen-hidden",
+				!!(this.#currentlyFullscreen ? entry.hideInFullscreen : entry.hideOutOfFullscreen)
+			);
+		}
+	}
+
+	/*
+		The rect an element occupies, or the one it would occupy if it weren't hidden
+		for the current fullscreen state. Un-hiding for the measurement forces a
+		layout but never paints, and letting the layout engine answer the question
+		means any arrangement of buttons works without hardcoded geometry.
+	*/
+	#fullscreenTransitionElementRect(element: HTMLElement)
+	{
+		const hidden = element.classList.contains("WILSON_fullscreen-hidden");
+
+		if (hidden)
+		{
+			element.classList.remove("WILSON_fullscreen-hidden");
+		}
+
+		const rect = element.getBoundingClientRect();
+
+		if (hidden)
+		{
+			element.classList.add("WILSON_fullscreen-hidden");
+		}
+
+		return { rect, hidden };
+	}
+
+	#measureFullscreenTransitionElements()
+	{
+		return this.additionalFullscreenViewTransitionElements.map(
+			({ element }) => this.#fullscreenTransitionElementRect(element)
+		);
+	}
+
+	/*
+		An element shown in only one of the two states has no counterpart for the
+		browser to interpolate against, so its snapshot would just fade where it
+		stands while every other button slides. Give it keyframes running between
+		where it is and where it would be instead, so it drifts along with the rest
+		of the row and lands (invisible) exactly where the layout closed over it.
+	*/
+	#addFullscreenHiddenElementTransitionStyle(
+		before: FullscreenTransitionElementRect[],
+		after: FullscreenTransitionElementRect[]
+	) {
+		let rules = "";
+
+		for (let i = 0; i < this.additionalFullscreenViewTransitionElements.length; i++)
+		{
+			const oldState = before[i];
+			const newState = after[i];
+
+			// Nothing to do when the element is on both sides (the default group
+			// animation already moves it) or on neither (there's no snapshot at all).
+			if (
+				!oldState
+				|| !newState
+				|| oldState.hidden === newState.hidden
+				|| (!oldState.rect.width && !oldState.rect.height)
+				|| (!newState.rect.width && !newState.rect.height)
+			) {
+				continue;
+			}
+
+			const name = `WILSON_transitioning-element-${i}-${this.#salt}`;
+			const keyframesName = `WILSON_transitioning-element-${i}-fade-${this.#salt}`;
+
+			const dx = newState.rect.left - oldState.rect.left;
+			const dy = newState.rect.top - oldState.rect.top;
+
+			/*
+				The scaleX squeezes the snapshot down to nothing so that the element
+				reads as collapsing out of the row rather than merely fading. Scaling
+				about the default center origin lands the collapse on the midpoint of
+				the slot the element would have filled, which is where its neighbors
+				meet -- the translate is written first so it applies after the scale.
+
+				Only ::view-transition-old exists when the element is leaving, and only
+				::view-transition-new when it's arriving.
+			*/
+			rules += newState.hidden
+				? `
+					@keyframes ${keyframesName}
+					{
+						from { transform: translate(0px, 0px) scaleX(1); opacity: 1; }
+						to { transform: translate(${dx}px, ${dy}px) scaleX(0); opacity: 0; }
+					}
+
+					::view-transition-group(${name}) { animation: none; }
+
+					::view-transition-old(${name})
+					{
+						animation-name: ${keyframesName};
+						animation-fill-mode: both;
+					}
+				`
+				: `
+					@keyframes ${keyframesName}
+					{
+						from { transform: translate(${-dx}px, ${-dy}px) scaleX(0); opacity: 0; }
+						to { transform: translate(0px, 0px) scaleX(1); opacity: 1; }
+					}
+
+					::view-transition-group(${name}) { animation: none; }
+
+					::view-transition-new(${name})
+					{
+						animation-name: ${keyframesName};
+						animation-fill-mode: both;
+					}
+				`;
+		}
+
+		if (!rules)
+		{
+			return null;
+		}
+
+		const styleElement = document.createElement("style");
+		styleElement.innerHTML = rules;
+		document.head.appendChild(styleElement);
+
+		return styleElement;
+	}
+
 	async enterFullscreen()
 	{
 		await this.beforeSwitchFullscreen(true);
@@ -3131,7 +3299,8 @@ class Wilson
 			this.#fullscreenExitFullscreenButton,
 			this.#resetButton,
 			this.canvas,
-			...(Object.values(this.#draggables).map(draggable => draggable.element))
+			...(Object.values(this.#draggables).map(entry => entry.element)),
+			...this.additionalFullscreenViewTransitionElements.map(entry => entry.element),
 		];
 
 		for (const element of elements)
@@ -3149,7 +3318,11 @@ class Wilson
 				? this.#addEnterFullscreenFillScreenTransitionStyle()
 				: null;
 
-			if (!this.reduceMotion && !this.crossfadeFullscreen && this.animateFullscreen)
+			const useTransitionNames = !this.reduceMotion
+				&& !this.crossfadeFullscreen
+				&& this.animateFullscreen;
+
+			if (useTransitionNames)
 			{
 				if (this.#fullscreenEnterFullscreenButton)
 				{
@@ -3181,6 +3354,19 @@ class Wilson
 				{
 					data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}-${this.#salt}`);
 				}
+
+				for (let i = 0; i < this.additionalFullscreenViewTransitionElements.length; i++)
+				{
+					const entry = this.additionalFullscreenViewTransitionElements[i];
+
+					if (entry)
+					{
+						entry.element.style.setProperty(
+							"view-transition-name",
+							`WILSON_transitioning-element-${i}-${this.#salt}`
+						);
+					}
+				}
 			}
 
 			// For non-fill-screen mode, suppress the default crossfade on
@@ -3209,24 +3395,46 @@ class Wilson
 
 			if (this.animateFullscreen)
 			{
+				const rectsBefore = useTransitionNames
+					? this.#measureFullscreenTransitionElements()
+					: null;
+
+				// Where the one-sided elements end up is only knowable once the new state
+				// is laid out, so the style goes in from inside the callback -- still
+				// before the browser captures the new snapshots.
+				let hiddenElementStyleElement: HTMLStyleElement | null = null;
+
 				// @ts-ignore
-				const transition = document.startViewTransition(() => this.#enterFullscreen());
+				const transition = document.startViewTransition(() =>
+				{
+					this.#enterFullscreen();
+
+					if (rectsBefore)
+					{
+						hiddenElementStyleElement = this.#addFullscreenHiddenElementTransitionStyle(
+							rectsBefore,
+							this.#measureFullscreenTransitionElements()
+						);
+					}
+				});
+
+				const removeStyleElements = () =>
+				{
+					styleElement?.remove();
+					draggableStyleElement?.remove();
+					hiddenElementStyleElement?.remove();
+				};
 
 				if (transition.finished !== undefined)
 				{
 					await transition.finished;
 
-					styleElement?.remove();
-					draggableStyleElement?.remove();
+					removeStyleElements();
 				}
 
 				else
 				{
-					setTimeout(() =>
-					{
-						styleElement?.remove();
-						draggableStyleElement?.remove();
-					}, 1000);
+					setTimeout(removeStyleElements, 1000);
 				}
 			}
 
@@ -3280,6 +3488,8 @@ class Wilson
 		this.canvas.classList.remove("WILSON_fullscreen");
 		this.#canvasContainer.classList.remove("WILSON_fullscreen");
 		this.#fullscreenContainer.classList.remove("WILSON_fullscreen");
+
+		this.#syncFullscreenHiddenElements();
 
 
 
@@ -3454,7 +3664,8 @@ class Wilson
 			this.#fullscreenExitFullscreenButton,
 			this.#resetButton,
 			this.canvas,
-			...(Object.values(this.#draggables).map(draggable => draggable.element))
+			...(Object.values(this.#draggables).map(entry => entry.element)),
+			...this.additionalFullscreenViewTransitionElements.map(entry => entry.element),
 		];
 
 		for (const element of elements)
@@ -3472,8 +3683,7 @@ class Wilson
 				? this.#addExitFullscreenFillScreenTransitionStyle()
 				: null;
 
-			if (
-				!this.reduceMotion
+			const useTransitionNames = !this.reduceMotion
 				&& !this.crossfadeFullscreen
 				&& this.animateFullscreen
 				&& (
@@ -3482,8 +3692,10 @@ class Wilson
 						window.innerWidth == this.#fullscreenInitialWindowInnerWidth
 						&& window.innerHeight == this.#fullscreenInitialWindowInnerHeight
 					)
-				)
-			) {
+				);
+
+			if (useTransitionNames)
+			{
 				if (this.#fullscreenEnterFullscreenButton)
 				{
 					this.#fullscreenEnterFullscreenButton.style.setProperty(
@@ -3514,6 +3726,19 @@ class Wilson
 				{
 					data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}-${this.#salt}`);
 				}
+
+				for (let i = 0; i < this.additionalFullscreenViewTransitionElements.length; i++)
+				{
+					const entry = this.additionalFullscreenViewTransitionElements[i];
+
+					if (entry)
+					{
+						entry.element.style.setProperty(
+							"view-transition-name",
+							`WILSON_transitioning-element-${i}-${this.#salt}`
+						);
+					}
+				}
 			}
 
 			// For non-fill-screen mode, suppress the default crossfade on
@@ -3542,24 +3767,46 @@ class Wilson
 
 			if (this.animateFullscreen)
 			{
+				const rectsBefore = useTransitionNames
+					? this.#measureFullscreenTransitionElements()
+					: null;
+
+				// Where the one-sided elements come from is only knowable once the new
+				// state is laid out, so the style goes in from inside the callback --
+				// still before the browser captures the new snapshots.
+				let hiddenElementStyleElement: HTMLStyleElement | null = null;
+
 				// @ts-ignore
-				const transition = document.startViewTransition(() => this.#exitFullscreen());
+				const transition = document.startViewTransition(() =>
+				{
+					this.#exitFullscreen();
+
+					if (rectsBefore)
+					{
+						hiddenElementStyleElement = this.#addFullscreenHiddenElementTransitionStyle(
+							rectsBefore,
+							this.#measureFullscreenTransitionElements()
+						);
+					}
+				});
+
+				const removeStyleElements = () =>
+				{
+					styleElement?.remove();
+					draggableStyleElement?.remove();
+					hiddenElementStyleElement?.remove();
+				};
 
 				if (transition.finished !== undefined)
 				{
 					await transition.finished;
 
-					styleElement?.remove();
-					draggableStyleElement?.remove();
+					removeStyleElements();
 				}
 
 				else
 				{
-					setTimeout(() =>
-					{
-						styleElement?.remove();
-						draggableStyleElement?.remove();
-					}, 1000);
+					setTimeout(removeStyleElements, 1000);
 				}
 			}
 
@@ -4154,6 +4401,7 @@ export class WilsonGPU extends Wilson
 	#xrButtonLoadingIconPath?: string;
 	#xrButton: HTMLElement | null = null;
 	#xrButtonImg: HTMLImageElement | null = null;
+	#xrButtonText: HTMLElement | null = null;
 
 	xrIsSupported: Promise<boolean> = Promise.resolve(false);
 	#xrIsSupportedNow: boolean | null = null; // Resolves to a boolean once known.
@@ -4489,7 +4737,7 @@ export class WilsonGPU extends Wilson
 
 				if (this.#xrButton)
 				{
-					this.#xrButton.style.display = supported ? "block" : "none";
+					this.#xrButton.style.display = supported ? "flex" : "none";
 				}
 
 				return supported;
@@ -4536,7 +4784,7 @@ export class WilsonGPU extends Wilson
 
 			// If #xrIsSupportedNow is a boolean already, this will correctly set the style.
 			// If it's still null, it will keep it hidden until #checkXRSupport finishes.
-			this.#xrButton.style.display = this.#xrIsSupportedNow ? "block" : "none";
+			this.#xrButton.style.display = this.#xrIsSupportedNow ? "flex" : "none";
 
 			this.buttonContainer.appendChild(this.#xrButton);
 
@@ -4544,6 +4792,17 @@ export class WilsonGPU extends Wilson
 			img.src = this.#xrButtonIconPath as string;
 			this.#xrButton.appendChild(img);
 			this.#xrButtonImg = img;
+
+			const text = document.createElement("div");
+			text.classList.add("WILSON_xr-button-text");
+			text.textContent = "Enter VR";
+			this.#xrButton.appendChild(text);
+			this.#xrButtonText = text;
+
+			this.addFullscreenViewTransitionElement({
+				element: this.#xrButton,
+				hideInFullscreen: true,
+			});
 
 			// Entering XR can take tens of seconds on tethered headsets, so the swap to the
 			// loading icon needs to be instant rather than waiting on a first fetch.

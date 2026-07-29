@@ -145,6 +145,17 @@
 
 
 
+/*
+	Applied by Wilson (not by a stylesheet rule) to elements that aren't shown in
+	one of the two fullscreen states, so that it can lift the class for a moment
+	to measure where they'd otherwise sit. !important because the elements
+	themselves may set an inline display.
+*/
+.WILSON_fullscreen-hidden
+{
+	display: none !important;
+}
+
 .WILSON_button
 {
 	width: 16px;
@@ -171,11 +182,26 @@
 
 .WILSON_xr-button
 {
-	order: 1;
-
-	width: 19px;
+	width: fit-content;
 	height: 19px;
 	padding: 3.5px;
+	display: flex;
+	align-items: center;
+	column-gap: 3.5px;
+}
+
+.WILSON_xr-button img
+{
+	width: 19px;
+	height: 19px;
+
+	display: flex;
+}
+
+.WILSON_xr-button-text
+{
+	font-size: 14px;
+	padding-right: 1px;
 }
 
 .WILSON_reset-button
@@ -203,13 +229,12 @@
 
 .WILSON_button img
 {
-	width: 100%;
 	height: 100%;
 }
 
 .WILSON_xr-button.WILSON_xr-button-loading img
 {
-	animation: WILSON_xr-button-spin 1s linear infinite;
+	animation: WILSON_xr-button-spin 2s linear infinite;
 }
 
 @keyframes WILSON_xr-button-spin
