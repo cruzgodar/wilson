@@ -4794,7 +4794,7 @@ export class WilsonGPU extends Wilson
 			this.#xrButtonImg = img;
 
 			const text = document.createElement("div");
-			text.classList.add("WILSON_xr-button-text");
+			text.classList.add("WILSON_button-text");
 			text.textContent = "Enter VR";
 			this.#xrButton.appendChild(text);
 			this.#xrButtonText = text;

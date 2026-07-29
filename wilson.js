@@ -3641,7 +3641,7 @@ _WilsonGPU_useWebGL2 = new WeakMap(), _WilsonGPU_shaderPrograms = new WeakMap(),
         __classPrivateFieldGet(this, _WilsonGPU_xrButton, "f").appendChild(img);
         __classPrivateFieldSet(this, _WilsonGPU_xrButtonImg, img, "f");
         const text = document.createElement("div");
-        text.classList.add("WILSON_xr-button-text");
+        text.classList.add("WILSON_button-text");
         text.textContent = "Enter VR";
         __classPrivateFieldGet(this, _WilsonGPU_xrButton, "f").appendChild(text);
         __classPrivateFieldSet(this, _WilsonGPU_xrButtonText, text, "f");
