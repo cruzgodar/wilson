@@ -4383,6 +4383,36 @@ export type WilsonGPUOptions = WilsonOptions
 	& (SingleShader | MultipleShaders)
 	& { useWebGL2?: boolean }
 	& { xrOptions?: XROptions}
+	& {
+		// Fired when a shader finishes compiling and linking. Since compilation is deferred
+		// off the main thread, a shader is generally not drawable in the same tick that
+		// loadShader() is called, and callers that only draw on demand need to know when to
+		// ask for that first frame.
+		onShaderLoad?: (id: ShaderProgramId) => void,
+
+		// Measures how long the GPU actually spends on drawFrame() calls. Off by default:
+		// the queries are cheap but not free, and the underlying extension is unavailable
+		// on plenty of configurations.
+		useGpuTiming?: boolean,
+	}
+
+// Everything needed to finish a shader once the driver reports it's done compiling.
+type PendingShader = {
+	program: WebGLProgram,
+	vertexShader: WebGLShader,
+	fragShader: WebGLShader,
+	vertexShaderSource: string,
+	source: string,
+	uniforms: UniformInitializers,
+	callbacks: { resolve: () => void, reject: (error: Error) => void }[],
+
+	// Restored as the current shader if this one turns out not to compile, so a failed load
+	// leaves the previously working shader selected rather than a dead id.
+	previousShaderId: ShaderProgramId,
+};
+
+// KHR_parallel_shader_compile only exposes this one constant.
+const COMPLETION_STATUS_KHR = 0x91B1;
 
 export class WilsonGPU extends Wilson
 {
@@ -4393,6 +4423,10 @@ export class WilsonGPU extends Wilson
 	#shaderPrograms: {[id: ShaderProgramId]: WebGLProgram} = {};
 
 	#shaderProgramSources: {[id: ShaderProgramId]: string} = {};
+
+	// The base class's destroyed flag is private to it, and the deferred shader polling needs
+	// to know to stop.
+	#destroyedGPU: boolean = false;
 
 	#uniforms: {
 		[id: ShaderProgramId]: {
@@ -4668,7 +4702,11 @@ export class WilsonGPU extends Wilson
 
 		this.gl = gl;
 
-		this.gl.getExtension("KHR_parallel_shader_compile");
+		this.#parallelCompileSupported = this.gl.getExtension("KHR_parallel_shader_compile") !== null;
+
+		this.#onShaderLoad = options.onShaderLoad ?? (() => {});
+
+		this.#initGpuTiming(options.useGpuTiming ?? false);
 
 		if (
 			this.gl instanceof WebGL2RenderingContext
@@ -4906,14 +4944,84 @@ export class WilsonGPU extends Wilson
 
 
 
+	// Set when drawFrame() had to bail because the shader wasn't linked yet, so that
+	// #finalizeShader can honor the request as soon as it can. Without this, a caller that
+	// only draws when something changes would drop its one and only draw and stay blank.
+	#drawFrameRequestedWhilePending: boolean = false;
+
 	drawFrame()
 	{
+		// A shader that's still linking has no program to draw with.
+		if (this.#pendingShaders[this.#currentShaderId])
+		{
+			this.#pollPendingShaders();
+
+			if (this.#pendingShaders[this.#currentShaderId])
+			{
+				this.#drawFrameRequestedWhilePending = true;
+				return;
+			}
+		}
+
+		this.beginGpuTimer();
+
 		this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
+		this.endGpuTimer();
 	}
 
 	#numShaders = 0;
 	#currentShaderId: ShaderProgramId = "0";
 	#currentProgram: WebGLProgram | null = null;
+
+	// KHR_parallel_shader_compile lets the driver compile and link on its own threads, but
+	// any question about the result -- COMPILE_STATUS, LINK_STATUS, getAttribLocation,
+	// getUniformLocation -- blocks the main thread until it's finished, which is the exact
+	// stall the extension exists to remove. So everything after linkProgram is deferred
+	// until COMPLETION_STATUS_KHR says the program is done.
+	#parallelCompileSupported: boolean = false;
+	#pendingShaders: {[id: ShaderProgramId]: PendingShader} = {};
+	#pendingUniforms: {[id: ShaderProgramId]: UniformInitializers} = {};
+	#pollPendingShadersScheduled: boolean = false;
+	#onShaderLoad: (id: ShaderProgramId) => void = () => {};
+
+	static #vertexShaderSource = /* glsl*/`
+		attribute vec3 position;
+		varying vec2 uv;
+
+		void main(void)
+		{
+			gl_Position = vec4(position, 1.0);
+
+			//Interpolate quad coordinates in the fragment shader.
+			uv = position.xy;
+		}
+	`;
+
+	get numPendingShaders() { return Object.keys(this.#pendingShaders).length; }
+
+	shaderIsReady(id: ShaderProgramId = this.#currentShaderId)
+	{
+		return this.#shaderPrograms[id] !== undefined && this.#pendingShaders[id] === undefined;
+	}
+
+	// Resolves once the shader is drawable, or rejects with the compile/link error.
+	whenShaderReady(id: ShaderProgramId = this.#currentShaderId): Promise<void>
+	{
+		if (this.shaderIsReady(id))
+		{
+			return Promise.resolve();
+		}
+
+		const pending = this.#pendingShaders[id];
+
+		if (!pending)
+		{
+			return Promise.reject(new Error(`[Wilson] No shader with id ${id}.`));
+		}
+
+		return new Promise((resolve, reject) => pending.callbacks.push({ resolve, reject }));
+	}
 
 	loadShader({
 		id = this.#numShaders.toString(),
@@ -4924,18 +5032,11 @@ export class WilsonGPU extends Wilson
 		shader: string,
 		uniforms?: UniformInitializers
 	}) {
-		const vertexShaderSource = /* glsl*/`
-			attribute vec3 position;
-			varying vec2 uv;
+		const vertexShaderSource = WilsonGPU.#vertexShaderSource;
 
-			void main(void)
-			{
-				gl_Position = vec4(position, 1.0);
-
-				//Interpolate quad coordinates in the fragment shader.
-				uv = position.xy;
-			}
-		`;
+		// A second load of the same id while the first is still in flight: the old attempt
+		// is never going to be used, so drop it rather than letting it finalize on top of us.
+		this.#discardPendingShader(id);
 
 		const vertexShader = this.gl.createShader(this.gl.VERTEX_SHADER);
 		const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
@@ -4945,8 +5046,6 @@ export class WilsonGPU extends Wilson
 			throw new Error(`[Wilson] Couldn't create shader: ${vertexShader}, ${fragShader}`);
 		}
 
-		this.#shaders.push(vertexShader, fragShader);
-
 		const shaderProgram = this.gl.createProgram();
 
 		if (!shaderProgram)
@@ -4954,18 +5053,189 @@ export class WilsonGPU extends Wilson
 			throw new Error(`[Wilson] Couldn't create shader program. Full shader source: ${shader}`);
 		}
 
-		this.#shaderPrograms[id] = shaderProgram;
 		this.#shaderProgramSources[id] = shader;
 		this.#numShaders++;
 
-		this.gl.attachShader(this.#shaderPrograms[id], vertexShader);
-		this.gl.attachShader(this.#shaderPrograms[id], fragShader);
+		this.gl.attachShader(shaderProgram, vertexShader);
+		this.gl.attachShader(shaderProgram, fragShader);
 
 		this.gl.shaderSource(vertexShader, vertexShaderSource);
 		this.gl.shaderSource(fragShader, shader);
 
 		this.gl.compileShader(vertexShader);
 		this.gl.compileShader(fragShader);
+
+		this.gl.linkProgram(shaderProgram);
+
+		this.#pendingShaders[id] = {
+			program: shaderProgram,
+			vertexShader,
+			fragShader,
+			vertexShaderSource,
+			source: shader,
+			uniforms,
+			callbacks: [],
+			previousShaderId: this.#currentShaderId,
+		};
+
+		// loadShader has always made its shader the current one, and callers rely on that to
+		// address it with the default shader argument of setUniforms. That stays true while
+		// it's pending; #useProgram just has nothing to bind yet.
+		this.#currentShaderId = id;
+
+		if (this.#parallelCompileSupported)
+		{
+			this.#schedulePollPendingShaders();
+		}
+
+		else
+		{
+			// Without the extension there's nothing to wait for -- the driver has already
+			// done the work synchronously inside compileShader/linkProgram.
+			this.#finalizeShader(id);
+		}
+	}
+
+	#schedulePollPendingShaders()
+	{
+		if (this.#pollPendingShadersScheduled || this.numPendingShaders === 0)
+		{
+			return;
+		}
+
+		this.#pollPendingShadersScheduled = true;
+
+		// requestAnimationFrame keeps the check in step with rendering, but it never fires on
+		// a hidden tab, and compilation still has to finish there -- whenShaderReady() is what
+		// readHighResPixels() waits on, and that runs happily in the background. So a timer
+		// races the frame callback and whichever arrives first does the work.
+		let alreadyRan = false;
+
+		const run = () =>
+		{
+			if (alreadyRan)
+			{
+				return;
+			}
+
+			alreadyRan = true;
+			this.#pollPendingShadersScheduled = false;
+
+			if (this.#destroyedGPU)
+			{
+				return;
+			}
+
+			this.#pollPendingShaders();
+			this.#schedulePollPendingShaders();
+		};
+
+		requestAnimationFrame(run);
+		setTimeout(run, 16);
+	}
+
+	#pollPendingShaders()
+	{
+		for (const id of Object.keys(this.#pendingShaders))
+		{
+			const pending = this.#pendingShaders[id];
+
+			if (
+				!this.#parallelCompileSupported
+				|| this.gl.getProgramParameter(pending.program, COMPLETION_STATUS_KHR)
+			) {
+				// One shader failing to compile must not stop the others from finalizing, so
+				// the error is rethrown out of band: still an uncaught error in the console,
+				// but not one that unwinds the sweep and kills the polling loop with it.
+				try
+				{
+					this.#finalizeShader(id);
+				}
+
+				catch(error)
+				{
+					setTimeout(() => { throw error; });
+				}
+			}
+		}
+	}
+
+	#discardPendingShader(id: ShaderProgramId)
+	{
+		const pending = this.#pendingShaders[id];
+
+		if (!pending)
+		{
+			return;
+		}
+
+		delete this.#pendingShaders[id];
+
+		this.gl.deleteShader(pending.vertexShader);
+		this.gl.deleteShader(pending.fragShader);
+		this.gl.deleteProgram(pending.program);
+
+		const error = new Error(`[Wilson] Shader with id ${id} was replaced before it finished loading.`);
+
+		for (const { reject } of pending.callbacks)
+		{
+			reject(error);
+		}
+	}
+
+	// Everything that has to wait for the driver: status checks, attribute and uniform
+	// locations, and the buffer setup that depends on them.
+	#finalizeShader(id: ShaderProgramId)
+	{
+		const pending = this.#pendingShaders[id];
+
+		if (!pending)
+		{
+			return;
+		}
+
+		const {
+			program,
+			vertexShader,
+			fragShader,
+			vertexShaderSource,
+			source: shader,
+			uniforms,
+			callbacks,
+			previousShaderId
+		} = pending;
+
+		delete this.#pendingShaders[id];
+
+		const fail = (message: string) =>
+		{
+			this.gl.deleteShader(vertexShader);
+			this.gl.deleteShader(fragShader);
+			this.gl.deleteProgram(program);
+
+			delete this.#pendingUniforms[id];
+
+			// Don't leave a broken shader selected -- go back to whatever was current before.
+			if (this.#currentShaderId === id && previousShaderId !== id)
+			{
+				this.useShader(previousShaderId);
+			}
+
+			const error = new Error(message);
+
+			for (const { reject } of callbacks)
+			{
+				reject(error);
+			}
+
+			// Callers that never asked for the promise still need to hear about this.
+			if (callbacks.length === 0)
+			{
+				throw error;
+			}
+
+			return error;
+		};
 
 		if (!this.gl.getShaderParameter(vertexShader, this.gl.COMPILE_STATUS))
 		{
@@ -4976,7 +5246,8 @@ export class WilsonGPU extends Wilson
 			console.log(shader);
 			console.groupEnd();
 
-			throw new Error(`[Wilson] Couldn't compile vertex shader with id ${id}. ${infoLog}`);
+			fail(`[Wilson] Couldn't compile vertex shader with id ${id}. ${infoLog}`);
+			return;
 		}
 
 		if (!this.gl.getShaderParameter(fragShader, this.gl.COMPILE_STATUS))
@@ -4988,17 +5259,46 @@ export class WilsonGPU extends Wilson
 			console.log(shader);
 			console.groupEnd();
 
-			throw new Error(`[Wilson] Couldn't compile fragment shader with id ${id}. ${infoLog}`);
+			fail(`[Wilson] Couldn't compile fragment shader with id ${id}. ${infoLog}`);
+			return;
 		}
 
-		this.gl.linkProgram(this.#shaderPrograms[id]);
-
-		if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS))
+		if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS))
 		{
-			throw new Error(`[Wilson] Couldn't link shader program with id ${id}: ${this.gl.getProgramInfoLog(shaderProgram)}`);
+			fail(`[Wilson] Couldn't link shader program with id ${id}: ${this.gl.getProgramInfoLog(program)}`);
+			return;
 		}
 
-		this.useShader(id);
+		const positionAttribute = this.gl.getAttribLocation(program, "position");
+
+		if (positionAttribute === -1)
+		{
+			console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+			console.log(shader);
+			console.groupEnd();
+
+			fail(`[Wilson] Couldn't get position attribute for shader with id ${id}.`);
+			return;
+		}
+
+		// The program is good, so it can replace whatever was under this id before. Reloading
+		// a shader keeps drawing the old one right up to this point.
+		const oldProgram = this.#shaderPrograms[id];
+
+		if (oldProgram)
+		{
+			if (this.#currentProgram === oldProgram)
+			{
+				this.#currentProgram = null;
+			}
+
+			this.gl.deleteProgram(oldProgram);
+		}
+
+		this.#shaderPrograms[id] = program;
+		this.#shaders.push(vertexShader, fragShader);
+
+		this.#useProgram(program);
 
 		const positionBuffer = this.gl.createBuffer();
 
@@ -5019,29 +5319,36 @@ export class WilsonGPU extends Wilson
 		];
 		this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(quad), this.gl.STATIC_DRAW);
 
-		const positionAttribute = this.gl.getAttribLocation(this.#shaderPrograms[id], "position");
-
-		if (positionAttribute === -1)
-		{
-			console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
-			console.log(shader);
-			console.groupEnd();
-			
-			throw new Error(`[Wilson] Couldn't get position attribute for shader with id ${id}.`);
-		}
-
 		this.gl.enableVertexAttribArray(positionAttribute);
 		this.gl.vertexAttribPointer(positionAttribute, 3, this.gl.FLOAT, false, 0, 0);
-		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
+
+		// Finalizing can land in the middle of an XR frame, since drawFrame() polls. Resetting
+		// to the canvas viewport there would render the eye into the wrong part of the layer.
+		if (this.#xrViewport)
+		{
+			const { x, y, width, height } = this.#xrViewport;
+			this.gl.viewport(x, y, width, height);
+		}
+
+		else
+		{
+			this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
+		}
 
 
 
-		// Initialize the uniforms.
+		// Initialize the uniforms. Anything set while the shader was pending was buffered
+		// rather than uploaded, and those values win over the initializers.
 		this.#uniforms[id] = {};
 
-		for (const [name, value] of Object.entries(uniforms))
+		const bufferedUniforms = this.#pendingUniforms[id] ?? {};
+		delete this.#pendingUniforms[id];
+
+		const allUniforms = { ...uniforms, ...bufferedUniforms };
+
+		for (const [name, value] of Object.entries(allUniforms))
 		{
-			const location = this.gl.getUniformLocation(this.#shaderPrograms[id], name);
+			const location = this.gl.getUniformLocation(program, name);
 
 			if (location === null)
 			{
@@ -5062,10 +5369,10 @@ export class WilsonGPU extends Wilson
 				console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
 				console.log(shader);
 				console.groupEnd();
-				
+
 				throw new Error(`[Wilson] Couldn't find uniform ${name} in shader with id ${id}.`);
 			}
-			
+
 			const type = match[1].trim() + (match[2] ? "Array" : "");
 
 			if (!(type in uniformFunctions))
@@ -5073,19 +5380,309 @@ export class WilsonGPU extends Wilson
 				console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
 				console.log(shader);
 				console.groupEnd();
-				
+
 				throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader with id ${id}.`);
 			}
 
 			this.#uniforms[id][name] = { location, type: type as UniformType };
-			this.setUniforms({ [name]: value });
+			this.setUniforms({ [name]: value }, id);
+		}
+
+		// Make sure the program bound at the end is the one the caller expects, which is not
+		// necessarily this one if several shaders were in flight at once.
+		if (this.#shaderPrograms[this.#currentShaderId])
+		{
+			this.#useProgram(this.#shaderPrograms[this.#currentShaderId]);
+		}
+
+		for (const { resolve } of callbacks)
+		{
+			resolve();
+		}
+
+		this.#onShaderLoad(id);
+
+		// Replay a draw that was dropped while this shader was compiling, so callers that
+		// draw on demand rather than every frame don't need to know any of this happened.
+		if (this.#drawFrameRequestedWhilePending && !this.#pendingShaders[this.#currentShaderId])
+		{
+			this.#drawFrameRequestedWhilePending = false;
+			this.drawFrame();
 		}
 	}
 
+	// GPU timing. EXT_disjoint_timer_query measures how long the GPU spent on a range of
+	// commands, which is the only honest way to profile a fragment-bound renderer: rAF deltas
+	// tell you when frames landed, not how much headroom is left, and they cap out at the
+	// display refresh rate no matter how fast the shader is.
+	//
+	// Results come back asynchronously -- typically one to three frames later -- so queries
+	// are pooled and polled rather than waited on. Reading a result before it's available
+	// would stall the pipeline and defeat the purpose.
+
+	#gpuTimerExtension: any = null;
+	#gpuTimerUsesWebGL2Api: boolean = false;
+	#gpuTimerPool: WebGLQuery[] = [];
+	#gpuTimerPending: WebGLQuery[] = [];
+	#gpuTimerActive: WebGLQuery | null = null;
+	#gpuTimerDepth: number = 0;
+	#lastGpuFrameTime: number | undefined = undefined;
+	#averageGpuFrameTime: number | undefined = undefined;
+
+	// If results stop arriving (a lost or hung context), stop allocating queries forever.
+	#maxPendingGpuTimers: number = 8;
+
+	useGpuTiming: boolean = false;
+
+	// Weight of each new sample in the running average. Low enough to ride out a single
+	// expensive frame, high enough to follow a real change within a few frames.
+	gpuTimingSmoothing: number = 0.15;
+
+	get gpuTimingSupported() { return this.#gpuTimerExtension !== null; }
+
+	// Milliseconds of GPU time for the most recently completed measurement, or undefined if
+	// none has finished yet.
+	get lastGpuFrameTime() { return this.#lastGpuFrameTime; }
+
+	// Exponential moving average of the above, which is what a resolution controller wants.
+	get averageGpuFrameTime() { return this.#averageGpuFrameTime; }
+
+	#initGpuTiming(useGpuTiming: boolean)
+	{
+		this.useGpuTiming = useGpuTiming;
+
+		// The WebGL2 extension reuses the core query entry points; the WebGL1 one brings its
+		// own. Everything else about them is the same.
+		if (this.gl instanceof WebGL2RenderingContext)
+		{
+			this.#gpuTimerExtension = this.gl.getExtension("EXT_disjoint_timer_query_webgl2");
+			this.#gpuTimerUsesWebGL2Api = this.#gpuTimerExtension !== null;
+		}
+
+		if (!this.#gpuTimerExtension)
+		{
+			this.#gpuTimerExtension = this.gl.getExtension("EXT_disjoint_timer_query");
+			this.#gpuTimerUsesWebGL2Api = false;
+		}
+
+		if (!this.#gpuTimerExtension && useGpuTiming && this.verbose)
+		{
+			console.warn("[Wilson] GPU timing was requested, but no timer query extension is available. Browsers often withhold it for fingerprinting reasons.");
+		}
+	}
+
+	#createGpuTimerQuery(): WebGLQuery | null
+	{
+		return this.#gpuTimerUsesWebGL2Api
+			? (this.gl as WebGL2RenderingContext).createQuery()
+			: this.#gpuTimerExtension.createQueryEXT();
+	}
+
+	#deleteGpuTimerQuery(query: WebGLQuery)
+	{
+		if (this.#gpuTimerUsesWebGL2Api)
+		{
+			(this.gl as WebGL2RenderingContext).deleteQuery(query);
+		}
+
+		else
+		{
+			this.#gpuTimerExtension.deleteQueryEXT(query);
+		}
+	}
+
+	// Opens a GPU timing range. Nested calls are folded into the outermost one, since only a
+	// single TIME_ELAPSED query may be active at a time -- so wrapping several drawFrame()
+	// calls (both eyes of an XR frame, say) measures them together.
+	beginGpuTimer()
+	{
+		if (!this.useGpuTiming || !this.#gpuTimerExtension)
+		{
+			return;
+		}
+
+		if (this.#gpuTimerDepth++ > 0)
+		{
+			return;
+		}
+
+		this.pollGpuTimers();
+
+		const query = this.#gpuTimerPool.pop() ?? this.#createGpuTimerQuery();
+
+		if (!query)
+		{
+			this.#gpuTimerDepth = 0;
+			return;
+		}
+
+		this.#gpuTimerActive = query;
+
+		if (this.#gpuTimerUsesWebGL2Api)
+		{
+			(this.gl as WebGL2RenderingContext).beginQuery(
+				this.#gpuTimerExtension.TIME_ELAPSED_EXT,
+				query
+			);
+		}
+
+		else
+		{
+			this.#gpuTimerExtension.beginQueryEXT(
+				this.#gpuTimerExtension.TIME_ELAPSED_EXT,
+				query
+			);
+		}
+	}
+
+	endGpuTimer()
+	{
+		if (!this.#gpuTimerActive || this.#gpuTimerDepth === 0)
+		{
+			return;
+		}
+
+		if (--this.#gpuTimerDepth > 0)
+		{
+			return;
+		}
+
+		if (this.#gpuTimerUsesWebGL2Api)
+		{
+			(this.gl as WebGL2RenderingContext).endQuery(this.#gpuTimerExtension.TIME_ELAPSED_EXT);
+		}
+
+		else
+		{
+			this.#gpuTimerExtension.endQueryEXT(this.#gpuTimerExtension.TIME_ELAPSED_EXT);
+		}
+
+		this.#gpuTimerPending.push(this.#gpuTimerActive);
+		this.#gpuTimerActive = null;
+
+		// Drop the oldest measurements rather than growing without bound. These are deleted
+		// rather than pooled because their results were never read, and reusing a query whose
+		// result is still outstanding is asking for trouble.
+		while (this.#gpuTimerPending.length > this.#maxPendingGpuTimers)
+		{
+			this.#deleteGpuTimerQuery(this.#gpuTimerPending.shift() as WebGLQuery);
+		}
+	}
+
+	// Collects whatever results the driver has finished. Called automatically by
+	// beginGpuTimer, and safe to call directly if timing without drawing.
+	pollGpuTimers()
+	{
+		if (!this.#gpuTimerExtension || this.#gpuTimerPending.length === 0)
+		{
+			return;
+		}
+
+		// A disjoint means the GPU was interrupted (clock change, context switch) and every
+		// in-flight timing is untrustworthy. Reading the flag also clears it.
+		if (this.gl.getParameter(this.#gpuTimerExtension.GPU_DISJOINT_EXT))
+		{
+			for (const query of this.#gpuTimerPending)
+			{
+				this.#deleteGpuTimerQuery(query);
+			}
+
+			this.#gpuTimerPending = [];
+			return;
+		}
+
+		// Results complete in order, so the first one that isn't ready ends the sweep.
+		while (this.#gpuTimerPending.length > 0)
+		{
+			const query = this.#gpuTimerPending[0];
+
+			const available = this.#gpuTimerUsesWebGL2Api
+				? (this.gl as WebGL2RenderingContext).getQueryParameter(
+					query,
+					(this.gl as WebGL2RenderingContext).QUERY_RESULT_AVAILABLE
+				)
+				: this.#gpuTimerExtension.getQueryObjectEXT(
+					query,
+					this.#gpuTimerExtension.QUERY_RESULT_AVAILABLE_EXT
+				);
+
+			if (!available)
+			{
+				return;
+			}
+
+			this.#gpuTimerPending.shift();
+
+			const nanoseconds = this.#gpuTimerUsesWebGL2Api
+				? (this.gl as WebGL2RenderingContext).getQueryParameter(
+					query,
+					(this.gl as WebGL2RenderingContext).QUERY_RESULT
+				)
+				: this.#gpuTimerExtension.getQueryObjectEXT(
+					query,
+					this.#gpuTimerExtension.QUERY_RESULT_EXT
+				);
+
+			this.#gpuTimerPool.push(query);
+
+			this.#lastGpuFrameTime = nanoseconds / 1000000;
+
+			this.#averageGpuFrameTime = this.#averageGpuFrameTime === undefined
+				? this.#lastGpuFrameTime
+				: this.#averageGpuFrameTime
+					+ this.gpuTimingSmoothing * (this.#lastGpuFrameTime - this.#averageGpuFrameTime);
+		}
+	}
+
+	resetGpuTimings()
+	{
+		this.#lastGpuFrameTime = undefined;
+		this.#averageGpuFrameTime = undefined;
+	}
+
+	#destroyGpuTiming()
+	{
+		if (!this.#gpuTimerExtension)
+		{
+			return;
+		}
+
+		// Leaving a query open would keep it alive past the delete.
+		if (this.#gpuTimerActive)
+		{
+			this.#gpuTimerDepth = 1;
+			this.endGpuTimer();
+		}
+
+		for (const query of [...this.#gpuTimerPool, ...this.#gpuTimerPending])
+		{
+			this.#deleteGpuTimerQuery(query);
+		}
+
+		this.#gpuTimerPool = [];
+		this.#gpuTimerPending = [];
+		this.#gpuTimerActive = null;
+		this.#gpuTimerExtension = null;
+	}
+
+
+
 	setUniform(name: string, value: UniformValue, shader: ShaderProgramId = this.#currentShaderId)
 	{
+		if (this.#pendingShaders[shader])
+		{
+			(this.#pendingUniforms[shader] ??= {})[name] = value;
+			return;
+		}
+
+		// A shader that failed to compile leaves neither a pending entry nor a uniform map.
+		if (!this.#uniforms[shader])
+		{
+			return;
+		}
+
 		this.#useProgram(this.#shaderPrograms[shader]);
-		
+
 		if (this.#uniforms[shader][name] !== undefined)
 		{
 			const { location, type } = this.#uniforms[shader][name];
@@ -5093,39 +5690,67 @@ export class WilsonGPU extends Wilson
 			this.#uniforms[shader][name].value = value;
 			uniformFunction(this.gl, location, value);
 		}
-		
-		this.#useProgram(this.#shaderPrograms[this.#currentShaderId]);
+
+		this.#restoreCurrentProgram();
 	}
 
 	setUniforms(uniforms: UniformInitializers, shader: ShaderProgramId = this.#currentShaderId)
 	{
+		if (this.#pendingShaders[shader])
+		{
+			Object.assign(this.#pendingUniforms[shader] ??= {}, uniforms);
+			return;
+		}
+
+		// A shader that failed to compile leaves neither a pending entry nor a uniform map.
+		if (!this.#uniforms[shader])
+		{
+			return;
+		}
+
 		this.#useProgram(this.#shaderPrograms[shader]);
-		
+
 		for (const [name, value] of Object.entries(uniforms))
 		{
 			if (this.#uniforms[shader][name] === undefined)
 			{
 				continue;
 			}
-			
+
 			const { location, type } = this.#uniforms[shader][name];
 			const uniformFunction = uniformFunctions[type];
 			this.#uniforms[shader][name].value = value;
 			uniformFunction(this.gl, location, value);
 		}
-		
-		this.#useProgram(this.#shaderPrograms[this.#currentShaderId]);
+
+		this.#restoreCurrentProgram();
 	}
 
 	useShader(id: ShaderProgramId)
 	{
 		this.#currentShaderId = id;
-		this.#useProgram(this.#shaderPrograms[id]);
+
+		if (this.#shaderPrograms[id])
+		{
+			this.#useProgram(this.#shaderPrograms[id]);
+		}
 	}
 
-	#useProgram(program: WebGLProgram)
+	// The current shader can be pending, in which case there's no program to go back to and
+	// whatever is bound stays bound -- nothing will be drawn with it until it finalizes.
+	#restoreCurrentProgram()
 	{
-		if (program === this.#currentProgram)
+		const program = this.#shaderPrograms[this.#currentShaderId];
+
+		if (program)
+		{
+			this.#useProgram(program);
+		}
+	}
+
+	#useProgram(program: WebGLProgram | undefined)
+	{
+		if (!program || program === this.#currentProgram)
 		{
 			return;
 		}
@@ -5479,6 +6104,10 @@ export class WilsonGPU extends Wilson
 		width: number,
 		height: number,
 	}> {
+		// The worker is handed this shader's source and current uniform values, neither of
+		// which is settled until it finishes linking.
+		await this.whenShaderReady(this.#currentShaderId);
+
 		const workerCode = `${""}
 			const uniformFunctions = {
 				int: (
@@ -6811,7 +7440,16 @@ export class WilsonGPU extends Wilson
 	{
 		super.destroy();
 
-		
+		this.#destroyedGPU = true;
+
+		this.#destroyGpuTiming();
+
+		for (const id of Object.keys(this.#pendingShaders))
+		{
+			this.#discardPendingShader(id);
+		}
+
+		this.#pendingUniforms = {};
 
 		this.#clearXRFunctions();
 
