@@ -4384,12 +4384,6 @@ export type WilsonGPUOptions = WilsonOptions
 	& { useWebGL2?: boolean }
 	& { xrOptions?: XROptions}
 	& {
-		// Fired when a shader finishes compiling and linking. Since compilation is deferred
-		// off the main thread, a shader is generally not drawable in the same tick that
-		// loadShader() is called, and callers that only draw on demand need to know when to
-		// ask for that first frame.
-		onShaderLoad?: (id: ShaderProgramId) => void,
-
 		// Measures how long the GPU actually spends on drawFrame() calls. Off by default:
 		// the queries are cheap but not free, and the underlying extension is unavailable
 		// on plenty of configurations.
@@ -4413,6 +4407,11 @@ type PendingShader = {
 
 // KHR_parallel_shader_compile only exposes this one constant.
 const COMPLETION_STATUS_KHR = 0x91B1;
+
+// What a pending shader's promise rejects with when the load is abandoned rather than failed,
+// which lets whenAllShadersReady() tell "superseded by a newer load" apart from a shader that
+// couldn't compile.
+class ShaderSupersededError extends Error {}
 
 export class WilsonGPU extends Wilson
 {
@@ -4704,8 +4703,6 @@ export class WilsonGPU extends Wilson
 
 		this.#parallelCompileSupported = this.gl.getExtension("KHR_parallel_shader_compile") !== null;
 
-		this.#onShaderLoad = options.onShaderLoad ?? (() => {});
-
 		this.#initGpuTiming(options.useGpuTiming ?? false);
 
 		if (
@@ -4983,7 +4980,6 @@ export class WilsonGPU extends Wilson
 	#pendingShaders: {[id: ShaderProgramId]: PendingShader} = {};
 	#pendingUniforms: {[id: ShaderProgramId]: UniformInitializers} = {};
 	#pollPendingShadersScheduled: boolean = false;
-	#onShaderLoad: (id: ShaderProgramId) => void = () => {};
 
 	static #vertexShaderSource = /* glsl*/`
 		attribute vec3 position;
@@ -5005,8 +5001,11 @@ export class WilsonGPU extends Wilson
 		return this.#shaderPrograms[id] !== undefined && this.#pendingShaders[id] === undefined;
 	}
 
-	// Resolves once the shader is drawable, or rejects with the compile/link error.
-	whenShaderReady(id: ShaderProgramId = this.#currentShaderId): Promise<void>
+	// Resolves once the shader is drawable, or rejects with the compile/link error. Since
+	// compilation is deferred off the main thread, a shader is generally not drawable in the
+	// same tick that loadShader() is called, and callers that only draw on demand need to know
+	// when to ask for that first frame.
+	shaderReady(id: ShaderProgramId = this.#currentShaderId): Promise<void>
 	{
 		if (this.shaderIsReady(id))
 		{
@@ -5021,6 +5020,32 @@ export class WilsonGPU extends Wilson
 		}
 
 		return new Promise((resolve, reject) => pending.callbacks.push({ resolve, reject }));
+	}
+
+	// Resolves once nothing is left compiling, or rejects with the first compile/link error.
+	// Shaders requested while this is being awaited are waited on too, so a load kicked off in
+	// response to the first batch finishing doesn't slip past an in-flight await, and calling
+	// this again always reflects what's pending at that moment.
+	async allShadersReady(): Promise<void>
+	{
+		while (this.numPendingShaders !== 0)
+		{
+			const results = await Promise.allSettled(
+				Object.keys(this.#pendingShaders).map(id => this.shaderReady(id))
+			);
+
+			for (const result of results)
+			{
+				// A shader that was replaced mid-flight isn't a failure -- the load that
+				// replaced it is pending in its place, and the next pass waits on that.
+				if (
+					result.status === "rejected"
+					&& !(result.reason instanceof ShaderSupersededError)
+				) {
+					throw result.reason;
+				}
+			}
+		}
 	}
 
 	loadShader({
@@ -5175,7 +5200,7 @@ export class WilsonGPU extends Wilson
 		this.gl.deleteShader(pending.fragShader);
 		this.gl.deleteProgram(pending.program);
 
-		const error = new Error(`[Wilson] Shader with id ${id} was replaced before it finished loading.`);
+		const error = new ShaderSupersededError(`[Wilson] Shader with id ${id} was replaced before it finished loading.`);
 
 		for (const { reject } of pending.callbacks)
 		{
@@ -5399,8 +5424,6 @@ export class WilsonGPU extends Wilson
 		{
 			resolve();
 		}
-
-		this.#onShaderLoad(id);
 
 		// Replay a draw that was dropped while this shader was compiling, so callers that
 		// draw on demand rather than every frame don't need to know any of this happened.
@@ -6106,7 +6129,7 @@ export class WilsonGPU extends Wilson
 	}> {
 		// The worker is handed this shader's source and current uniform values, neither of
 		// which is settled until it finishes linking.
-		await this.whenShaderReady(this.#currentShaderId);
+		await this.shaderReady(this.#currentShaderId);
 
 		const workerCode = `${""}
 			const uniformFunctions = {
