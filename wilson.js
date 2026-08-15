@@ -3171,9 +3171,12 @@ export class WilsonGPU extends Wilson {
                 return;
             }
             this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+            this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
             return;
         }
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, __classPrivateFieldGet(this, _WilsonGPU_framebuffers, "f")[id]);
+        const { width, height } = __classPrivateFieldGet(this, _WilsonGPU_textures, "f")[id];
+        this.gl.viewport(0, 0, width, height);
     }
     useTexture(id) {
         if (id === __classPrivateFieldGet(this, _WilsonGPU_currentTextureId, "f")) {

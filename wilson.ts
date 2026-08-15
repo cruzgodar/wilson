@@ -5963,10 +5963,13 @@ export class WilsonGPU extends Wilson
 			}
 
 			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+			this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
 			return;
 		}
 
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.#framebuffers[id]);
+		const { width, height } = this.#textures[id];
+		this.gl.viewport(0, 0, width, height);
 	}
 
 	useTexture(id: string | null)
