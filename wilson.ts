@@ -3934,7 +3934,34 @@ class Wilson
 				* this.#canvasWidth)
 		];
 	}
+
+	// A blob URL pins the whole blob in memory until it's revoked or the page goes away, and a
+	// high-res png runs to tens of megabytes, so leaving them behind is not cheap.
+	//
+	// The revoke can't happen inline: click() only queues the download, and the browser reads
+	// the URL afterwards, so pulling it out from under that cancels the download. Waiting a
+	// task would technically be enough, but the ordering between that task and the download's
+	// isn't guaranteed, and Safari in particular has wanted more room. A few seconds is
+	// invisible to the user and still returns the memory promptly instead of at unload.
+	protected downloadBlob(blob: Blob, filename: string)
+	{
+		const url = window.URL.createObjectURL(blob);
+
+		const link = document.createElement("a");
+
+		link.download = filename;
+
+		link.href = url;
+
+		link.click();
+
+		link.remove();
+
+		setTimeout(() => window.URL.revokeObjectURL(url), DOWNLOAD_URL_LIFETIME);
+	}
 }
+
+const DOWNLOAD_URL_LIFETIME = 10000;
 
 
 
@@ -3999,15 +4026,7 @@ export class WilsonCPU extends Wilson
 				return;
 			}
 
-			const link = document.createElement("a");
-
-			link.download = filename;
-
-			link.href = window.URL.createObjectURL(blob);
-
-			link.click();
-
-			link.remove();
+			this.downloadBlob(blob, filename);
 		});
 	}
 }
@@ -4143,6 +4162,42 @@ export type ReadPixelsOptions = {
 	format: "unsignedByte" | "float",
 }
 
+// Big enough that the per-tile overhead disappears, small enough that one tile is roughly a
+// frame's worth of GPU work even for an expensive shader.
+const DEFAULT_HIGH_RES_TILE_SIZE = 512;
+
+// Only exists for the duration of a high-res render. Named so that it can't collide with a
+// framebuffer the caller made, since creating a pair deletes any existing one with its id.
+const HIGH_RES_FRAMEBUFFER_ID = "__wilsonHighResTile";
+
+// One tile of a high-res render, ready to be placed in the finished image. col and row are
+// its top left corner there, but the rows inside pixels run bottom-up, the way readPixels
+// returns them.
+export type HighResTile = {
+	pixels: Uint8Array | Float32Array,
+	col: number,
+	row: number,
+	width: number,
+	height: number,
+};
+
+// Draws one tile. The default just draws the current shader, but anything that ends with the
+// finished tile in the given framebuffer works, which is what makes multi-pass renders
+// possible. Shaders keep using uv as the coordinate over the whole image; a pass that samples
+// a framebuffer an earlier pass of the same tile wrote should use uvTile instead. Every tile
+// is this same size, so intermediate framebuffers can be created once at it and reused.
+export type RenderHighResTile = (data: {
+	framebufferId: string,
+	width: number,
+	height: number,
+}) => void;
+
+type HighResEncoder = {
+	addTile: (tile: HighResTile) => void,
+	finish: () => Promise<Blob | null>,
+	destroy: () => void,
+};
+
 type SingleShader = {
 	shader: string,
 	uniforms?: UniformInitializers
@@ -4166,7 +4221,7 @@ const XR_LAYER_OPTIONS: XRWebGLLayerInit = {
 	alpha: true,
 };
 
-type WilsonGPUXRData = {
+type WilsonGLXRData = {
 	session: XRSession,
 	refSpace: XRReferenceSpace,
 	baseLayer: XRWebGLLayer,
@@ -4379,7 +4434,7 @@ export type XROptions = {
 	targetFrameRate?: number;
 } & XRButtonOptions;
 
-export type WilsonGPUOptions = WilsonOptions
+export type WilsonGLOptions = WilsonOptions
 	& (SingleShader | MultipleShaders)
 	& { useWebGL2?: boolean }
 	& { xrOptions?: XROptions}
@@ -4413,7 +4468,7 @@ const COMPLETION_STATUS_KHR = 0x91B1;
 // couldn't compile.
 class ShaderSupersededError extends Error {}
 
-export class WilsonGPU extends Wilson
+export class WilsonGL extends Wilson
 {
 	gl: WebGLRenderingContext | WebGL2RenderingContext;
 
@@ -4437,6 +4492,17 @@ export class WilsonGPU extends Wilson
 		}
 	} = {};
 
+	// The built-in tile window uniforms from the vertex shader. They're kept apart from
+	// #uniforms because that map is built by scanning the fragment shader source for
+	// declarations, and these are declared in the vertex shader instead. Either location can
+	// be null: a fragment shader that ignores uv lets the linker drop the whole chain.
+	#tileUniforms: {
+		[id: ShaderProgramId]: {
+			scale: WebGLUniformLocation | null,
+			center: WebGLUniformLocation | null
+		}
+	} = {};
+
 
 	
 	#useXRButton: boolean = false;
@@ -4453,7 +4519,7 @@ export class WilsonGPU extends Wilson
 	// The single source of truth about the base layer. Its baseLayer is always the one the
 	// current frame is rendering into, which is not necessarily the newest one handed to
 	// updateRenderState(); #onXRFrame resyncs it from the session at the top of every frame.
-	#xrData?: WilsonGPUXRData;
+	#xrData?: WilsonGLXRData;
 
 	#xrRequiredFeatures: string[] = [];
 	#xrOptionalFeatures: string[] = [];
@@ -4674,7 +4740,7 @@ export class WilsonGPU extends Wilson
 		console.log(parts.join("\n"), ...styles);
 	}
 
-	constructor(canvas: HTMLCanvasElement, options: WilsonGPUOptions)
+	constructor(canvas: HTMLCanvasElement, options: WilsonGLOptions)
 	{
 		super(canvas, options);
 
@@ -4984,13 +5050,25 @@ export class WilsonGPU extends Wilson
 	static #vertexShaderSource = /* glsl*/`
 		attribute vec3 position;
 		varying vec2 uv;
+		varying vec2 uvTile;
+
+		// The window of the image that this draw covers, which is all of it except when
+		// readHighResPixels() is rendering a tile. Keeping it here rather than in the fragment
+		// shader is what lets tiled rendering work without any shader knowing about it: uv
+		// spans the whole image no matter which tile is being drawn.
+		uniform vec2 wilsonUvScale;
+		uniform vec2 wilsonUvCenter;
 
 		void main(void)
 		{
 			gl_Position = vec4(position, 1.0);
 
 			//Interpolate quad coordinates in the fragment shader.
-			uv = position.xy;
+			uv = position.xy * wilsonUvScale + wilsonUvCenter;
+
+			// Always the full -1 to 1 range, so a shader sampling a framebuffer that was drawn
+			// by an earlier pass of the same tile has coordinates that line up with it.
+			uvTile = position.xy;
 		}
 	`;
 
@@ -5057,7 +5135,7 @@ export class WilsonGPU extends Wilson
 		shader: string,
 		uniforms?: UniformInitializers
 	}) {
-		const vertexShaderSource = WilsonGPU.#vertexShaderSource;
+		const vertexShaderSource = WilsonGL.#vertexShaderSource;
 
 		// A second load of the same id while the first is still in flight: the old attempt
 		// is never going to be used, so drop it rather than letting it finalize on top of us.
@@ -5324,6 +5402,15 @@ export class WilsonGPU extends Wilson
 		this.#shaders.push(vertexShader, fragShader);
 
 		this.#useProgram(program);
+
+		// Uniforms start out as zero, which would collapse uv to a single point, so the
+		// identity window has to be uploaded before this program can draw anything at all.
+		this.#tileUniforms[id] = {
+			scale: this.gl.getUniformLocation(program, "wilsonUvScale"),
+			center: this.gl.getUniformLocation(program, "wilsonUvCenter"),
+		};
+
+		this.#setTileWindowForProgram(id, 1, 1, 0, 0);
 
 		const positionBuffer = this.gl.createBuffer();
 
@@ -5782,7 +5869,48 @@ export class WilsonGPU extends Wilson
 		this.gl.useProgram(program);
 	}
 
-	
+	// Assumes the program is already bound, since the only callers are in the middle of
+	// walking a set of them and rebinding per uniform would be wasted work.
+	#setTileWindowForProgram(
+		id: ShaderProgramId,
+		scaleX: number,
+		scaleY: number,
+		centerX: number,
+		centerY: number
+	) {
+		const locations = this.#tileUniforms[id];
+
+		if (!locations)
+		{
+			return;
+		}
+
+		if (locations.scale)
+		{
+			this.gl.uniform2f(locations.scale, scaleX, scaleY);
+		}
+
+		if (locations.center)
+		{
+			this.gl.uniform2f(locations.center, centerX, centerY);
+		}
+	}
+
+	// Uniform values live on the program, not the context, so every shader that a tile might
+	// be drawn with needs its own copy. Doing all of them means a multi-pass render callback
+	// can switch shaders mid-tile without having to say which ones it plans to use.
+	#setTileWindow(scaleX: number, scaleY: number, centerX: number, centerY: number)
+	{
+		for (const id of Object.keys(this.#shaderPrograms))
+		{
+			this.#useProgram(this.#shaderPrograms[id]);
+			this.#setTileWindowForProgram(id, scaleX, scaleY, centerX, centerY);
+		}
+
+		this.#restoreCurrentProgram();
+	}
+
+
 
 	#framebuffers: {[id: string]: WebGLFramebuffer} = {};
 	#textures: {
@@ -5995,12 +6123,14 @@ export class WilsonGPU extends Wilson
 		this.gl.bindTexture(this.gl.TEXTURE_2D, this.#textures[id].texture);
 	}
 
+	// Omitting data, or passing null, reallocates the texture at its current size with every
+	// channel zeroed, which is how you throw away what's in it.
 	setTexture({
 		id,
-		data,
+		data = null,
 	}: {
 		id: string,
-		data: Uint8Array | Float32Array | TexImageSource | null
+		data?: Uint8Array | Float32Array | TexImageSource | null
 	}) {
 		if (!this.#textures[id])
 		{
@@ -6018,7 +6148,17 @@ export class WilsonGPU extends Wilson
 
 		this.useTexture(id);
 
-		if (data === null || data instanceof Uint8Array || data instanceof Float32Array)
+		// texImage2D() with null is meant to hand back zeroed storage, but browsers are free
+		// to skip the reallocation when the size and format haven't changed, which leaves
+		// whatever was in the texture sitting there -- with no GL error to say so. Uploading
+		// the zeros is the only way to be sure it's actually been cleared.
+		const pixels = data === null
+			? (this.#textures[id].type === "float"
+				? new Float32Array(this.#textures[id].width * this.#textures[id].height * 4)
+				: new Uint8Array(this.#textures[id].width * this.#textures[id].height * 4))
+			: data;
+
+		if (pixels instanceof Uint8Array || pixels instanceof Float32Array)
 		{
 			this.gl.texImage2D(
 				this.gl.TEXTURE_2D,
@@ -6033,7 +6173,7 @@ export class WilsonGPU extends Wilson
 				this.#textures[id].type === "float"
 					? this.gl.FLOAT
 					: this.gl.UNSIGNED_BYTE,
-				data
+				pixels
 			);
 		}
 
@@ -6045,7 +6185,7 @@ export class WilsonGPU extends Wilson
 				this.gl.RGBA,
 				this.gl.RGBA,
 				this.gl.UNSIGNED_BYTE,
-				data
+				pixels
 			);
 		}
 
@@ -6105,446 +6245,711 @@ export class WilsonGPU extends Wilson
 				return;
 			}
 
-			const link = document.createElement("a");
-
-			link.download = filename;
-
-			link.href = window.URL.createObjectURL(blob);
-
-			link.click();
-
-			link.remove();
+			this.downloadBlob(blob, filename);
 		});
+	}
+
+	// Rendering a big image in a single draw stalls the GPU for long enough that the
+	// compositor stops answering, and the readPixels that has to follow it blocks the main
+	// thread for the entire time. Both problems come from the size of one operation, so both
+	// go away if the image is rendered as a grid of ordinary-sized tiles with a yield in
+	// between: every tile is about a frame's worth of work, and the page stays responsive the
+	// whole way through. It also lifts the resolution ceiling, since no single texture ever
+	// has to be as large as the finished image.
+
+	// Two of these at once would interleave their tiles and fight over the same GL state, so
+	// a second call waits for the first to finish instead of corrupting both.
+	#highResRenderQueue: Promise<unknown> = Promise.resolve();
+
+	#queueHighResRender<T>(render: () => Promise<T>): Promise<T>
+	{
+		// Runs on rejection too -- one caller's failure shouldn't strand everything behind it.
+		const result = this.#highResRenderQueue.then(render, render);
+
+		this.#highResRenderQueue = result.catch(() => {});
+
+		return result;
+	}
+
+	#getHighResDimensions(resolution: number)
+	{
+		return {
+			width: Math.round(
+				Math.sqrt(resolution * resolution * this.canvasWidth / this.canvasHeight)
+			),
+
+			height: Math.round(
+				Math.sqrt(resolution * resolution * this.canvasHeight / this.canvasWidth)
+			),
+		};
+	}
+
+	#getHighResTileSize(tileSize?: number)
+	{
+		const maxTileSize = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) as number;
+
+		return Math.max(1, Math.min(tileSize ?? DEFAULT_HIGH_RES_TILE_SIZE, maxTileSize));
+	}
+
+	// A tile can only be drawn with a shader that's finished linking, and with a custom
+	// render callback there's no telling which ones those are.
+	//
+	// This runs before every tile, not just once at the start. drawFrame() quietly skips the
+	// draw when its shader is pending, which is harmless for a canvas that will redraw next
+	// frame but not here: the tile would go into the image undrawn. A reload landing partway
+	// through a render is exactly how that happens, and a render now spans many tasks, so
+	// there is plenty of room for one to land.
+	async #highResShadersReady(render: RenderHighResTile | undefined, shaderId: ShaderProgramId)
+	{
+		if (render)
+		{
+			await this.allShadersReady();
+			return;
+		}
+
+		// Waiting on whatever is pending under this id can itself be superseded by another
+		// reload, so this waits the whole sequence out rather than just the first one.
+		while (this.#pendingShaders[shaderId])
+		{
+			try
+			{
+				await this.shaderReady(shaderId);
+			}
+
+			catch(ex)
+			{
+				if (!(ex instanceof ShaderSupersededError))
+				{
+					throw ex;
+				}
+			}
+		}
+	}
+
+	// Between tiles, so that input handlers, timers, and animation frames get to run instead
+	// of sitting behind a render that can take minutes. A message to ourselves is the cheapest
+	// way to reach the back of the task queue: setTimeout would be clamped to 4ms once nested,
+	// which at a few thousand tiles costs more than the render, and scheduler.yield() resumes
+	// at a priority that starves everything else the page had queued -- measurably so, and
+	// with no throughput to show for it.
+	#yieldToBrowser(): Promise<void>
+	{
+		return new Promise(resolve =>
+		{
+			const channel = new MessageChannel();
+
+			channel.port1.addEventListener("message", () =>
+			{
+				channel.port1.close();
+				channel.port2.close();
+
+				resolve();
+			});
+
+			channel.port1.start();
+			channel.port2.postMessage(null);
+		});
+	}
+
+	async #renderHighResTiles({
+		width,
+		height,
+		tileSize,
+		format,
+		uniforms,
+		render,
+		onTile,
+	}: {
+		width: number,
+		height: number,
+		tileSize: number,
+		format: "unsignedByte" | "float",
+		uniforms: UniformInitializers,
+		render: RenderHighResTile,
+		onTile: (tile: HighResTile) => void,
+	}) {
+		const previousFramebufferId = this.#currentFramebufferId;
+		const previousTextureId = this.#currentTextureId;
+		const previousUseGpuTiming = this.useGpuTiming;
+
+		// The render is spread over many tasks, so the app can call useShader() or reload a
+		// shader in the middle of one. Pinning what was current when the render started is
+		// what makes "it uses the current shader" mean anything: without it, half an image
+		// can come out drawn with one program and half with another.
+		const shaderId = this.#currentShaderId;
+		const previousShaderId = shaderId;
+
+		// Identity rather than id, since a reload keeps the id and swaps the program.
+		const pinnedProgram = this.#shaderPrograms[shaderId];
+		let warnedAboutReload = false;
+
+		// Tiles aren't frames, and letting them into the running average would make it
+		// meaningless to anything reading it to pick a live resolution.
+		this.useGpuTiming = false;
+
+		// Every tile is drawn at this size, including the ones that hang off the right and top
+		// edges when the image doesn't divide evenly -- those just have the part past the edge
+		// thrown away instead of being drawn smaller. Keeping the size fixed is what lets a
+		// multi-pass callback allocate its own framebuffers once and never think about the
+		// edges: useFramebuffer() takes the viewport from the texture, so every pass of every
+		// tile lines up with every other one for free.
+		const tileWidth = Math.min(tileSize, width);
+		const tileHeight = Math.min(tileSize, height);
+
+		this.createFramebufferTexturePair({
+			id: HIGH_RES_FRAMEBUFFER_ID,
+			width: tileWidth,
+			height: tileHeight,
+			textureType: format,
+		});
+
+		try
+		{
+			tiles: for (let y = 0; y < height; y += tileHeight)
+			{
+				for (let x = 0; x < width; x += tileWidth)
+				{
+					// destroy() can land between tiles now that this yields, and every shader
+					// and framebuffer the render was using is gone by the time it returns.
+					if (this.#destroyedGPU)
+					{
+						break tiles;
+					}
+
+					await this.#highResShadersReady(render, shaderId);
+
+					// Waiting above keeps the image whole, but it can't make the two halves
+					// match: everything already rendered used the old program. Worth saying so
+					// rather than handing back an image that quietly mixes two shaders.
+					if (
+						this.verbose
+						&& !warnedAboutReload
+						&& this.#shaderPrograms[shaderId] !== pinnedProgram
+					) {
+						warnedAboutReload = true;
+
+						console.warn(`[Wilson] The shader with id ${shaderId} was reloaded while a high-res frame was rendering, so the tiles drawn before the reload used the old shader and the rest used the new one. Await readHighResPixels()/downloadHighResFrame() before reloading.`);
+					}
+
+					const readWidth = Math.min(tileWidth, width - x);
+					const readHeight = Math.min(tileHeight, height - y);
+
+					const pixels = this.#renderHighResTile({
+						shaderId,
+						x,
+						y,
+						tileWidth,
+						tileHeight,
+						readWidth,
+						readHeight,
+						width,
+						height,
+						format,
+						uniforms,
+						render,
+					});
+
+					onTile({
+						pixels,
+						col: x,
+
+						// x and y count up from the bottom left the way WebGL does, and images
+						// count down from the top left.
+						row: height - y - readHeight,
+
+						width: readWidth,
+						height: readHeight,
+					});
+
+					await this.#yieldToBrowser();
+				}
+			}
+		}
+
+		finally
+		{
+			// If destroy() got here first there's nothing left to put back, and asking for the
+			// framebuffer that was current before would just throw.
+			if (!this.#destroyedGPU)
+			{
+				this.deleteFramebufferTexturePair(HIGH_RES_FRAMEBUFFER_ID);
+
+				this.useGpuTiming = previousUseGpuTiming;
+				this.useShader(previousShaderId);
+
+				// Deleting the pair reverts the binding to the canvas but leaves the
+				// tile-sized viewport in place, and useFramebuffer() is a no-op when handed
+				// the id it already has -- which is exactly the case when the render started
+				// on the canvas. Pointing the cached id at the framebuffer that no longer
+				// exists forces a real rebind.
+				this.#currentFramebufferId = HIGH_RES_FRAMEBUFFER_ID;
+				this.useFramebuffer(previousFramebufferId);
+
+				this.useTexture(previousTextureId);
+			}
+		}
+	}
+
+	// Everything from binding the tile framebuffer to reading it back stays in one
+	// synchronous run. An animation frame that landed in the middle of it would draw the
+	// canvas with this tile's uv window and uniform overrides still applied.
+	#renderHighResTile({
+		shaderId,
+		x,
+		y,
+		tileWidth,
+		tileHeight,
+		readWidth,
+		readHeight,
+		width,
+		height,
+		format,
+		uniforms,
+		render,
+	}: {
+		shaderId: ShaderProgramId,
+		x: number,
+		y: number,
+		tileWidth: number,
+		tileHeight: number,
+		readWidth: number,
+		readHeight: number,
+		width: number,
+		height: number,
+		format: "unsignedByte" | "float",
+		uniforms: UniformInitializers,
+		render: RenderHighResTile,
+	}): Uint8Array | Float32Array {
+		const previousFramebufferId = this.#currentFramebufferId;
+		const previousTextureId = this.#currentTextureId;
+		const previousShaderId = this.#currentShaderId;
+
+		// The app may have drawn with something else between tiles; this tile is still the
+		// pinned shader's. A render callback is free to switch to whatever it likes from here.
+		this.useShader(shaderId);
+
+		const uniformNames = Object.keys(uniforms);
+		const previousUniforms: UniformInitializers = {};
+
+		for (const name of uniformNames)
+		{
+			const uniform = this.#uniforms[shaderId]?.[name];
+
+			if (uniform?.value !== undefined)
+			{
+				previousUniforms[name] = uniform.value;
+			}
+		}
+
+		// This also sets the viewport to the tile, since useFramebuffer() takes it from the
+		// texture the framebuffer is backed by.
+		this.useFramebuffer(HIGH_RES_FRAMEBUFFER_ID);
+
+		// The quad is always the full viewport; the window is what places it in the image.
+		// Deriving it from the tile's pixel rectangle rather than its index is what keeps the
+		// tiles that hang off the edge lined up with the rest.
+		this.#setTileWindow(
+			tileWidth / width,
+			tileHeight / height,
+			-1 + (2 * x + tileWidth) / width,
+			-1 + (2 * y + tileHeight) / height
+		);
+
+		if (uniformNames.length !== 0)
+		{
+			this.setUniforms(uniforms, shaderId);
+		}
+
+		render({
+			framebufferId: HIGH_RES_FRAMEBUFFER_ID,
+			width: tileWidth,
+			height: tileHeight,
+		});
+
+		// A multi-pass callback can finish with any of its own framebuffers bound, and the
+		// tile is the one that needs reading.
+		this.useFramebuffer(HIGH_RES_FRAMEBUFFER_ID);
+
+		// Only the part of the tile that's actually inside the image.
+		const pixels = this.readPixels({
+			row: 0,
+			col: 0,
+			width: readWidth,
+			height: readHeight,
+			format,
+		});
+
+		this.#setTileWindow(1, 1, 0, 0);
+
+		if (uniformNames.length !== 0)
+		{
+			this.setUniforms(previousUniforms, shaderId);
+		}
+
+		// Everything the caller had set has to be back in place before the yield that follows
+		// this, not just at the end of the whole render. Otherwise the tile framebuffer stays
+		// bound across it, and an animation frame landing between two tiles draws into the
+		// tile instead of the canvas -- which freezes the canvas for the length of the export
+		// and puts the app's frame where the next tile is about to go.
+		this.useShader(previousShaderId);
+		this.useFramebuffer(previousFramebufferId);
+		this.useTexture(previousTextureId);
+
+		return pixels;
 	}
 
 	async readHighResPixels({
 		resolution = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight)),
 		uniforms = {},
 		format = "unsignedByte",
+		tileSize,
+		render,
 	}: {
 		resolution?: number,
 		uniforms?: UniformInitializers,
 		format?: "unsignedByte" | "float",
+		tileSize?: number,
+		render?: RenderHighResTile,
 	}): Promise<{
 		pixels: Uint8Array | Float32Array,
 		width: number,
 		height: number,
 	}> {
-		// The worker is handed this shader's source and current uniform values, neither of
-		// which is settled until it finishes linking.
-		await this.shaderReady(this.#currentShaderId);
+		return this.#queueHighResRender(async () =>
+		{
+			const { width, height } = this.#getHighResDimensions(resolution);
 
-		const workerCode = `${""}
-			const uniformFunctions = {
-				int: (
-					gl,
-					location,
-					value,
-				) => gl.uniform1i(location, value),
-				
-				float: (
-					gl,
-					location,
-					value,
-				) => gl.uniform1f(location, value),
-				
-				vec2: (
-					gl,
-					location,
-					value,
-				) => gl.uniform2fv(location, value),
+			await this.#highResShadersReady(render, this.#currentShaderId);
 
-				vec3: (
-					gl,
-					location,
-					value,
-				) => gl.uniform3fv(location, value),
-				
-				vec4: (
-					gl,
-					location,
-					value,
-				) => gl.uniform4fv(location, value),
+			// format picks the element type of both this and every tile at once, which is more
+			// than the union can express, so the copy below asserts what it already knows.
+			const pixels = format === "float"
+				? new Float32Array(width * height * 4)
+				: new Uint8Array(width * height * 4);
 
-				intArray: (
-					gl,
-					location,
-					value,
-				) => gl.uniform1iv(location, value),
-				
-				floatArray: (
-					gl,
-					location,
-					value,
-				) => gl.uniform1fv(location, value),
-				
-				vec2Array: (
-					gl,
-					location,
-					value,
-				) => {
-					return value instanceof Float32Array
-						? gl.uniform2fv(location, value)
-						: gl.uniform2fv(location, value.flat());
-				},
+			const imageRowLength = width * 4;
 
-				vec3Array: (
-					gl,
-					location,
-					value,
-				) => {
-					return value instanceof Float32Array
-						? gl.uniform3fv(location, value)
-						: gl.uniform3fv(location, value.flat());
-				},
-				
-				vec4Array: (
-					gl,
-					location,
-					value,
-				) => {
-					return value instanceof Float32Array
-						? gl.uniform4fv(location, value)
-						: gl.uniform4fv(location, value.flat());
-				},
+			await this.#renderHighResTiles({
+				width,
+				height,
+				tileSize: this.#getHighResTileSize(tileSize),
+				format,
+				uniforms,
+				render: render ?? (() => this.drawFrame()),
 
-				mat2: (
-					gl,
-					location,
-					value,
-				) => {
-					return value instanceof Float32Array
-						? gl.uniformMatrix2fv(location, false, value)
-						: gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]]);
-				},
-				
-				mat3: (
-					gl,
-					location,
-					value,
-				) => {
-					return value instanceof Float32Array
-						? gl.uniformMatrix3fv(location, false, value)
-						: gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]]);
-				},
-				
-				mat4: (
-					gl,
-					location,
-					value,
-				) => {
-					return value instanceof Float32Array
-						? gl.uniformMatrix4fv(location, false, value)
-						: gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]);
-				},
-			};
-
-			self.addEventListener("message", (event) => 
-			{
-				const { offscreen, canvasWidth, canvasHeight, shader, uniforms, options } = event.data;
-
-				const gl = options.useWebGL2
-					? offscreen.getContext("webgl2") ?? offscreen.getContext("webgl")
-					: offscreen.getContext("webgl");
-
-				if (!gl)
+				onTile: (tile) =>
 				{
-					throw new Error("[Wilson] Failed to get WebGL or WebGL2 context.");
-				}
+					const tileRowLength = tile.width * 4;
 
-				gl.getExtension("KHR_parallel_shader_compile");
-
-				if (
-					gl instanceof WebGL2RenderingContext
-					&& !gl.getExtension("EXT_color_buffer_float")
-				) {
-					// No support for float textures.
-				}
-
-				else if (
-					gl instanceof WebGLRenderingContext
-					&& !gl.getExtension("OES_texture_float")
-				) {
-					// No support for float textures.
-				}
-
-				if ("drawingBufferColorSpace" in gl && options.useP3ColorSpace)
-				{
-					gl.drawingBufferColorSpace = "display-p3";
-				}
-
-				const vertexShaderSource = \`
-					attribute vec3 position;
-					varying vec2 uv;
-
-					void main(void)
+					// readPixels counts rows up from the bottom of the tile, so the last one
+					// it hands back is the one that belongs at the tile's top edge.
+					for (let i = 0; i < tile.height; i++)
 					{
-						gl_Position = vec4(position, 1.0);
-
-						// !!!IMPORTANT!!!
-						// Flip the y coordinate because WebGL's coordinate system is different from the one used by ctx, and this is the fastest way to fix that.
-						uv = vec2(position.x, -position.y);
+						(pixels as Uint8Array).set(
+							(tile.pixels as Uint8Array).subarray(
+								i * tileRowLength,
+								(i + 1) * tileRowLength
+							),
+							(tile.row + tile.height - 1 - i) * imageRowLength + tile.col * 4
+						);
 					}
-				\`;
+				},
+			});
 
-				const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-				const fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+			return { pixels, width, height };
+		});
+	}
 
-				const shaderProgram = gl.createProgram();
+	// Stitching tiles together and encoding a png are pure CPU work on buffers the GPU is
+	// already finished with, which makes them the one part of this that genuinely belongs on
+	// another thread. The worker never touches WebGL, so it stays small enough to read.
+	#createHighResEncoder({
+		width,
+		height,
+		colorSpace,
+	}: {
+		width: number,
+		height: number,
+		colorSpace: PredefinedColorSpace,
+	}): HighResEncoder {
+		if (typeof Worker !== "undefined" && typeof OffscreenCanvas !== "undefined")
+		{
+			try
+			{
+				return this.#createWorkerHighResEncoder({ width, height, colorSpace });
+			}
 
-				gl.attachShader(shaderProgram, vertexShader);
-				gl.attachShader(shaderProgram, fragShader);
-
-				gl.shaderSource(vertexShader, vertexShaderSource);
-				gl.shaderSource(fragShader, shader);
-
-				gl.compileShader(vertexShader);
-				gl.compileShader(fragShader);
-
-				if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS))
+			catch(ex)
+			{
+				if (this.verbose)
 				{
-					console.groupCollapsed("[Wilson] Full non-compiled vertex shader source:");
-					console.log(vertexShaderSource);
-					console.groupEnd();
+					console.warn(`[Wilson] Couldn't start the image encoding worker, so the image will be assembled on the main thread instead: ${ex}`);
+				}
+			}
+		}
 
-					throw new Error("[Wilson] Couldn't compile vertex shader: " + gl.getShaderInfoLog(vertexShader));
+		return this.#createMainThreadHighResEncoder({ width, height, colorSpace });
+	}
+
+	#createWorkerHighResEncoder({
+		width,
+		height,
+		colorSpace,
+	}: {
+		width: number,
+		height: number,
+		colorSpace: PredefinedColorSpace,
+	}): HighResEncoder {
+		const workerCode = `
+			let canvas;
+			let ctx;
+			let colorSpace = "srgb";
+
+			// Deliberately not an async listener: a throw inside one of those becomes an
+			// unhandled rejection rather than an error event, so a tile that failed to be
+			// written would be dropped silently and the image would come out wrong with
+			// nothing to show for it.
+			self.addEventListener("message", (event) =>
+			{
+				const data = event.data;
+
+				try
+				{
+					if (data.type === "init")
+					{
+						colorSpace = data.colorSpace;
+
+						canvas = new OffscreenCanvas(data.width, data.height);
+						ctx = canvas.getContext("2d", { colorSpace });
+
+						if (!ctx)
+						{
+							throw new Error("Couldn't get a 2d context to assemble the image in.");
+						}
+
+						return;
+					}
+
+					if (!ctx)
+					{
+						throw new Error("A tile arrived before the image was set up.");
+					}
+
+					if (data.type === "tile")
+					{
+						// readPixels counts rows up from the bottom of the tile, and ImageData
+						// counts them down from the top.
+						const rowLength = data.width * 4;
+						const rows = new Uint8ClampedArray(data.pixels.length);
+
+						for (let i = 0; i < data.height; i++)
+						{
+							rows.set(
+								data.pixels.subarray(i * rowLength, (i + 1) * rowLength),
+								(data.height - i - 1) * rowLength
+							);
+						}
+
+						ctx.putImageData(
+							new ImageData(rows, data.width, data.height, { colorSpace }),
+							data.col,
+							data.row
+						);
+
+						return;
+					}
+
+					if (data.type === "encode")
+					{
+						canvas.convertToBlob({ type: "image/png" }).then(
+							blob => self.postMessage({ type: "blob", blob }),
+							error => self.postMessage({ type: "error", message: String(error) })
+						);
+					}
 				}
 
-				if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS))
+				catch(error)
 				{
-					console.groupCollapsed("[Wilson] Full non-compiled fragment shader source:");
-					console.log(shader);
-					console.groupEnd();
-
-					throw new Error("[Wilson] Couldn't compile fragment shader: " + gl.getShaderInfoLog(fragShader));
+					self.postMessage({ type: "error", message: String(error) });
 				}
-
-				gl.linkProgram(shaderProgram);
-
-				gl.useProgram(shaderProgram);
-
-				const positionBuffer = gl.createBuffer();
-
-				gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
-				const quad = [
-					-1, -1, 0,
-					-1,  1, 0,
-					1, -1, 0,
-					1,  1, 0
-				];
-				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quad), gl.STATIC_DRAW);
-
-				const positionAttribute = gl.getAttribLocation(shaderProgram, "position");
-
-				gl.enableVertexAttribArray(positionAttribute);
-				gl.vertexAttribPointer(positionAttribute, 3, gl.FLOAT, false, 0, 0);
-				gl.viewport(0, 0, canvasWidth, canvasHeight);
-
-				for (const [name, data] of Object.entries(uniforms))
-				{
-					const location = gl.getUniformLocation(shaderProgram, name);
-					const type = data.type;
-					const uniformFunction = uniformFunctions[type];
-					uniformFunction(gl, location, data.value);
-				}
-
-
-
-				const framebuffer = gl.createFramebuffer();
-
-				const texture = gl.createTexture();
-
-				gl.bindTexture(gl.TEXTURE_2D, texture);
-
-				gl.texImage2D(
-					gl.TEXTURE_2D,
-					0,
-					(${format === "float"} && gl instanceof WebGL2RenderingContext)
-						? gl.RGBA32F
-						: gl.RGBA,
-					canvasWidth,
-					canvasHeight,
-					0,
-					gl.RGBA,
-					${format === "float"}
-						? gl.FLOAT
-						: gl.UNSIGNED_BYTE,
-					null
-				);
-
-			
-
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-				gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-
-				gl.framebufferTexture2D(
-					gl.FRAMEBUFFER,
-					gl.COLOR_ATTACHMENT0,
-					gl.TEXTURE_2D,
-					texture,
-					0
-				);
-
-				gl.bindTexture(gl.TEXTURE_2D, null);
-
-
-
-				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-				gl.finish();
-			
-				const pixels = new ${format === "float" ? "Float32Array" : "Uint8Array"}(canvasWidth * canvasHeight * 4);
-				gl.readPixels(0, 0, canvasWidth, canvasHeight, gl.RGBA, ${format === "float" ? "gl.FLOAT" : "gl.UNSIGNED_BYTE"}, pixels);
-
-				self.postMessage({
-					type: "frame-ready",
-					pixels,
-				});
 			});
 		`;
 
-		const blob = new Blob([workerCode], { type: "application/javascript" });
-		const workerUrl = URL.createObjectURL(blob);
+		const workerUrl = URL.createObjectURL(
+			new Blob([workerCode], { type: "application/javascript" })
+		);
+
 		const worker = new Worker(workerUrl);
 
-		const canvasWidth = Math.round(
-			Math.sqrt(resolution * resolution * this.canvasWidth / this.canvasHeight)
-		);
-		
-		const canvasHeight = Math.round(
-			Math.sqrt(resolution * resolution * this.canvasHeight / this.canvasWidth)
-		);
+		let resolveBlob: (blob: Blob | null) => void;
+		let rejectBlob: (error: Error) => void;
 
-		let resolve: ({
-			pixels,
-			width,
-			height,
-		}: {
-			pixels: Uint8Array | Float32Array,
-			width: number,
-			height: number,
-		}) => void;
-
-		const promise = new Promise<{
-			pixels: Uint8Array | Float32Array,
-			width: number,
-			height: number,
-		}>((r) => (resolve = r));
-
-		worker.addEventListener("message", (event) => 
+		const blobPromise = new Promise<Blob | null>((resolve, reject) =>
 		{
-			if (event.data.type === "frame-ready")
-			{
-				const { pixels } = event.data;
+			resolveBlob = resolve;
+			rejectBlob = reject;
+		});
 
-				resolve({
-					pixels,
-					width: canvasWidth,
-					height: canvasHeight,
-				});
+		worker.addEventListener("message", (event) =>
+		{
+			if (event.data.type === "blob")
+			{
+				resolveBlob(event.data.blob);
+			}
+
+			else if (event.data.type === "error")
+			{
+				rejectBlob(new Error(
+					`[Wilson] The image encoding worker failed: ${event.data.message}`
+				));
 			}
 		});
 
-		// Clean up the blob URL
-		URL.revokeObjectURL(workerUrl);
-
-		const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight);
-
-		const uniformData: {[name: string]: {type: UniformType, value: any}} = {};
-
-		for (const [name, data] of Object.entries(this.#uniforms[this.#currentShaderId]))
+		// Attached now rather than in finish(), so that a failure while the tiles are still
+		// streaming in surfaces as a rejection instead of an uncaught error in the worker.
+		worker.addEventListener("error", (event) =>
 		{
-			uniformData[name] = {
-				type: data.type,
-				value: data.value,
-			};
-		}
+			event.preventDefault();
 
-		for (const [name, value] of Object.entries(uniforms))
-		{
-			uniformData[name].value = value;
-		}
-		
-		worker.postMessage({
-			offscreen,
-			shader: this.#shaderProgramSources[this.#currentShaderId],
-			uniforms: uniformData,
-			canvasWidth,
-			canvasHeight,
+			rejectBlob(new Error(`[Wilson] The image encoding worker failed: ${event.message}`));
+		});
 
-			options: {
-				useWebGL2: this.#useWebGL2,
-				useP3ColorSpace: this.useP3ColorSpace,
-			}
-		}, [offscreen]);
+		worker.postMessage({ type: "init", width, height, colorSpace });
 
-		return promise;
+		return {
+			addTile: ({ pixels, col, row, width, height }) =>
+			{
+				// readPixels allocates the buffer fresh and nothing on this side looks at it
+				// again, so it can be handed over instead of copied.
+				worker.postMessage(
+					{ type: "tile", pixels, col, row, width, height },
+					[pixels.buffer]
+				);
+			},
+
+			finish: () =>
+			{
+				worker.postMessage({ type: "encode" });
+
+				return blobPromise;
+			},
+
+			destroy: () =>
+			{
+				worker.terminate();
+
+				// Revoked here rather than straight after the constructor: the worker's script
+				// is fetched asynchronously, and browsers have not always been reliable about
+				// holding onto the blob across a revoke that lands mid-fetch.
+				URL.revokeObjectURL(workerUrl);
+			},
+		};
 	}
 
-	async downloadHighResFrame(
-		filename: string,
-		resolution: number = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight)),
-		uniforms: UniformInitializers = {}
-	) {
-		const { pixels, width, height } = await this.readHighResPixels({
-			resolution,
-			uniforms,
-		});
-		
-		const colorSpace = (this.useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
-			? "display-p3"
-			: "srgb";
-
-		const imageData = new ImageData(new Uint8ClampedArray(pixels), width, height, { colorSpace });
-
+	#createMainThreadHighResEncoder({
+		width,
+		height,
+		colorSpace,
+	}: {
+		width: number,
+		height: number,
+		colorSpace: PredefinedColorSpace,
+	}): HighResEncoder {
 		const canvas = document.createElement("canvas");
 
 		canvas.width = width;
 		canvas.height = height;
 
-		const ctx = canvas.getContext("2d", {
-			colorSpace,
-		});
+		const ctx = canvas.getContext("2d", { colorSpace });
 
 		if (!ctx)
 		{
+			throw new Error("[Wilson] Couldn't get a 2d context to assemble the image in.");
+		}
+
+		return {
+			addTile: ({ pixels, col, row, width, height }) =>
+			{
+				// readPixels counts rows up from the bottom of the tile, and ImageData counts
+				// them down from the top.
+				const rowLength = width * 4;
+				const rows = new Uint8ClampedArray(pixels.length);
+
+				for (let i = 0; i < height; i++)
+				{
+					rows.set(
+						(pixels as Uint8Array).subarray(i * rowLength, (i + 1) * rowLength),
+						(height - i - 1) * rowLength
+					);
+				}
+
+				ctx.putImageData(new ImageData(rows, width, height, { colorSpace }), col, row);
+			},
+
+			finish: () => new Promise<Blob | null>(resolve => canvas.toBlob(resolve)),
+
+			destroy: () => {},
+		};
+	}
+
+	async downloadHighResFrame({
+		filename,
+		resolution = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight)),
+		uniforms = {},
+		tileSize,
+		render,
+	}: {
+		filename: string,
+		resolution: number,
+		uniforms: UniformInitializers,
+		tileSize?: number,
+		render?: RenderHighResTile,
+	}) {
+		const colorSpace: PredefinedColorSpace =
+			(this.useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
+				? "display-p3"
+				: "srgb";
+
+		const blob = await this.#queueHighResRender(async () =>
+		{
+			const { width, height } = this.#getHighResDimensions(resolution);
+
+			await this.#highResShadersReady(render, this.#currentShaderId);
+
+			const encoder = this.#createHighResEncoder({ width, height, colorSpace });
+
+			try
+			{
+				await this.#renderHighResTiles({
+					width,
+					height,
+					tileSize: this.#getHighResTileSize(tileSize),
+					format: "unsignedByte",
+					uniforms,
+					render: render ?? (() => this.drawFrame()),
+					onTile: tile => encoder.addTile(tile),
+				});
+
+				return await encoder.finish();
+			}
+
+			finally
+			{
+				encoder.destroy();
+			}
+		});
+
+		if (!blob)
+		{
 			if (this.verbose)
 			{
-				console.error("[Wilson] Could not get 2d context for canvas");
+				console.error("[Wilson] Could not create a canvas blob.");
 			}
 
 			return;
 		}
 
-		ctx.putImageData(imageData, 0, 0);
-
-		canvas.toBlob((blob) =>
-		{
-			if (!blob)
-			{
-				if (this.verbose)
-				{
-					console.error("[Wilson] Could not create a canvas blob.");
-				}
-
-				return;
-			}
-
-			const link = document.createElement("a");
-
-			link.download = filename;
-
-			link.href = window.URL.createObjectURL(blob);
-
-			link.click();
-
-			link.remove();
-		});
+		this.downloadBlob(blob, filename);
 	}
 
 
@@ -7529,6 +7934,7 @@ export class WilsonGPU extends Wilson
 
 		// Clear uniform references.
 		this.#uniforms = {};
+		this.#tileUniforms = {};
 
 		// Lose the WebGL context to free up the context slot.
 		const loseContext = this.gl.getExtension("WEBGL_lose_context");

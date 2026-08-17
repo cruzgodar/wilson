@@ -455,8 +455,40 @@ All of these live inside `xrOptions`, and only `renderFrame` is required.
 - `gl`: the WebGL or WebGL2 context.
 - `drawFrame()`: draws a frame with the current shader program.
 - `downloadFrame(filename: string, drawNewFrame?: boolean)`: downloads the current frame as a png file. For this to work properly, a new frame must be drawn immediately before downloading. Setting drawNewFrame to `false` will skip this step; only use this if you are manually drawing a frame directly before calling this method.
-- `async readHighResPixels({ resolution?: number, uniforms: {[name: string]: number | number[] | number[][]}, format: "unsignedByte" | "float" }): Promise<{ pixels: Uint8Array | Float32Array, width: number, height: number }>`: renders a frame with the current shader program on a separate thread at the given resolution and returns the pixels in the given format. All current uniform values for the current shader program are copied over, but individual values can be overridden by passing the `uniforms` object.
-- `async downloadHighResFrame(filename: string, resolution?: number, uniforms?: {[name: string]: number | number[] | number[][]})`: renders a frame with the current shader program on a separate thread at the given resolution and downloads it with the given filename. All current uniform values for the current shader program are copied over, but individual values can be overridden by passing the `uniforms` object. 
+- `async readHighResPixels({ resolution?: number, uniforms?: {[name: string]: number | number[] | number[][]}, format?: "unsignedByte" | "float", tileSize?: number, render?: ({ framebufferId, width, height }) => void }): Promise<{ pixels: Uint8Array | Float32Array, width: number, height: number }>`: renders a frame at the given resolution and returns the pixels in the given format. Individual uniform values can be overridden for the render by passing the `uniforms` object; they're restored afterwards, so the live canvas is unaffected. See the notes on high-res rendering below.
+- `async downloadHighResFrame(filename: string, resolution?: number, uniforms?: {[name: string]: number | number[] | number[][]}, options?: { tileSize?: number, render?: ({ framebufferId, width, height }) => void })`: renders a frame at the given resolution and downloads it as a png with the given filename. Behaves like `readHighResPixels` otherwise.
+
+#### High-res rendering
+
+The image is rendered as a grid of tiles rather than in one draw, with the main thread yielding between them. A single draw that large would stall the GPU for long enough to freeze the page, and the `readPixels` that follows it would block the main thread for the whole render. Tiling keeps every step to roughly a frame's worth of work, and it means the resolution isn't limited by `MAX_TEXTURE_SIZE` — images much larger than the largest texture the GPU supports work fine.
+
+- `tileSize` is the edge length of each tile, defaulting to `1024` and clamped to `MAX_TEXTURE_SIZE`. Larger tiles finish sooner but make each step of the render longer; a very expensive shader may want a smaller value.
+- Shaders need no changes: `uv` still spans the whole image no matter which tile is being drawn.
+- `render` draws one tile, and defaults to drawing the current shader. Anything that leaves the finished tile in `framebufferId` works, which is what makes multi-pass renders possible:
+
+```js
+wilson.createFramebufferTexturePair({ id: "pass1", width: 1024, height: 1024, textureType: "unsignedByte" });
+
+await wilson.downloadHighResFrame("image.png", 8000, {}, {
+	tileSize: 1024,
+	render: ({ framebufferId }) => {
+		wilson.useShader("first");
+		wilson.useFramebuffer("pass1");
+		wilson.drawFrame();
+
+		wilson.useShader("second");
+		wilson.useFramebuffer(framebufferId);
+		wilson.useTexture("pass1");
+		wilson.drawFrame();
+	}
+});
+```
+
+- Every tile is the same size, so intermediate framebuffers only need creating once, at `tileSize` (the tiles along the edges of the image are drawn in full and cropped afterwards). Their size is also passed to `render` as `width` and `height`.
+- A pass that samples a framebuffer an earlier pass of the same tile wrote should use the `uvTile` varying rather than `uv`, since that's the coordinate local to the tile. The two are identical when the whole image fits in one tile.
+- Shaders that depend on `gl_FragCoord` or on screen-space derivatives will seam at tile boundaries, as will effects that need to read pixels outside the tile they're drawing.
+- The tiles are stitched together and encoded in a worker, so a large download doesn't block the main thread either.
+- **Await these before touching the shader.** The render is spread over many tasks, so a `loadShader` (or `useShader`) that lands partway through it applies to the tiles that haven't been drawn yet, and the image comes out half drawn with one shader and half with another. The shader that was current when the render started is pinned for its duration, and a reload of that shader is waited on rather than skipped, so the image is never left with undrawn tiles — but only awaiting the render can keep it consistent. Wilson warns when it happens if `verbose` is set.
 - `loadShader({ id?: string, shader: string, uniforms?: {[name: string]: number | number[] | number[][]} })`: loads a new shader program and sets it as the current one. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders.
 - `setUniform(name: string, value: number | number[] | number[][] | Float32Array, shader?: string)`: sets a single uniform for the shader program with the given ID, with the same conventions as `setUniforms`. Use this in place of `setUniforms` on hot paths, such as inside `renderFrame`, where it avoids constructing an object per call.
 - `setUniforms(uniforms: {[name: string]: number | number[] | number[][]} }, shader?: string)`: sets uniforms for the shader program with the given ID. If no shader ID is specified, it defaults to that of the current shader program. As with the initializers for uniforms, ints and floats are set with numbers, and vectors are set with 1D arrays. Matrices can be set in two ways: passing a 2D array sets the uniform assuming the matrix in **row-major** order (i.e. the way matrices are set in JS, but not WebGL). Passing a `Float32Array` directly bypasses that transposing, setting the uniform as an array in column-major order. This functionality exists to support passing in column-major outputs of other WebGL functions without needing to arbitrarily transpose them. Arrays of `int`s or `float`s (e.g. `uniform int foo[3];`) are set with 1D arrays, and arrays of vectors (e.g. `uniform vec3 foo[3];`) are set with 2D arrays.
@@ -465,7 +497,7 @@ All of these live inside `xrOptions`, and only `renderFrame` is required.
 - `deleteFramebufferTexturePair(id: string)`: deletes the framebuffer texture pair with the given ID, freeing both. Does nothing if no such pair exists. This is mainly useful for recreating framebuffers at a new size when entering or exiting a WebXR session.
 - `useFramebuffer(id: string | null)`: sets the current framebuffer. Passing `null` sets the canvas, or, during a WebXR session, the headset's framebuffer, along with restoring the viewport of the eye currently being rendered.
 - `useTexture(id: string | null)`: sets the current texture.
-- `setTexture({ id: string, data: Float32Array | Uint8Array | TexImageSource | null })`: writes `data` to the texture with the given ID. The type of `data` must match the texture type if it is an array (i.e. if the texture is of type `float`, the data must be a `Float32Array`), and the length of `data` must be equal to the texture's width times its height, times 4.
+- `setTexture({ id: string, data?: Float32Array | Uint8Array | TexImageSource | null })`: writes `data` to the texture with the given ID. The type of `data` must match the texture type if it is an array (i.e. if the texture is of type `float`, the data must be a `Float32Array`), and the length of `data` must be equal to the texture's width times its height, times 4. Passing `null`, or leaving `data` out entirely, zeroes the texture instead.
 - `readPixels({ row: number, col: number, height: number, width: number, format: "unsignedByte" | "float", includeAlpha: boolean })`: reads the a rectangle of pixels out of the current frame as either  a `Uint8Array` or `Float32Array`, depending on the format. `row` and `col` default to `0`, and `height` and `width` default to the canvas height and width, respectively. The size of the returned array is `width * height * 4`.
 
 ### WilsonGPU WebXR Fields and Methods
