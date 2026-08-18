@@ -4256,9 +4256,9 @@ export type OnXRFrameStart = (data: {
 
 
 
-// The xr-standard mapping, in order. Anything past index 5 is device-specific and lands in
-// `extraButtons` instead (the Quest's thumbrest, for instance). The system/menu button is
-// reserved by the runtime and is never exposed here at all.
+// The xr-standard mapping, in order. Anything past index 5 is device-specific (the Quest's
+// thumbrest, for instance) and isn't exposed, and the system/menu button is reserved by the
+// runtime and is never visible to the page at all.
 const XR_BUTTON_NAMES = ["trigger", "squeeze", "touchpad", "thumbstick", "a", "b"] as const;
 
 export type XRButtonName = (typeof XR_BUTTON_NAMES)[number];
@@ -4284,23 +4284,10 @@ export type XRControllerPose = {
 	emulatedPosition: boolean,
 };
 
-export type XRHandJoints = {
-	[joint in XRHandJoint]?: {
-		matrix: Float32Array,
-		position: DOMPointReadOnly,
-		orientation: DOMPointReadOnly,
-		radius: number | undefined,
-	}
-};
-
 export type WilsonXRController = {
 	inputSource: XRInputSource,
 	handedness: XRHandedness,
-	targetRayMode: XRTargetRayMode,
 	profiles: readonly string[],
-	// "xr-standard" on anything that follows the standard layout. Empty on devices that don't,
-	// in which case the named buttons below are a best-effort positional guess.
-	mapping: GamepadMappingType,
 
 	// Null on frames where the device isn't tracked. Buttons keep working when this happens,
 	// since a controller that's momentarily out of view is still being pressed.
@@ -4308,20 +4295,10 @@ export type WilsonXRController = {
 	grip: XRControllerPose | null,
 
 	buttons: {[name in XRButtonName]: XRButtonState},
-	extraButtons: XRButtonState[],
 
 	// Y is negated from the raw axis value, so that +y is forward/up.
 	thumbstick: [number, number],
 	touchpad: [number, number],
-	// The raw, unmodified axis values.
-	axes: readonly number[],
-
-	// Driven by the session's own events rather than by polling, so these are also set for
-	// input sources with no gamepad at all, like hands and gaze.
-	selecting: boolean,
-	squeezing: boolean,
-
-	hand: XRHandJoints | null,
 
 	pulse: (intensity: number, duration: number) => Promise<boolean>,
 };
@@ -4332,23 +4309,9 @@ export type OnXRControllerChange = (data: {
 	session: XRSession,
 }) => void;
 
-export type OnXRInputSourceEvent = (data: {
-	controller: WilsonXRController,
-	inputSource: XRInputSource,
-	// Resolved from the event's own frame, so these are the poses at the moment of the action
-	// rather than at the last rendered frame.
-	targetRay: XRControllerPose | null,
-	grip: XRControllerPose | null,
-	frame: XRFrame,
-	refSpace: XRReferenceSpace,
-	session: XRSession,
-}) => void;
-
 export type OnXRButtonEvent = (data: {
 	controller: WilsonXRController,
-	// Null for device-specific buttons past the end of the xr-standard mapping.
-	name: XRButtonName | null,
-	index: number,
+	name: XRButtonName,
 	state: XRButtonState,
 	time: number,
 	frame: XRFrame,
@@ -4363,8 +4326,6 @@ type WilsonXRControllerData = {
 	controller: WilsonXRController,
 	targetRayPose: XRControllerPose,
 	gripPose: XRControllerPose,
-	handJoints: XRHandJoints,
-	warnedAboutMapping: boolean,
 };
 
 function createXRButtonState(): XRButtonState
@@ -4410,18 +4371,8 @@ export type XROptions = {
 	onControllerConnect?: OnXRControllerChange,
 	onControllerDisconnect?: OnXRControllerChange,
 
-	onSelectStart?: OnXRInputSourceEvent,
-	onSelect?: OnXRInputSourceEvent,
-	onSelectEnd?: OnXRInputSourceEvent,
-	
-	onSqueezeStart?: OnXRInputSourceEvent,
-	onSqueeze?: OnXRInputSourceEvent,
-	onSqueezeEnd?: OnXRInputSourceEvent,
-
 	onButtonDown?: OnXRButtonEvent,
 	onButtonUp?: OnXRButtonEvent,
-
-	useHandTracking?: boolean,
 
 	requiredFeatures?: string[],
 	optionalFeatures?: string[],
@@ -4429,7 +4380,6 @@ export type XROptions = {
 	depthFar?: number,
 
 	framebufferScale?: number;
-	viewportScale?: number | null; // null uses the device's own recommended value.
 	fixedFoveation?: number;
 	targetFrameRate?: number;
 } & XRButtonOptions;
@@ -4558,8 +4508,7 @@ export class WilsonGL extends Wilson
 		// framebufferScaleFactor is fixed once a layer exists, so changing the render resolution
 		// means building a replacement and swapping it in. That's allowed mid-session, but it
 		// reallocates the swapchain and usually costs a frame or two, so this is a coarse quality
-		// step to be debounced rather than a per-frame knob — xrViewportScale is the free one,
-		// on the headsets that implement it.
+		// step to be debounced rather than a per-frame knob.
 		this.#xrData.session.updateRenderState({
 			baseLayer: this.#createXRBaseLayer(this.#xrData.session)
 		});
@@ -4581,20 +4530,6 @@ export class WilsonGL extends Wilson
 		baseLayer.fixedFoveation = this.#xrFixedFoveation;
 
 		return baseLayer;
-	}
-
-	#xrViewportScale: number | null = null;
-	#lastAppliedXRViewportScales: number[] = [];
-
-	get xrViewportScale() { return this.#xrViewportScale; }
-	set xrViewportScale(value: number | null)
-	{
-		if (value !== null && (value <= 0 || value > 1) && this.verbose)
-		{
-			console.warn("[Wilson] Setting xrViewportScale outside of (0, 1] has no effect.");
-		}
-
-		this.#xrViewportScale = value;
 	}
 
 	#xrTargetFrameRate: number | undefined;
@@ -4656,12 +4591,6 @@ export class WilsonGL extends Wilson
 		onFrameRateChange: (frameRate: number | undefined) => void,
 		onControllerConnect: OnXRControllerChange,
 		onControllerDisconnect: OnXRControllerChange,
-		onSelectStart: OnXRInputSourceEvent,
-		onSelect: OnXRInputSourceEvent,
-		onSelectEnd: OnXRInputSourceEvent,
-		onSqueezeStart: OnXRInputSourceEvent,
-		onSqueeze: OnXRInputSourceEvent,
-		onSqueezeEnd: OnXRInputSourceEvent,
 		onButtonDown: OnXRButtonEvent,
 		onButtonUp: OnXRButtonEvent,
 	} = {
@@ -4673,17 +4602,9 @@ export class WilsonGL extends Wilson
 		onFrameRateChange: () => {},
 		onControllerConnect: () => {},
 		onControllerDisconnect: () => {},
-		onSelectStart: () => {},
-		onSelect: () => {},
-		onSelectEnd: () => {},
-		onSqueezeStart: () => {},
-		onSqueeze: () => {},
-		onSqueezeEnd: () => {},
 		onButtonDown: () => {},
 		onButtonUp: () => {}
 	};
-
-	#useXRHandTracking: boolean = false;
 
 	// Keyed on the XRInputSource, whose object identity is stable for as long as the device
 	// stays connected.
@@ -4846,12 +4767,6 @@ export class WilsonGL extends Wilson
 			onFrameRateChange: options?.onFrameRateChange ?? (() => {}),
 			onControllerConnect: options?.onControllerConnect ?? (() => {}),
 			onControllerDisconnect: options?.onControllerDisconnect ?? (() => {}),
-			onSelectStart: options?.onSelectStart ?? (() => {}),
-			onSelect: options?.onSelect ?? (() => {}),
-			onSelectEnd: options?.onSelectEnd ?? (() => {}),
-			onSqueezeStart: options?.onSqueezeStart ?? (() => {}),
-			onSqueeze: options?.onSqueeze ?? (() => {}),
-			onSqueezeEnd: options?.onSqueezeEnd ?? (() => {}),
 			onButtonDown: options?.onButtonDown ?? (() => {}),
 			onButtonUp: options?.onButtonUp ?? (() => {})
 		};
@@ -4863,25 +4778,10 @@ export class WilsonGL extends Wilson
 		this.#xrRequiredFeatures = options?.requiredFeatures ?? [];
 		this.#xrOptionalFeatures = options?.optionalFeatures ?? [];
 
-		this.#useXRHandTracking = options?.useHandTracking ?? false;
-
-		// Hand tracking only produces input sources with a `hand` if the session was asked
-		// for it. Optional rather than required, so that a headset without it can still
-		// start a session.
-		if (
-			this.#useXRHandTracking
-			&& !this.#xrRequiredFeatures.includes("hand-tracking")
-			&& !this.#xrOptionalFeatures.includes("hand-tracking"))
-		{
-			this.#xrOptionalFeatures = [...this.#xrOptionalFeatures, "hand-tracking"];
-		}
-
 		this.#xrDepthNear = options?.depthNear ?? 0.1;
 		this.#xrDepthFar = options?.depthFar ?? 1000;
 
 		this.#xrFramebufferScale = options?.framebufferScale ?? 1;
-
-		this.#xrViewportScale = options?.viewportScale ?? null;
 
 		// Foveated rendering defaults to on.
 		this.#xrFixedFoveation = options?.fixedFoveation ?? 0.3;
@@ -7033,24 +6933,6 @@ export class WilsonGL extends Wilson
 
 			session.addEventListener("inputsourceschange", this.#onXRInputSourcesChange);
 
-			session.addEventListener("selectstart", event =>
-				this.#dispatchXRInputSourceEvent(event, "onSelectStart", { selecting: true }));
-
-			session.addEventListener("select", event =>
-				this.#dispatchXRInputSourceEvent(event, "onSelect"));
-
-			session.addEventListener("selectend", event =>
-				this.#dispatchXRInputSourceEvent(event, "onSelectEnd", { selecting: false }));
-
-			session.addEventListener("squeezestart", event =>
-				this.#dispatchXRInputSourceEvent(event, "onSqueezeStart", { squeezing: true }));
-
-			session.addEventListener("squeeze", event =>
-				this.#dispatchXRInputSourceEvent(event, "onSqueeze"));
-
-			session.addEventListener("squeezeend", event =>
-				this.#dispatchXRInputSourceEvent(event, "onSqueezeEnd", { squeezing: false }));
-
 			session.addEventListener("end", this.#onXREnd);
 			session.requestAnimationFrame(this.#onXRFrame);
 
@@ -7113,11 +6995,6 @@ export class WilsonGL extends Wilson
 
 		if (baseLayer !== this.#xrData.baseLayer)
 		{
-			// A fresh layer starts at full size no matter what the one it replaced had applied,
-			// so these have to be forgotten or the scale below would be suppressed as redundant
-			// and never actually reapplied.
-			this.#lastAppliedXRViewportScales.length = 0;
-
 			this.#xrData.baseLayer = baseLayer;
 		}
 
@@ -7185,15 +7062,10 @@ export class WilsonGL extends Wilson
 			for (let viewIndex = 0; viewIndex < views.length; viewIndex++)
 			{
 				const view = views[viewIndex];
-				
-				const scale = this.#xrViewportScale ?? view.recommendedViewportScale;
 
-				if (scale && scale !== this.#lastAppliedXRViewportScales[viewIndex])
-				{
-					view.requestViewportScale(scale);
-					this.#lastAppliedXRViewportScales[viewIndex] = scale;
-				}
-				
+				// Each eye renders into its full share of the framebuffer; requestViewportScale
+				// is the other way to trade quality for frame time, but tethered headsets
+				// widely ignore it, so xrFramebufferScale is the only one Wilson exposes.
 				const viewport = baseLayer.getViewport(view);
 
 				if (!viewport)
@@ -7288,8 +7160,6 @@ export class WilsonGL extends Wilson
 
 				data.controller.targetRay = null;
 				data.controller.grip = null;
-				data.controller.selecting = false;
-				data.controller.squeezing = false;
 
 				this.#xrControllerData.delete(inputSource);
 
@@ -7346,24 +7216,15 @@ export class WilsonGL extends Wilson
 		const controller: WilsonXRController = {
 			inputSource,
 			handedness: inputSource.handedness,
-			targetRayMode: inputSource.targetRayMode,
 			profiles: inputSource.profiles,
-			mapping: inputSource.gamepad?.mapping ?? "",
 
 			targetRay: null,
 			grip: null,
 
 			buttons,
-			extraButtons: [],
 
 			thumbstick: [0, 0],
 			touchpad: [0, 0],
-			axes: [],
-
-			selecting: false,
-			squeezing: false,
-
-			hand: null,
 
 			pulse: (intensity: number, duration: number) =>
 			{
@@ -7386,18 +7247,16 @@ export class WilsonGL extends Wilson
 			controller,
 			targetRayPose: createXRControllerPose(),
 			gripPose: createXRControllerPose(),
-			handJoints: {},
-			warnedAboutMapping: false,
 		};
 	}
 
-	// Fills `target` if one is given, and allocates otherwise. Poses read during the frame loop
-	// reuse persistent buffers; poses read when an input event fires are rare enough to allocate.
+	// Fills the persistent buffer in `target`, so that posing controllers every frame doesn't
+	// allocate on the hot path.
 	#readXRPose(
 		frame: XRFrame,
 		space: XRSpace,
 		refSpace: XRReferenceSpace,
-		target?: XRControllerPose
+		target: XRControllerPose
 	): XRControllerPose | null {
 		let pose: XRPose | undefined;
 
@@ -7416,16 +7275,14 @@ export class WilsonGL extends Wilson
 			return null;
 		}
 
-		const result = target ?? createXRControllerPose();
+		target.matrix.set(pose.transform.matrix);
+		target.position = pose.transform.position;
+		target.orientation = pose.transform.orientation;
+		target.linearVelocity = pose.linearVelocity;
+		target.angularVelocity = pose.angularVelocity;
+		target.emulatedPosition = pose.emulatedPosition;
 
-		result.matrix.set(pose.transform.matrix);
-		result.position = pose.transform.position;
-		result.orientation = pose.transform.orientation;
-		result.linearVelocity = pose.linearVelocity;
-		result.angularVelocity = pose.angularVelocity;
-		result.emulatedPosition = pose.emulatedPosition;
-
-		return result;
+		return target;
 	}
 
 	#updateXRControllers(
@@ -7441,8 +7298,7 @@ export class WilsonGL extends Wilson
 		// rather than the last frame's.
 		let buttonEvents: {
 			controller: WilsonXRController,
-			name: XRButtonName | null,
-			index: number,
+			name: XRButtonName,
 			state: XRButtonState,
 			pressed: boolean,
 		}[] | null = null;
@@ -7463,78 +7319,15 @@ export class WilsonGL extends Wilson
 				? this.#readXRPose(frame, inputSource.gripSpace, refSpace, data.gripPose)
 				: null;
 
-			if (this.#useXRHandTracking && inputSource.hand && frame.getJointPose)
-			{
-				controller.hand = data.handJoints;
-
-				for (const [jointName, jointSpace] of inputSource.hand)
-				{
-					const jointPose = frame.getJointPose(jointSpace, refSpace);
-
-					if (!jointPose)
-					{
-						// Better to drop the joint than to report a stale position for it.
-						delete data.handJoints[jointName];
-						continue;
-					}
-
-					let joint = data.handJoints[jointName];
-
-					if (!joint)
-					{
-						joint = {
-							matrix: new Float32Array(16),
-							position: jointPose.transform.position,
-							orientation: jointPose.transform.orientation,
-							radius: jointPose.radius,
-						};
-
-						data.handJoints[jointName] = joint;
-					}
-
-					joint.matrix.set(jointPose.transform.matrix);
-					joint.position = jointPose.transform.position;
-					joint.orientation = jointPose.transform.orientation;
-					joint.radius = jointPose.radius;
-				}
-			}
-
-			else
-			{
-				controller.hand = null;
-			}
-
-
-
 			const gamepad = inputSource.gamepad;
 
-			// Hands and gaze input have no gamepad at all; their state comes from the session's
-			// select and squeeze events instead.
+			// Gaze input has no gamepad at all, and so has nothing to poll.
 			if (!gamepad)
 			{
 				continue;
 			}
 
-			controller.mapping = gamepad.mapping;
-
-			if (gamepad.mapping !== "xr-standard" && !data.warnedAboutMapping)
-			{
-				data.warnedAboutMapping = true;
-
-				if (this.verbose)
-				{
-					console.warn(
-						`[Wilson] An XR controller (${inputSource.handedness}, profiles `
-						+ `${inputSource.profiles.join(", ")}) reports a "${gamepad.mapping}" `
-						+ `mapping rather than "xr-standard", so its named buttons and axes are `
-						+ `a guess. Use its raw buttons and axes if they're wrong.`
-					);
-				}
-			}
-
 			const axes = gamepad.axes;
-
-			controller.axes = axes;
 
 			// The raw axes are +y down, which is backwards from how a stick is usually read.
 			controller.touchpad[0] = axes[0] ?? 0;
@@ -7546,28 +7339,14 @@ export class WilsonGL extends Wilson
 			// edge they last had forever.
 			this.#clearXRButtonEdges(controller);
 
-			for (let i = 0; i < gamepad.buttons.length; i++)
+			// Anything past the xr-standard mapping is device-specific (a Quest's thumbrest, say)
+			// and isn't exposed.
+			const numButtons = Math.min(gamepad.buttons.length, XR_BUTTON_NAMES.length);
+
+			for (let i = 0; i < numButtons; i++)
 			{
-				const name = i < XR_BUTTON_NAMES.length ? XR_BUTTON_NAMES[i] : null;
-
-				let state: XRButtonState;
-
-				if (name)
-				{
-					state = controller.buttons[name];
-				}
-
-				else
-				{
-					const extraIndex = i - XR_BUTTON_NAMES.length;
-
-					if (!controller.extraButtons[extraIndex])
-					{
-						controller.extraButtons[extraIndex] = createXRButtonState();
-					}
-
-					state = controller.extraButtons[extraIndex];
-				}
+				const name = XR_BUTTON_NAMES[i];
+				const state = controller.buttons[name];
 
 				const button = gamepad.buttons[i];
 				const wasPressed = state.pressed;
@@ -7583,7 +7362,6 @@ export class WilsonGL extends Wilson
 					(buttonEvents = buttonEvents ?? []).push({
 						controller,
 						name,
-						index: i,
 						state,
 						pressed: state.pressed
 					});
@@ -7596,7 +7374,7 @@ export class WilsonGL extends Wilson
 			return;
 		}
 
-		for (const { controller, name, index, state, pressed } of buttonEvents)
+		for (const { controller, name, state, pressed } of buttonEvents)
 		{
 			const callback = pressed
 				? this.#xrCallbacks.onButtonDown
@@ -7605,7 +7383,6 @@ export class WilsonGL extends Wilson
 			callback({
 				controller,
 				name,
-				index,
 				state,
 				time,
 				frame,
@@ -7622,12 +7399,6 @@ export class WilsonGL extends Wilson
 			controller.buttons[name].justPressed = false;
 			controller.buttons[name].justReleased = false;
 		}
-
-		for (const state of controller.extraButtons)
-		{
-			state.justPressed = false;
-			state.justReleased = false;
-		}
 	}
 
 	// Forces every button up, dispatching the releases if a frame is available to report them
@@ -7641,13 +7412,9 @@ export class WilsonGL extends Wilson
 			session: XRSession
 		} | null
 	) {
-		for (let i = 0; i < XR_BUTTON_NAMES.length + controller.extraButtons.length; i++)
+		for (const name of XR_BUTTON_NAMES)
 		{
-			const name = i < XR_BUTTON_NAMES.length ? XR_BUTTON_NAMES[i] : null;
-
-			const state = name
-				? controller.buttons[name]
-				: controller.extraButtons[i - XR_BUTTON_NAMES.length];
+			const state = controller.buttons[name];
 
 			const wasPressed = state.pressed;
 
@@ -7662,7 +7429,6 @@ export class WilsonGL extends Wilson
 				this.#xrCallbacks.onButtonUp({
 					controller,
 					name,
-					index: i,
 					state,
 					time: dispatch.time,
 					frame: dispatch.frame,
@@ -7678,72 +7444,12 @@ export class WilsonGL extends Wilson
 		controller.touchpad[1] = 0;
 	}
 
-	#dispatchXRInputSourceEvent(
-		event: XRInputSourceEvent,
-		callbackName: "onSelectStart" | "onSelect" | "onSelectEnd"
-			| "onSqueezeStart" | "onSqueeze" | "onSqueezeEnd",
-		state?: { selecting?: boolean, squeezing?: boolean }
-	) {
-		if (!this.#xrData)
-		{
-			return;
-		}
-
-		const { session, refSpace } = this.#xrData;
-
-		// An input source's very first event can arrive before the frame loop has seen it.
-		this.#syncXRControllers();
-
-		const data = this.#xrControllerData.get(event.inputSource);
-
-		if (!data)
-		{
-			return;
-		}
-
-		const { controller } = data;
-
-		if (state?.selecting !== undefined)
-		{
-			controller.selecting = state.selecting;
-		}
-
-		if (state?.squeezing !== undefined)
-		{
-			controller.squeezing = state.squeezing;
-		}
-
-		// The frame delivered with an input event isn't an animation frame — getViewerPose
-		// would throw on it — but getPose is what's wanted here anyway, and it gives the poses
-		// at the moment of the action rather than at the last rendered frame.
-		const targetRay = this.#readXRPose(
-			event.frame,
-			controller.inputSource.targetRaySpace,
-			refSpace
-		);
-
-		const grip = controller.inputSource.gripSpace
-			? this.#readXRPose(event.frame, controller.inputSource.gripSpace, refSpace)
-			: null;
-
-		this.#xrCallbacks[callbackName]({
-			controller,
-			inputSource: event.inputSource,
-			targetRay,
-			grip,
-			frame: event.frame,
-			refSpace,
-			session
-		});
-	}
-
 	#onXREnd = () =>
 	{
 		const session = this.#xrData?.session;
 		const disconnected = this.#xrControllerList;
 
 		this.#xrData = undefined;
-		this.#lastAppliedXRViewportScales = [];
 		this.#lastXRTime = undefined;
 
 		this.#xrControllerData.clear();
@@ -7768,8 +7474,6 @@ export class WilsonGL extends Wilson
 
 				controller.targetRay = null;
 				controller.grip = null;
-				controller.selecting = false;
-				controller.squeezing = false;
 
 				this.#xrCallbacks.onControllerDisconnect({
 					controller,
@@ -7793,12 +7497,6 @@ export class WilsonGL extends Wilson
 			onFrameRateChange: (frameRate: number | undefined) => {},
 			onControllerConnect: () => {},
 			onControllerDisconnect: () => {},
-			onSelectStart: () => {},
-			onSelect: () => {},
-			onSelectEnd: () => {},
-			onSqueezeStart: () => {},
-			onSqueeze: () => {},
-			onSqueezeEnd: () => {},
 			onButtonDown: () => {},
 			onButtonUp: () => {}
 		};
