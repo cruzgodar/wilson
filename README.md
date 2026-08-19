@@ -12,7 +12,7 @@ Wilson does four things:
 
 ## Getting Started
 
-Add `wilson.ts` or `wilson.js` to your project, load `wilson.css`, then import either `WilsonCPU` or `WilsonGPU`. If your project uses TypeScript, you can also import either `WilsonCPUOptions` or `WilsonGPUOptions`. Add a canvas to your HTML and pass it to the constructor to register it:
+Add `wilson.ts` or `wilson.js` to your project, load `wilson.css`, then import either `WilsonCPU` or `WilsonGL`. If your project uses TypeScript, you can also import either `WilsonCPUOptions` or `WilsonGLOptions`. Add a canvas to your HTML and pass it to the constructor to register it:
 ```js
 import { WilsonCPU } from "/path/to/wilson.js";
 
@@ -33,9 +33,9 @@ The `WilsonCPU` class is relatively straightforward: it exposes the `ctx` field,
 
 
 
-### WilsonGPU
+### WilsonGL
 
-The `WilsonGPU` class is more complex. In the `options` object, set a `shader` field, which is a string containing the GLSL shader code. As an introductory example, the following shader draws a Julia set:
+The `WilsonGL` class is more complex. In the `options` object, set a `shader` field, which is a string containing the GLSL shader code. As an introductory example, the following shader draws a Julia set:
 
 ```glsl
 precision highp float;
@@ -93,7 +93,7 @@ const options = {
 
 Ints and floats are initialized with numbers, vectors are initialized with 1D arrays, and matrices are initialized with 2D arrays in **row-major** order (i.e. the way you're likely used to representing them in JavaScript, but not in GLSL). Arrays of `int`s or `float`s (e.g. `uniform int foo[3];`) are initialized with 1D arrays, and arrays of vectors (e.g. `uniform vec3 foo[3];`) are initialized with 2D arrays.
 
-To draw a frame, call the `drawFrame` method on the `WilsonGPU` instance. To set one or more uniforms, use the `setUniforms` method:
+To draw a frame, call the `drawFrame` method on the `WilsonGL` instance. To set one or more uniforms, use the `setUniforms` method:
 
 ```js
 wilson.setUniforms({ c: [0, 1] });
@@ -196,7 +196,7 @@ By default, opening a canvas in fullscreen will preserve its aspect ratio, effec
 
 ### WebXR
 
-`WilsonGPU` applets that draw 3D scenes can be rendered in a VR headset using WebXR with minimal code changes: the shader just renders to each eye in a headset instead of a canvas, and so only difference is the camera position and orientation. To enable WebXR support, pass the `xrOptions` object in the options. Its only required field is a `renderFrame` function that renders the scene from a particular perspective:
+`WilsonGL` applets that draw 3D scenes can be rendered in a VR headset using WebXR with minimal code changes: the shader just renders to each eye in a headset instead of a canvas, and so only difference is the camera position and orientation. To enable WebXR support, pass the `xrOptions` object in the options. Its only required field is a `renderFrame` function that renders the scene from a particular perspective:
 
 ```js
 const options = {
@@ -239,15 +239,13 @@ A headset's framebuffer is typiaclly not the same size or aspect ratio as the ca
 
 Input sources during an XR session are exposed in `wilson.xrControllers`, updated once per frame before `onFrameStart` runs. Each entry stays the same object for as long as its device is connected, so an applet can hold onto one and read it every frame. Controllers are identified by `handedness` rather than by index, since the order they're reported in is not stable; use `wilson.getXRController("left" | "right" | "none")`. Controllers may connect or disconnect during a session; use `onControllerConnect` and `onControllerDisconnect` in `xrOptions` if you need to change behavior when either happens.
 
-Each controller carries two poses, both given relative to the session's reference space. `grip` is where the device is actually held, which is what to use for drawing something in the user's hand, and `targetRay` is the ray it points along, whose -Z axis is the pointing direction. Both are `null` on frames where that device isn't tracked, which can happen routinely when a controller leaves the headset cameras' view. Each pose's `matrix` is a `Float32Array` in column-major order and so can be passed verbatim to `wilson.setUniform`. The fields `position` and `orientation` are the same transform in a forms that's easier to do JS-side math with.
+Each controller carries two transform matrices, both given relative to the session's reference space. `grip` is where the device is actually held, which is what to use for drawing something in the user's hand. `targetRay` is the ray it points along, whose -Z axis is the pointing direction. Both are `null` on frames where that device isn't tracked, which can happen routinely when a controller leaves the headset cameras' view. Each is a `Float32Array` in column-major order and so can be passed verbatim to `wilson.setUniform`.
 
-Buttons follow the `xr-standard` mapping, and are named `trigger`, `squeeze`, `touchpad`, `thumbstick`, `a`, and `b`. On a left controller the last two are the ones physically labeled X and Y; the system menu button is reserved by the headset's runtime and is never visible to the page at all. Anything a device exposes past those six — a Quest's thumbrest, say — is device-specific and isn't reported. Every button reports `pressed` and an analog `value`, which is only ever 0 or 1 on anything but the trigger and the squeeze. Edges aren't polled for: `onButtonDown` and `onButtonUp` report them as callbacks, firing after every controller has been updated, so a callback reading a second controller sees the current frame's state rather than the last one's.
+Buttons are exposed in the `buttons` field of a controller and follow the `xr-standard` mapping: they are named `trigger`, `squeeze`, `touchpad`, `thumbstick`, `a`, and `b`. On a left controller the last two are the ones physically labeled X and Y. Every button reports `pressed` and an analog `value`, which is only ever 0 or 1 on anything but the trigger and the squeeze. Set the `onButtonDown` and `onButtonUp` callbacks in `xrOptions` if you need to listen for button changes.
 
-The thumbstick is reported as `thumbstick`, an `[x, y]` pair. WebXR's raw axes are +y **down**, which is backwards from how a stick is usually read, so Wilson negates them — pushing a stick forward gives a positive y. Touchpads, which only the older generation of controllers has, aren't exposed; the `touchpad` button still is.
+An analog stick is reported as the `thumbstick` field of a controller. It is an `[x, y]` pair with positive values for pushing the stick right and up (note that the $y$-values are negated relative to the raw WebXR API).
 
-Everything comes from polling. WebXR reports the primary and grip actions as real events too, but on a headset those are just the trigger and the squeeze button, so Wilson doesn't wrap them separately — read `buttons.trigger` and `buttons.squeeze`, or use `onButtonDown` and `onButtonUp`. Input sources with no gamepad at all, like gaze, therefore report no button presses; only their poses update.
-
-Finally, one case worth knowing about: when the user opens a system menu, the session's visibility state goes to `hidden` and the runtime takes input without reporting the releases. Wilson forces every button up and fires `onButtonUp` for them, so nothing stays stuck down when the applet comes back.
+If the user opens a system menu during a WebXR session, the session's visibility state is `hidden` and the headset runtime takes input without reporting button releases. Wilson forces every button up and fires `onButtonUp` for them in this case, so nothing stays stuck down when the applet comes back.
 
 
 
@@ -312,10 +310,10 @@ The above guide, along with the example project, are a great way to get started 
 	- `enterFullscreenButtonIconPath`: a string for the path to the enter fullscreen button image. Required (and only allowed) if `useFullscreenButton` is `true`.
 	- `exitFullscreenButtonIconPath`: a string for the path to the exit fullscreen button image. Required (and only allowed) if `useFullscreenButton` is `true`.
 
-### WilsonCPU Options
+### Additional WilsonCPU Options
 - `willReadFrequently`: a boolean for whether the image data of the canvas will be read frequently (via `ctx.getImageData` or `wilson.downloadFrame`). Defaults to `false`.
 
-### WilsonGPU Options
+### WilsonGL Options
 - `shader` or `shaders`: either a string containing the GLSL shader code, or an object whose keys are the IDs of shader programs and whose values are strings containing the GLSL code. Exactly one of these must be specified.
 - `uniforms`: if `shader` is specified, this is an object whose keys are the names of the uniforms in the shader, and whose values are the initial values of those uniforms. If `shaders` is specified, this is an object whose keys are the IDs of shader programs, and whose values are objects with the same structure as the `uniforms` field of a single shader.
 - `useWebGL2`: a boolean for whether to use WebGL2 instead of WebGL. Defaults to `true`. Even if this is `true`, Wilson will check for hardware WebGL2 support before using it.
@@ -397,14 +395,14 @@ All of these live inside `xrOptions`, and only `renderFrame` is required.
 - `interpolateCanvasToWorld([row: number, col: number]): [number, number]`: converts a point in canvas coordinates to world coordinates.
 - `interpolateWorldToCanvas([x: number, y: number]): [number, number]`: converts a point in world coordinates to canvas coordinates.
 - `destroy()`: destroys the Wilson instace, removes all event listeners, and returns the canvas div structure to its original state.
-- `replaceCanvas(): HTMLCanvasElement`: replaces the canvas element in the DOM with an exact copy (old references will be stale). Use this when destroying and later recreating a WilsonGPU instance (A canvas cannot have a new WebGL contexts after an old one is lost).
+- `replaceCanvas(): HTMLCanvasElement`: replaces the canvas element in the DOM with an exact copy (old references will be stale). Use this when destroying and later recreating a WilsonGL instance (A canvas cannot have a new WebGL contexts after an old one is lost).
 
 ### WilsonCPU Fields and Methods
 - `ctx`: the 2D canvas context; only available on `WilsonCPU` instances.
 - `drawFrame(image: Uint8ClampedArray)`: draws the current frame to the canvas.
 - `downloadFrame(filename: string)`: downloads the current frame as a png file.
 
-### WilsonGPU Fields and Methods
+### WilsonGL Fields and Methods
 - `gl`: the WebGL or WebGL2 context.
 - `drawFrame()`: draws a frame with the current shader program.
 - `downloadFrame(filename: string, drawNewFrame?: boolean)`: downloads the current frame as a png file. For this to work properly, a new frame must be drawn immediately before downloading. Setting drawNewFrame to `false` will skip this step; only use this if you are manually drawing a frame directly before calling this method.
@@ -453,7 +451,7 @@ await wilson.downloadHighResFrame("image.png", 8000, {}, {
 - `setTexture({ id: string, data?: Float32Array | Uint8Array | TexImageSource | null })`: writes `data` to the texture with the given ID. The type of `data` must match the texture type if it is an array (i.e. if the texture is of type `float`, the data must be a `Float32Array`), and the length of `data` must be equal to the texture's width times its height, times 4. Passing `null`, or leaving `data` out entirely, zeroes the texture instead.
 - `readPixels({ row: number, col: number, height: number, width: number, format: "unsignedByte" | "float", includeAlpha: boolean })`: reads the a rectangle of pixels out of the current frame as either  a `Uint8Array` or `Float32Array`, depending on the format. `row` and `col` default to `0`, and `height` and `width` default to the canvas height and width, respectively. The size of the returned array is `width * height * 4`.
 
-### WilsonGPU WebXR Fields and Methods
+### WilsonGL WebXR Fields and Methods
 
 All of these require `xrOptions` to have been passed in the options; the fields that describe an active session are `undefined` when there isn't one.
 
@@ -473,7 +471,7 @@ All of these require `xrOptions` to have been passed in the options; the fields 
 Each controller has the following fields:
 
 - `handedness`: `"left"`, `"right"`, or `"none"`.
-- `targetRay`, `grip`: the pose of the ray the device points along and of where it's actually held, relative to the session's reference space, or `null` on a frame where the device isn't tracked. Each has a `matrix` (a column-major `Float32Array` that Wilson overwrites every frame, so copy it if it needs to outlive one) and a `position` and `orientation` as `DOMPointReadOnly`s. `grip` is always `null` for input sources that don't have one, such as gaze.
+- `targetRay`, `grip`: the transform of the ray the device points along and of where it's actually held, relative to the session's reference space, each a column-major `Float32Array` that Wilson overwrites every frame, so copy one if it needs to outlive a frame. `null` on a frame where the device isn't tracked, and `grip` is always `null` for input sources that don't have one, such as gaze.
 - `buttons`: an object with a state for each button in the `xr-standard` mapping — `trigger`, `squeeze`, `touchpad`, `thumbstick`, `a`, and `b`, the last two being the ones labeled X and Y on a left controller. Each has `pressed` and an analog `value` in `[0, 1]`, which is only ever 0 or 1 on anything but the trigger and the squeeze. Use `onButtonDown` and `onButtonUp` for edges.
 - `thumbstick`: an `[x, y]` pair, with y negated from the raw axis value so that +y is forward.
 - `inputSource`: the underlying `XRInputSource`, for anything Wilson doesn't wrap.

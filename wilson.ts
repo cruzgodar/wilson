@@ -4269,22 +4269,17 @@ export type XRButtonState = {
 	value: number,
 };
 
-// The matrix is a persistent buffer that's overwritten every frame, so that posing controllers
-// doesn't allocate on the hot path. Copy it if it needs to outlive the frame.
-export type XRControllerPose = {
-	matrix: Float32Array,
-	position: DOMPointReadOnly,
-	orientation: DOMPointReadOnly,
-};
-
 export type WilsonXRController = {
 	inputSource: XRInputSource,
 	handedness: XRHandedness,
 
-	// Null on frames where the device isn't tracked. Buttons keep working when this happens,
-	// since a controller that's momentarily out of view is still being pressed.
-	targetRay: XRControllerPose | null,
-	grip: XRControllerPose | null,
+	// Column-major transforms relative to the session's reference space, and null on frames
+	// where the device isn't tracked. Buttons keep working when that happens, since a
+	// controller that's momentarily out of view is still being pressed. Each is a persistent
+	// buffer that's overwritten every frame rather than a fresh array, so that posing
+	// controllers doesn't allocate on the hot path; copy one if it needs to outlive the frame.
+	targetRay: Float32Array | null,
+	grip: Float32Array | null,
 
 	buttons: {[name in XRButtonName]: XRButtonState},
 
@@ -4310,13 +4305,13 @@ export type OnXRButtonEvent = (data: {
 	session: XRSession,
 }) => void;
 
-// The public controller object, plus the persistent buffers backing it. The pose objects are
-// held here rather than on the controller so that losing tracking can null out the controller's
-// fields without throwing away their matrices.
+// The public controller object, plus the persistent buffers backing it. The matrices are held
+// here rather than only on the controller so that losing tracking can null out the controller's
+// fields without throwing them away.
 type WilsonXRControllerData = {
 	controller: WilsonXRController,
-	targetRayPose: XRControllerPose,
-	gripPose: XRControllerPose,
+	targetRayMatrix: Float32Array,
+	gripMatrix: Float32Array,
 };
 
 function createXRButtonState(): XRButtonState
@@ -4324,15 +4319,6 @@ function createXRButtonState(): XRButtonState
 	return {
 		pressed: false,
 		value: 0,
-	};
-}
-
-function createXRControllerPose(): XRControllerPose
-{
-	return {
-		matrix: new Float32Array(16),
-		position: new DOMPointReadOnly(0, 0, 0, 1),
-		orientation: new DOMPointReadOnly(0, 0, 0, 1),
 	};
 }
 
@@ -7228,19 +7214,19 @@ export class WilsonGL extends Wilson
 
 		return {
 			controller,
-			targetRayPose: createXRControllerPose(),
-			gripPose: createXRControllerPose(),
+			targetRayMatrix: new Float32Array(16),
+			gripMatrix: new Float32Array(16),
 		};
 	}
 
-	// Fills the persistent buffer in `target`, so that posing controllers every frame doesn't
-	// allocate on the hot path.
-	#readXRPose(
+	// Fills the persistent buffer `target` with the space's transform, so that posing
+	// controllers every frame doesn't allocate on the hot path.
+	#readXRPoseMatrix(
 		frame: XRFrame,
 		space: XRSpace,
 		refSpace: XRReferenceSpace,
-		target: XRControllerPose
-	): XRControllerPose | null {
+		target: Float32Array
+	): Float32Array | null {
 		let pose: XRPose | undefined;
 
 		try
@@ -7258,9 +7244,7 @@ export class WilsonGL extends Wilson
 			return null;
 		}
 
-		target.matrix.set(pose.transform.matrix);
-		target.position = pose.transform.position;
-		target.orientation = pose.transform.orientation;
+		target.set(pose.transform.matrix);
 
 		return target;
 	}
@@ -7288,15 +7272,15 @@ export class WilsonGL extends Wilson
 			const { controller } = data;
 			const { inputSource } = controller;
 
-			controller.targetRay = this.#readXRPose(
+			controller.targetRay = this.#readXRPoseMatrix(
 				frame,
 				inputSource.targetRaySpace,
 				refSpace,
-				data.targetRayPose
+				data.targetRayMatrix
 			);
 
 			controller.grip = inputSource.gripSpace
-				? this.#readXRPose(frame, inputSource.gripSpace, refSpace, data.gripPose)
+				? this.#readXRPoseMatrix(frame, inputSource.gripSpace, refSpace, data.gripMatrix)
 				: null;
 
 			const gamepad = inputSource.gamepad;
