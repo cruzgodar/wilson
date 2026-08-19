@@ -4048,7 +4048,7 @@ type UniformType = "int"
 	| "mat3"
 	| "mat4";
 type UniformValue = number | number[] | number[][] | Float32Array;
-type UniformInitializers = {[name: string]: UniformValue};
+export type UniformInitializers = {[name: string]: UniformValue};
 
 const uniformFunctions: {[key in UniformType]: any} = {
 	int: (
@@ -4227,30 +4227,23 @@ type WilsonGLXRData = {
 	baseLayer: XRWebGLLayer,
 };
 
+// Only the things that differ between the eyes. Everything that's fixed for the whole frame
+// is handed to onFrameStart instead, which runs once before either eye.
 export type RenderXRFrame = (data: {
-	view: XRView,
 	projectionMatrix: Float32Array,
 	cameraToWorld: Float32Array,
 	eye: XREye,
 	viewIndex: number,
-	numViews: number,
-	viewport: XRViewport,
-	time: number,
-	deltaTime: number,
-	frame: XRFrame,
-	refSpace: XRReferenceSpace,
-	position: DOMPointReadOnly,
-	emulatedPosition: boolean,
-	session: XRSession,
-	pose: XRViewerPose,
+	// The per-eye escape hatch, for anything Wilson doesn't wrap.
+	view: XRView,
 }) => void;
 
+// The session and reference space aren't here because they're the same for the whole session;
+// read them off the Wilson instance as xrSession and xrRefSpace.
 export type OnXRFrameStart = (data: {
 	time: number,
 	deltaTime: number,
 	frame: XRFrame,
-	session: XRSession,
-	refSpace: XRReferenceSpace,
 	pose: XRViewerPose,
 }) => void;
 
@@ -4289,20 +4282,13 @@ export type WilsonXRController = {
 	pulse: (intensity: number, duration: number) => Promise<boolean>,
 };
 
-export type OnXRControllerChange = (data: {
-	controller: WilsonXRController,
-	controllers: WilsonXRController[],
-	session: XRSession,
-}) => void;
+// The full list as it stands after the change is the instance's xrControllers.
+export type OnXRControllerChange = (controller: WilsonXRController) => void;
 
 export type OnXRButtonEvent = (data: {
 	controller: WilsonXRController,
 	name: XRButtonName,
 	state: XRButtonState,
-	time: number,
-	frame: XRFrame,
-	refSpace: XRReferenceSpace,
-	session: XRSession,
 }) => void;
 
 // The public controller object, plus the persistent buffers backing it. The matrices are held
@@ -4337,7 +4323,6 @@ export type XROptions = {
 	onFrameStart?: OnXRFrameStart,
 	onAvailabilityChange?: (isSupported: boolean) => void,
 	onVisibilityChange?: (state: XRVisibilityState) => void,
-	onFrameRateChange?: (frameRate: number | undefined) => void,
 
 	onControllerConnect?: OnXRControllerChange,
 	onControllerDisconnect?: OnXRControllerChange,
@@ -4347,8 +4332,6 @@ export type XROptions = {
 
 	requiredFeatures?: string[],
 	optionalFeatures?: string[],
-	depthNear?: number,
-	depthFar?: number,
 
 	framebufferScale?: number;
 	fixedFoveation?: number;
@@ -4432,8 +4415,8 @@ export class WilsonGL extends Wilson
 	#xrButtonImg: HTMLImageElement | null = null;
 	#xrButtonText: HTMLElement | null = null;
 
-	xrIsSupported: Promise<boolean> = Promise.resolve(false);
-	#xrIsSupportedNow: boolean | null = null; // Resolves to a boolean once known.
+	// Null until the first check resolves, and null again for the duration of every recheck.
+	#xrIsSupportedNow: boolean | null = null;
 
 	#renderXRFrame: RenderXRFrame = () => {};
 
@@ -4444,8 +4427,6 @@ export class WilsonGL extends Wilson
 
 	#xrRequiredFeatures: string[] = [];
 	#xrOptionalFeatures: string[] = [];
-	#xrDepthNear: number = 0.1;
-	#xrDepthFar: number = 1000;
 
 	#xrFramebufferScale: number = 1;
 
@@ -4521,6 +4502,9 @@ export class WilsonGL extends Wilson
 	get inXR() { return this.#xrData !== undefined; }
 	#enteringXR: boolean = false;
 
+	get xrSession() { return this.#xrData?.session; }
+	get xrRefSpace() { return this.#xrData?.refSpace; }
+
 	get xrFramebufferWidth() { return this.#xrData?.baseLayer.framebufferWidth; }
 	get xrFramebufferHeight() { return this.#xrData?.baseLayer.framebufferHeight; }
 	
@@ -4559,7 +4543,6 @@ export class WilsonGL extends Wilson
 		onFrameStart: OnXRFrameStart,
 		onAvailabilityChange: (isSupported: boolean) => void,
 		onVisibilityChange: (state: XRVisibilityState) => void,
-		onFrameRateChange: (frameRate: number | undefined) => void,
 		onControllerConnect: OnXRControllerChange,
 		onControllerDisconnect: OnXRControllerChange,
 		onButtonDown: OnXRButtonEvent,
@@ -4570,7 +4553,6 @@ export class WilsonGL extends Wilson
 		onFrameStart: () => {},
 		onAvailabilityChange: () => {},
 		onVisibilityChange: () => {},
-		onFrameRateChange: () => {},
 		onControllerConnect: () => {},
 		onControllerDisconnect: () => {},
 		onButtonDown: () => {},
@@ -4595,6 +4577,9 @@ export class WilsonGL extends Wilson
 	// Used to restore the eye viewport correctly when switching back to the
 	// headset's framebuffer.
 	#xrViewport: XRViewport | null = null;
+
+	// The viewport of the eye currently being rendered, and null outside of a renderFrame call.
+	get xrViewport() { return this.#xrViewport; }
 
 
 
@@ -4735,7 +4720,6 @@ export class WilsonGL extends Wilson
 			onFrameStart: options?.onFrameStart ?? (() => {}),
 			onAvailabilityChange: options?.onAvailabilityChange ?? (() => {}),
 			onVisibilityChange: options?.onVisibilityChange ?? (() => {}),
-			onFrameRateChange: options?.onFrameRateChange ?? (() => {}),
 			onControllerConnect: options?.onControllerConnect ?? (() => {}),
 			onControllerDisconnect: options?.onControllerDisconnect ?? (() => {}),
 			onButtonDown: options?.onButtonDown ?? (() => {}),
@@ -4749,8 +4733,6 @@ export class WilsonGL extends Wilson
 		this.#xrRequiredFeatures = options?.requiredFeatures ?? [];
 		this.#xrOptionalFeatures = options?.optionalFeatures ?? [];
 
-		this.#xrDepthNear = options?.depthNear ?? 0.1;
-		this.#xrDepthFar = options?.depthFar ?? 1000;
 
 		this.#xrFramebufferScale = options?.framebufferScale ?? 1;
 
@@ -4768,7 +4750,7 @@ export class WilsonGL extends Wilson
 	{
 		this.#xrIsSupportedNow = null;
 
-		this.xrIsSupported = (
+		(
 			navigator.xr
 				? navigator.xr.isSessionSupported(XR_MODE)
 				: Promise.resolve(false)
@@ -4792,11 +4774,7 @@ export class WilsonGL extends Wilson
 
 					this.#xrCallbacks.onAvailabilityChange(supported);
 				}
-
-				return supported;
 			});
-
-		return this.xrIsSupported;
 	}
 
 	// Needs to be an arrow function to maintain its binding when passed to addEventListener
@@ -6772,7 +6750,7 @@ export class WilsonGL extends Wilson
 	}: {
 		filename: string,
 		resolution: number,
-		uniforms: UniformInitializers,
+		uniforms?: UniformInitializers,
 		tileSize?: number,
 		render?: RenderHighResTile,
 	}) {
@@ -6880,11 +6858,10 @@ export class WilsonGL extends Wilson
 			// Initializes the framebuffer (both eyes, side-by-side).
 			const baseLayer = this.#createXRBaseLayer(session);
 
-			session.updateRenderState({
-				baseLayer,
-				depthNear: this.#xrDepthNear,
-				depthFar: this.#xrDepthFar
-			});
+			// The framebuffer has no depth attachment and the shader reconstructs rays from
+			// the projection matrix's FOV terms, so the session's depth planes are left at
+			// their defaults; nothing here would read the entries they change.
+			session.updateRenderState({ baseLayer });
 		
 			const refSpace = await session.requestReferenceSpace(REFERENCE_SPACE);
 
@@ -6895,11 +6872,6 @@ export class WilsonGL extends Wilson
 			session.addEventListener("visibilitychange", () =>
 			{
 				this.#xrCallbacks.onVisibilityChange(session.visibilityState);
-			});
-
-			session.addEventListener("frameratechange", () =>
-			{
-				this.#xrCallbacks.onFrameRateChange(session.frameRate);
 			});
 
 			session.addEventListener("inputsourceschange", this.#onXRInputSourcesChange);
@@ -6979,10 +6951,7 @@ export class WilsonGL extends Wilson
 			// the applet comes back.
 			for (const { controller } of this.#xrControllerData.values())
 			{
-				this.#releaseXRControllerButtons(
-					controller,
-					{ time, frame, refSpace, session }
-				);
+				this.#releaseXRControllerButtons(controller, true);
 			}
 
 			return;
@@ -6991,7 +6960,7 @@ export class WilsonGL extends Wilson
 		// Deliberately ahead of the viewer pose check below: a controller's buttons and axes are
 		// still perfectly valid on a frame where head tracking dropped out, and skipping the poll
 		// would swallow every button event that happened during it.
-		this.#updateXRControllers(time, frame, refSpace, session);
+		this.#updateXRControllers(frame, refSpace);
 
 		const pose = frame.getViewerPose(refSpace);
 
@@ -7012,7 +6981,7 @@ export class WilsonGL extends Wilson
 
 
 
-		const { views, emulatedPosition } = pose;
+		const { views } = pose;
 
 		// Give the callback a predictable, full-framebuffer viewport; the loop below
 		// sets the per-eye viewport before each view renders.
@@ -7022,8 +6991,6 @@ export class WilsonGL extends Wilson
 			time,
 			deltaTime,
 			frame,
-			session,
-			refSpace,
 			pose
 		});
 
@@ -7049,21 +7016,11 @@ export class WilsonGL extends Wilson
 				this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 		
 				this.#renderXRFrame({
-					view,
 					projectionMatrix: view.projectionMatrix,
 					cameraToWorld: view.transform.matrix,
 					eye: view.eye,
 					viewIndex,
-					numViews: views.length,
-					viewport,
-					time,
-					deltaTime,
-					frame,
-					refSpace,
-					position: view.transform.position,
-					emulatedPosition,
-					session,
-					pose,
+					view,
 				});
 			}
 		}
@@ -7093,8 +7050,7 @@ export class WilsonGL extends Wilson
 			return;
 		}
 
-		const { session } = this.#xrData;
-		const inputSources = session.inputSources;
+		const inputSources = this.#xrData.session.inputSources;
 
 		let added: WilsonXRController[] | null = null;
 		let removed: WilsonXRController[] | null = null;
@@ -7127,7 +7083,7 @@ export class WilsonGL extends Wilson
 			{
 				// Reset silently rather than dispatching button events for a device that no
 				// longer exists; onControllerDisconnect is the signal for that.
-				this.#releaseXRControllerButtons(data.controller, null);
+				this.#releaseXRControllerButtons(data.controller, false);
 
 				data.controller.targetRay = null;
 				data.controller.grip = null;
@@ -7154,11 +7110,7 @@ export class WilsonGL extends Wilson
 		{
 			for (const controller of removed)
 			{
-				this.#xrCallbacks.onControllerDisconnect({
-					controller,
-					controllers: this.#xrControllerList,
-					session
-				});
+				this.#xrCallbacks.onControllerDisconnect(controller);
 			}
 		}
 
@@ -7166,11 +7118,7 @@ export class WilsonGL extends Wilson
 		{
 			for (const controller of added)
 			{
-				this.#xrCallbacks.onControllerConnect({
-					controller,
-					controllers: this.#xrControllerList,
-					session
-				});
+				this.#xrCallbacks.onControllerConnect(controller);
 			}
 		}
 	}
@@ -7249,12 +7197,8 @@ export class WilsonGL extends Wilson
 		return target;
 	}
 
-	#updateXRControllers(
-		time: number,
-		frame: XRFrame,
-		refSpace: XRReferenceSpace,
-		session: XRSession
-	) {
+	#updateXRControllers(frame: XRFrame, refSpace: XRReferenceSpace)
+	{
 		this.#syncXRControllers();
 
 		// Button transitions are collected and dispatched after every controller has been
@@ -7336,29 +7280,14 @@ export class WilsonGL extends Wilson
 				? this.#xrCallbacks.onButtonDown
 				: this.#xrCallbacks.onButtonUp;
 
-			callback({
-				controller,
-				name,
-				state,
-				time,
-				frame,
-				refSpace,
-				session
-			});
+			callback({ controller, name, state });
 		}
 	}
 
-	// Forces every button up, dispatching the releases if a frame is available to report them
-	// with. Idempotent, since a second call finds nothing still pressed.
-	#releaseXRControllerButtons(
-		controller: WilsonXRController,
-		dispatch: {
-			time: number,
-			frame: XRFrame,
-			refSpace: XRReferenceSpace,
-			session: XRSession
-		} | null
-	) {
+	// Forces every button up, firing onButtonUp for the ones that were down if `dispatch` is set.
+	// Idempotent, since a second call finds nothing still pressed.
+	#releaseXRControllerButtons(controller: WilsonXRController, dispatch: boolean)
+	{
 		for (const name of XR_BUTTON_NAMES)
 		{
 			const state = controller.buttons[name];
@@ -7370,15 +7299,7 @@ export class WilsonGL extends Wilson
 
 			if (wasPressed && dispatch)
 			{
-				this.#xrCallbacks.onButtonUp({
-					controller,
-					name,
-					state,
-					time: dispatch.time,
-					frame: dispatch.frame,
-					refSpace: dispatch.refSpace,
-					session: dispatch.session
-				});
+				this.#xrCallbacks.onButtonUp({ controller, name, state });
 			}
 		}
 
@@ -7412,16 +7333,12 @@ export class WilsonGL extends Wilson
 		{
 			for (const controller of disconnected)
 			{
-				this.#releaseXRControllerButtons(controller, null);
+				this.#releaseXRControllerButtons(controller, false);
 
 				controller.targetRay = null;
 				controller.grip = null;
 
-				this.#xrCallbacks.onControllerDisconnect({
-					controller,
-					controllers: this.#xrControllerList,
-					session
-				});
+				this.#xrCallbacks.onControllerDisconnect(controller);
 			}
 		}
 
@@ -7436,7 +7353,6 @@ export class WilsonGL extends Wilson
 			onFrameStart: () => {},
 			onAvailabilityChange: () => {},
 			onVisibilityChange: (state: XRVisibilityState) => {},
-			onFrameRateChange: (frameRate: number | undefined) => {},
 			onControllerConnect: () => {},
 			onControllerDisconnect: () => {},
 			onButtonDown: () => {},
