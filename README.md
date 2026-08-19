@@ -233,60 +233,21 @@ Rendering two eyes at a headset's native resolution is *substantially* more expe
 
 WebXR allows scaling the viewport within the framebuffer instead of rebuilding the framebuffer itself, but many headsets ignore it, particularly when tethered, so Wilson always renders each eye into its full viewport.
 
-A headset's framebuffer is naturally not the same size as the canvas. During a session, `createFramebufferTexturePair` defaults to the *headset's* dimensions rather than the canvas's, `useFramebuffer(null)` returns to the headset's framebuffer and restores the current eye's viewport. If you use framebuffers sized relative to the canvas, recreate them in `onEnter` and `onExit`, as well as whenever you change `xrFramebufferScale` mid-session.
+A headset's framebuffer is typiaclly not the same size or aspect ratio as the canvas. During a session, `createFramebufferTexturePair` defaults to the *headset's* dimensions rather than the canvas's, and `useFramebuffer(null)` returns to the headset's framebuffer and restores the current eye's viewport. If you use framebuffers sized relative to the canvas, recreate them in `onEnter` and `onExit`, as well as whenever you change `xrFramebufferScale` mid-session.
 
 ### XR Controllers
 
-Wilson tracks every input source the session reports and exposes them as `xrControllers`, updated once per frame before `onFrameStart` runs. Each entry stays the same object for as long as its device is connected, so an applet can hold onto one and read it every frame:
+Input sources during an XR session are exposed in `wilson.xrControllers`, updated once per frame before `onFrameStart` runs. Each entry stays the same object for as long as its device is connected, so an applet can hold onto one and read it every frame. Controllers are identified by `handedness` rather than by index, since the order they're reported in is not stable; use `wilson.getXRController("left" | "right" | "none")`. Controllers may connect or disconnect during a session; use `onControllerConnect` and `onControllerDisconnect` in `xrOptions` if you need to change behavior when either happens.
 
-```js
-const options = {
-	xrOptions:
-	{
-		renderFrame,
+Each controller carries two poses, both given relative to the session's reference space. `grip` is where the device is actually held, which is what to use for drawing something in the user's hand, and `targetRay` is the ray it points along, whose -Z axis is the pointing direction. Both are `null` on frames where that device isn't tracked, which can happen routinely when a controller leaves the headset cameras' view. Each pose's `matrix` is a `Float32Array` in column-major order and so can be passed verbatim to `wilson.setUniform`. The fields `position` and `orientation` are the same transform in a forms that's easier to do JS-side math with.
 
-		onFrameStart: ({ deltaTime }) =>
-		{
-			const controller = wilson.getXRController("right");
+Buttons follow the `xr-standard` mapping, and are named `trigger`, `squeeze`, `touchpad`, `thumbstick`, `a`, and `b`. On a left controller the last two are the ones physically labeled X and Y; the system menu button is reserved by the headset's runtime and is never visible to the page at all. Anything a device exposes past those six — a Quest's thumbrest, say — is device-specific and isn't reported. Every button reports `pressed` and an analog `value`, which is only ever 0 or 1 on anything but the trigger and the squeeze. Edges aren't polled for: `onButtonDown` and `onButtonUp` report them as callbacks, firing after every controller has been updated, so a callback reading a second controller sees the current frame's state rather than the last one's.
 
-			if (!controller)
-			{
-				return;
-			}
-
-			// Fly forward at a meter a second while the trigger is held.
-			if (controller.buttons.trigger.pressed && controller.grip)
-			{
-				moveAlong(controller.grip.matrix, deltaTime / 1000);
-			}
-
-			// Turn with the thumbstick; +y is forward and +x is right.
-			turn(controller.thumbstick[0] * deltaTime / 1000);
-		},
-
-		onButtonDown: ({ controller, name }) =>
-		{
-			if (name === "a")
-			{
-				controller.pulse(0.5, 50);
-				resetScene();
-			}
-		},
-	},
-};
-```
-
-Controllers are identified by `handedness` rather than by index, since the order they're reported in is not stable; `getXRController("left" | "right" | "none")` is the usual way to find one. They connect and disconnect freely during a session — a controller that goes to sleep or is switched off changes the set — so `onControllerConnect` and `onControllerDisconnect` fire whenever it changes, and an applet should never assume a controller it saw last frame is still there.
-
-Each controller carries two poses, both given relative to the session's reference space. `grip` is where the device is actually held, which is what to use for drawing something in the user's hand, and `targetRay` is the ray it points along, whose -Z axis is the pointing direction. Both are `null` on frames where that device isn't tracked, which happens routinely when a controller leaves the headset's cameras' view; buttons keep working when it does. Each pose's `matrix` is a `Float32Array` in column-major order, ready to hand to `setUniform` — but it's a buffer that Wilson overwrites every frame rather than a fresh array, so copy it if it needs to outlive the frame.
-
-Buttons follow the `xr-standard` mapping, and are named `trigger`, `squeeze`, `touchpad`, `thumbstick`, `a`, and `b`. On a left controller the last two are the ones physically labeled X and Y; the system menu button is reserved by the headset's runtime and is never visible to the page at all. Anything a device exposes past those six — a Quest's thumbrest, say — is device-specific and isn't reported. Every button reports `pressed`, `touched`, and an analog `value`, along with `justPressed` and `justReleased`, which are true only on the frame the button changed, so that an applet polling in `onFrameStart` can act on edges without tracking them itself. `onButtonDown` and `onButtonUp` report the same transitions as callbacks, and fire after every controller has been updated, so a callback reading a second controller sees the current frame's state rather than the last one's.
-
-Sticks and touchpads are reported as `thumbstick` and `touchpad`, each a `[x, y]` pair. WebXR's raw axes are +y **down**, which is backwards from how a stick is usually read, so Wilson negates them — pushing a stick forward gives a positive y.
+The thumbstick is reported as `thumbstick`, an `[x, y]` pair. WebXR's raw axes are +y **down**, which is backwards from how a stick is usually read, so Wilson negates them — pushing a stick forward gives a positive y. Touchpads, which only the older generation of controllers has, aren't exposed; the `touchpad` button still is.
 
 Everything comes from polling. WebXR reports the primary and grip actions as real events too, but on a headset those are just the trigger and the squeeze button, so Wilson doesn't wrap them separately — read `buttons.trigger` and `buttons.squeeze`, or use `onButtonDown` and `onButtonUp`. Input sources with no gamepad at all, like gaze, therefore report no button presses; only their poses update.
 
-Finally, two cases worth knowing about. When the user opens a system menu, the session's visibility state goes to `hidden` and the runtime takes input without reporting the releases; Wilson forces every button up and fires `onButtonUp` for them, so nothing stays stuck down when the applet comes back. And `profiles` lists the [input profiles](https://github.com/immersive-web/webxr-input-profiles) the device claims, most specific first, which is the way to special-case particular hardware — worth reaching for on a device that doesn't follow the `xr-standard` layout, where the named buttons and axes are a best-effort positional guess.
+Finally, one case worth knowing about: when the user opens a system menu, the session's visibility state goes to `hidden` and the runtime takes input without reporting the releases. Wilson forces every button up and fires `onButtonUp` for them, so nothing stays stuck down when the applet comes back.
 
 
 
@@ -512,9 +473,8 @@ All of these require `xrOptions` to have been passed in the options; the fields 
 Each controller has the following fields:
 
 - `handedness`: `"left"`, `"right"`, or `"none"`.
-- `targetRay`, `grip`: the pose of the ray the device points along and of where it's actually held, relative to the session's reference space, or `null` on a frame where the device isn't tracked. Each has a `matrix` (a column-major `Float32Array` that Wilson overwrites every frame, so copy it if it needs to outlive one), a `position` and `orientation` as `DOMPointReadOnly`s, `linearVelocity` and `angularVelocity` if the headset reports them, and `emulatedPosition`. `grip` is always `null` for input sources that don't have one, such as gaze.
-- `buttons`: an object with a state for each button in the `xr-standard` mapping — `trigger`, `squeeze`, `touchpad`, `thumbstick`, `a`, and `b`, the last two being the ones labeled X and Y on a left controller. Each has `pressed`, `touched`, an analog `value`, and `justPressed` and `justReleased`, which are true only on the frame the button changed.
-- `thumbstick`, `touchpad`: `[x, y]` pairs, with y negated from the raw axis value so that +y is forward.
-- `profiles`: the [input profiles](https://github.com/immersive-web/webxr-input-profiles) the device claims, most specific first. Devices that don't follow the `xr-standard` layout, where the named buttons and axes are a best-effort guess, are special-cased through these.
+- `targetRay`, `grip`: the pose of the ray the device points along and of where it's actually held, relative to the session's reference space, or `null` on a frame where the device isn't tracked. Each has a `matrix` (a column-major `Float32Array` that Wilson overwrites every frame, so copy it if it needs to outlive one) and a `position` and `orientation` as `DOMPointReadOnly`s. `grip` is always `null` for input sources that don't have one, such as gaze.
+- `buttons`: an object with a state for each button in the `xr-standard` mapping — `trigger`, `squeeze`, `touchpad`, `thumbstick`, `a`, and `b`, the last two being the ones labeled X and Y on a left controller. Each has `pressed` and an analog `value` in `[0, 1]`, which is only ever 0 or 1 on anything but the trigger and the squeeze. Use `onButtonDown` and `onButtonUp` for edges.
+- `thumbstick`: an `[x, y]` pair, with y negated from the raw axis value so that +y is forward.
 - `inputSource`: the underlying `XRInputSource`, for anything Wilson doesn't wrap.
 - `pulse(intensity: number, duration: number)`: fires the device's haptics at an intensity in `[0, 1]` for a duration in milliseconds, resolving to whether it actually happened. Resolves to `false` on devices without haptics rather than throwing.

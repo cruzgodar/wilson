@@ -4265,12 +4265,8 @@ export type XRButtonName = (typeof XR_BUTTON_NAMES)[number];
 
 export type XRButtonState = {
 	pressed: boolean,
-	touched: boolean,
+	// Analog, in [0, 1]. Only the trigger and squeeze report anything other than 0 or 1.
 	value: number,
-	// True only on the frame the button changed, so applets can poll for edges rather than
-	// tracking them by hand.
-	justPressed: boolean,
-	justReleased: boolean,
 };
 
 // The matrix is a persistent buffer that's overwritten every frame, so that posing controllers
@@ -4279,15 +4275,11 @@ export type XRControllerPose = {
 	matrix: Float32Array,
 	position: DOMPointReadOnly,
 	orientation: DOMPointReadOnly,
-	linearVelocity: DOMPointReadOnly | undefined,
-	angularVelocity: DOMPointReadOnly | undefined,
-	emulatedPosition: boolean,
 };
 
 export type WilsonXRController = {
 	inputSource: XRInputSource,
 	handedness: XRHandedness,
-	profiles: readonly string[],
 
 	// Null on frames where the device isn't tracked. Buttons keep working when this happens,
 	// since a controller that's momentarily out of view is still being pressed.
@@ -4298,7 +4290,6 @@ export type WilsonXRController = {
 
 	// Y is negated from the raw axis value, so that +y is forward/up.
 	thumbstick: [number, number],
-	touchpad: [number, number],
 
 	pulse: (intensity: number, duration: number) => Promise<boolean>,
 };
@@ -4332,10 +4323,7 @@ function createXRButtonState(): XRButtonState
 {
 	return {
 		pressed: false,
-		touched: false,
 		value: 0,
-		justPressed: false,
-		justReleased: false,
 	};
 }
 
@@ -4345,9 +4333,6 @@ function createXRControllerPose(): XRControllerPose
 		matrix: new Float32Array(16),
 		position: new DOMPointReadOnly(0, 0, 0, 1),
 		orientation: new DOMPointReadOnly(0, 0, 0, 1),
-		linearVelocity: undefined,
-		angularVelocity: undefined,
-		emulatedPosition: false,
 	};
 }
 
@@ -7019,7 +7004,7 @@ export class WilsonGL extends Wilson
 
 		// Deliberately ahead of the viewer pose check below: a controller's buttons and axes are
 		// still perfectly valid on a frame where head tracking dropped out, and skipping the poll
-		// would desync every justPressed edge.
+		// would swallow every button event that happened during it.
 		this.#updateXRControllers(time, frame, refSpace, session);
 
 		const pose = frame.getViewerPose(refSpace);
@@ -7216,7 +7201,6 @@ export class WilsonGL extends Wilson
 		const controller: WilsonXRController = {
 			inputSource,
 			handedness: inputSource.handedness,
-			profiles: inputSource.profiles,
 
 			targetRay: null,
 			grip: null,
@@ -7224,7 +7208,6 @@ export class WilsonGL extends Wilson
 			buttons,
 
 			thumbstick: [0, 0],
-			touchpad: [0, 0],
 
 			pulse: (intensity: number, duration: number) =>
 			{
@@ -7278,9 +7261,6 @@ export class WilsonGL extends Wilson
 		target.matrix.set(pose.transform.matrix);
 		target.position = pose.transform.position;
 		target.orientation = pose.transform.orientation;
-		target.linearVelocity = pose.linearVelocity;
-		target.angularVelocity = pose.angularVelocity;
-		target.emulatedPosition = pose.emulatedPosition;
 
 		return target;
 	}
@@ -7329,15 +7309,10 @@ export class WilsonGL extends Wilson
 
 			const axes = gamepad.axes;
 
-			// The raw axes are +y down, which is backwards from how a stick is usually read.
-			controller.touchpad[0] = axes[0] ?? 0;
-			controller.touchpad[1] = -(axes[1] ?? 0);
+			// Axes 0 and 1 are the touchpad, which Wilson doesn't expose. The raw axes are
+			// +y down, which is backwards from how a stick is usually read.
 			controller.thumbstick[0] = axes[2] ?? 0;
 			controller.thumbstick[1] = -(axes[3] ?? 0);
-
-			// Buttons that vanish from the gamepad between frames would otherwise keep whatever
-			// edge they last had forever.
-			this.#clearXRButtonEdges(controller);
 
 			// Anything past the xr-standard mapping is device-specific (a Quest's thumbrest, say)
 			// and isn't exposed.
@@ -7352,12 +7327,9 @@ export class WilsonGL extends Wilson
 				const wasPressed = state.pressed;
 
 				state.pressed = button.pressed;
-				state.touched = button.touched;
 				state.value = button.value;
-				state.justPressed = button.pressed && !wasPressed;
-				state.justReleased = !button.pressed && wasPressed;
 
-				if (state.justPressed || state.justReleased)
+				if (state.pressed !== wasPressed)
 				{
 					(buttonEvents = buttonEvents ?? []).push({
 						controller,
@@ -7392,15 +7364,6 @@ export class WilsonGL extends Wilson
 		}
 	}
 
-	#clearXRButtonEdges(controller: WilsonXRController)
-	{
-		for (const name of XR_BUTTON_NAMES)
-		{
-			controller.buttons[name].justPressed = false;
-			controller.buttons[name].justReleased = false;
-		}
-	}
-
 	// Forces every button up, dispatching the releases if a frame is available to report them
 	// with. Idempotent, since a second call finds nothing still pressed.
 	#releaseXRControllerButtons(
@@ -7419,10 +7382,7 @@ export class WilsonGL extends Wilson
 			const wasPressed = state.pressed;
 
 			state.pressed = false;
-			state.touched = false;
 			state.value = 0;
-			state.justPressed = false;
-			state.justReleased = wasPressed;
 
 			if (wasPressed && dispatch)
 			{
@@ -7440,8 +7400,6 @@ export class WilsonGL extends Wilson
 
 		controller.thumbstick[0] = 0;
 		controller.thumbstick[1] = 0;
-		controller.touchpad[0] = 0;
-		controller.touchpad[1] = 0;
 	}
 
 	#onXREnd = () =>
