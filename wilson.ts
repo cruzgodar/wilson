@@ -4921,60 +4921,6 @@ export class WilsonGL extends Wilson
 		}
 	`;
 
-	get numPendingShaders() { return Object.keys(this.#pendingShaders).length; }
-
-	shaderIsReady(id: ShaderProgramId = this.#currentShaderId)
-	{
-		return this.#shaderPrograms[id] !== undefined && this.#pendingShaders[id] === undefined;
-	}
-
-	// Resolves once the shader is drawable, or rejects with the compile/link error. Since
-	// compilation is deferred off the main thread, a shader is generally not drawable in the
-	// same tick that loadShader() is called, and callers that only draw on demand need to know
-	// when to ask for that first frame.
-	shaderReady(id: ShaderProgramId = this.#currentShaderId): Promise<void>
-	{
-		if (this.shaderIsReady(id))
-		{
-			return Promise.resolve();
-		}
-
-		const pending = this.#pendingShaders[id];
-
-		if (!pending)
-		{
-			return Promise.reject(new Error(`[Wilson] No shader with id ${id}.`));
-		}
-
-		return new Promise((resolve, reject) => pending.callbacks.push({ resolve, reject }));
-	}
-
-	// Resolves once nothing is left compiling, or rejects with the first compile/link error.
-	// Shaders requested while this is being awaited are waited on too, so a load kicked off in
-	// response to the first batch finishing doesn't slip past an in-flight await, and calling
-	// this again always reflects what's pending at that moment.
-	async allShadersReady(): Promise<void>
-	{
-		while (this.numPendingShaders !== 0)
-		{
-			const results = await Promise.allSettled(
-				Object.keys(this.#pendingShaders).map(id => this.shaderReady(id))
-			);
-
-			for (const result of results)
-			{
-				// A shader that was replaced mid-flight isn't a failure -- the load that
-				// replaced it is pending in its place, and the next pass waits on that.
-				if (
-					result.status === "rejected"
-					&& !(result.reason instanceof ShaderSupersededError)
-				) {
-					throw result.reason;
-				}
-			}
-		}
-	}
-
 	loadShader({
 		id = this.#numShaders.toString(),
 		shader,
@@ -5048,9 +4994,63 @@ export class WilsonGL extends Wilson
 		}
 	}
 
+	get #numPendingShaders() { return Object.keys(this.#pendingShaders).length; }
+
+	#shaderReadyNow(id: ShaderProgramId = this.#currentShaderId)
+	{
+		return this.#shaderPrograms[id] !== undefined && this.#pendingShaders[id] === undefined;
+	}
+
+	// Resolves once the shader is drawable, or rejects with the compile/link error. Since
+	// compilation is deferred off the main thread, a shader is generally not drawable in the
+	// same tick that loadShader() is called, and callers that only draw on demand need to know
+	// when to ask for that first frame.
+	shaderReady(id: ShaderProgramId = this.#currentShaderId): Promise<void>
+	{
+		if (this.#shaderReadyNow(id))
+		{
+			return Promise.resolve();
+		}
+
+		const pending = this.#pendingShaders[id];
+
+		if (!pending)
+		{
+			return Promise.reject(new Error(`[Wilson] No shader with id ${id}.`));
+		}
+
+		return new Promise((resolve, reject) => pending.callbacks.push({ resolve, reject }));
+	}
+
+	// Resolves once nothing is left compiling, or rejects with the first compile/link error.
+	// Shaders requested while this is being awaited are waited on too, so a load kicked off in
+	// response to the first batch finishing doesn't slip past an in-flight await, and calling
+	// this again always reflects what's pending at that moment.
+	async allShadersReady(): Promise<void>
+	{
+		while (this.#numPendingShaders !== 0)
+		{
+			const results = await Promise.allSettled(
+				Object.keys(this.#pendingShaders).map(id => this.shaderReady(id))
+			);
+
+			for (const result of results)
+			{
+				// A shader that was replaced mid-flight isn't a failure -- the load that
+				// replaced it is pending in its place, and the next pass waits on that.
+				if (
+					result.status === "rejected"
+					&& !(result.reason instanceof ShaderSupersededError)
+				) {
+					throw result.reason;
+				}
+			}
+		}
+	}
+
 	#schedulePollPendingShaders()
 	{
-		if (this.#pollPendingShadersScheduled || this.numPendingShaders === 0)
+		if (this.#pollPendingShadersScheduled || this.#numPendingShaders === 0)
 		{
 			return;
 		}

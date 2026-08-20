@@ -99,7 +99,7 @@ To draw a frame, call the `drawFrame` method on the `WilsonGL` instance. To set 
 wilson.setUniforms({ c: [0, 1] });
 ```
 
-Specifying the `shaders` field of the `options` object instead of the singular `shader` field allows for specifying multiple shaders, which allows for easier switching without having multiple Wilson instances. The `shaders` field is an object whose keys are the IDs of the shader programs, and whose values are strings containing the GLSL code. Similarly, when `shaders` is specified, the `uniforms` field is an object whose keys are the IDs of the shader programs, and whose values are objects with the same structure as the `uniforms` field of a single shader. Regardless of which field is used, the `loadShader` method allows for dynamically loading shaders later.
+Specifying the `shaders` field of the `options` object instead of the singular `shader` field allows for specifying multiple shaders, which allows for easier switching without having multiple Wilson instances. The `shaders` field is an object whose keys are the IDs of the shader programs, and whose values are strings containing the GLSL code. Similarly, when `shaders` is specified, the `uniforms` field is an object whose keys are the IDs of the shader programs, and whose values are objects with the same structure as the `uniforms` field of a single shader. Regardless of which field is used, the `loadShader` method allows for dynamically loading shaders later. Shaders are compiled asynchronously if possible, and so you should always `await wilson.allShadersReady()`. If you only need to await a specific shader, `await wilson.shaderReady(shaderId)`;
 
 
 
@@ -196,7 +196,7 @@ By default, opening a canvas in fullscreen will preserve its aspect ratio, effec
 
 ### WebXR
 
-`WilsonGL` applets that draw 3D scenes can be rendered in a VR headset using WebXR with minimal code changes: the shader just renders to each eye in a headset instead of a canvas, and so only difference is the camera position and orientation. To enable WebXR support, pass the `xrOptions` object in the options. Its only required field is a `renderFrame` function that renders the scene from a particular perspective:
+`WilsonGL` applets that draw 3D scenes can be rendered in a VR headset using WebXR with minimal code changes: the shader just renders to each eye in a headset instead of a canvas, and so the only difference is the camera position and orientation. To enable WebXR support, pass the `xrOptions` object in the options. Its only required field is a `renderFrame` function that renders the scene from a particular perspective:
 
 ```js
 const options = {
@@ -222,7 +222,7 @@ const options = {
 
 WebXR sessions must be started from a user gesture, and the page must be served over HTTPS or `localhost`. You can call `wilson.enterXR()` in an event handler that fires on a user gesture, and `wilson.exitXR()` to exit (although this is typically unnecessary, since the user can just take off their headset). To determine if the user is currently in an XR session, use `wilson.inXR`.
 
-As with fullscreen, Wilson provides stock UI for entering XR. Set `useButton: true` in `xrOptions` to automatically add an Enter VR button alongside the fullscreen and reset buttons; it is only shown when a headset is actually available. If you prefer to build tht functionality yourself, use the `onAvailabilityChange` callback in `xrOptions`, which is called with a boolean in exactly the cases that would show or hide the built-in button: once when the initial check resolves, and again when availability changes.
+As with fullscreen, Wilson provides stock UI for entering XR. Set `useButton: true` in `xrOptions` to automatically add an Enter VR button alongside the fullscreen and reset buttons; it is only shown when a headset is actually available. If you prefer to build that functionality yourself, use the `onAvailabilityChange` callback in `xrOptions`, which is called with a boolean in exactly the cases that would show or hide the built-in button: once when the initial check resolves, and again when availability changes.
 
 When an XR session begins, Wilson pauses its own animation frame loop and drives rendering from the headset's frame loop instead. If an applet runs its own `requestAnimationFrame` loop, **stop it in `onEnter` and restart it in `onExit`**. Anything that happens once per frame rather than once per eye — polling controllers, moving the camera velocity, setting uniforms that are the same for both eyes, etc. — should go in the `onFrameStart` callback, which is called once per frame, before either eye is rendered, with the whole framebuffer bound. The `renderFrame` callback should set the per-eye uniforms and draw the frame (presumably using `wilson.drawFrame()`).
 
@@ -233,7 +233,7 @@ Rendering two eyes at a headset's native resolution is *substantially* more expe
 
 WebXR allows scaling the viewport within the framebuffer instead of rebuilding the framebuffer itself, but many headsets ignore it, particularly when tethered, so Wilson always renders each eye into its full viewport.
 
-A headset's framebuffer is typiaclly not the same size or aspect ratio as the canvas. During a session, `createFramebufferTexturePair` defaults to the *headset's* dimensions rather than the canvas's, and `useFramebuffer(null)` returns to the headset's framebuffer and restores the current eye's viewport. If you use framebuffers sized relative to the canvas, recreate them in `onEnter` and `onExit`, as well as whenever you change `xrFramebufferScale` mid-session.
+A headset's framebuffer is typically not the same size or aspect ratio as the canvas. During a session, `createFramebufferTexturePair` defaults to the *headset's* dimensions rather than the canvas's, and `useFramebuffer(null)` returns to the headset's framebuffer and restores the current eye's viewport. If you use framebuffers sized relative to the canvas, recreate them in `onEnter` and `onExit`, as well as whenever you change `xrFramebufferScale` mid-session.
 
 ### XR Controllers
 
@@ -345,6 +345,7 @@ The above guide, along with the example project, are a great way to get started 
 - `shader` or `shaders`: either a string containing the GLSL shader code, or an object whose keys are the IDs of shader programs and whose values are strings containing the GLSL code. Exactly one of these must be specified.
 - `uniforms`: if `shader` is specified, this is an object whose keys are the names of the uniforms in the shader, and whose values are the initial values of those uniforms. If `shaders` is specified, this is an object whose keys are the IDs of shader programs, and whose values are objects with the same structure as the `uniforms` field of a single shader.
 - `useWebGL2`: a boolean for whether to use WebGL2 instead of WebGL. Defaults to `true`. Even if this is `true`, Wilson will check for hardware WebGL2 support before using it.
+- `useGpuTiming`: a boolean for whether to try to enable accurate timing of frames; useful for getting feedback when optimizing shaders. Defaults to `false`; setting it to `true` may have a small performance cost, and some browsers require enabling GPU timing in feature flags for privacy reasons.
 - `xrOptions`: an object holding everything WebXR-related, described below. Wilson will initialize XR support if and only if this object is present.
 
 ### XR Options
@@ -366,10 +367,10 @@ All of these live inside `xrOptions` in a WilsonGL instance's options object. On
 - `onExit: () => void`: a function called after a session has ended and the canvas is ready to render into again.
 - `onAvailabilityChange: (isSupported: boolean) => void`: a function called when the availability of a headset changes. If you don't use the built-in XR button, you'll need to use this to know whether to display a control for entering XR.
 - `onVisibilityChange: (state: "visible" | "visible-blurred" | "hidden") => void`: a function called when the XR session's visibility changes; for example, when a system menu is opened over the scene, or the headset is taken off. Wilson skips rendering while the state is `"hidden"`.
-- `onControllerConnect: (controller) => void`: a function called when an input source appears. Useful if you require a controller with a specific handedness and need to check when one becomes avalable.
+- `onControllerConnect: (controller) => void`: a function called when an input source appears. Useful if you require a controller with a specific handedness and need to check when one becomes available.
 - `onControllerDisconnect: (controller) => void`: a function called when an input source disappears.
 - `onButtonDown: ({ controller, name, state }) => void`: a function called when a controller button is pressed. If you only need to know *whether* a button is pressed each frame and not when it is pressed, this is unnecessary; read `controller.buttons` for a given controller in `onFrameStart` instead.
-- `onButtonUp: (data) => void`: a function called when a controller button is released.
+- `onButtonUp: ({ controller, name, state }) => void`: a function called when a controller button is released.
 - `requiredFeatures` and `optionalFeatures`: arrays of strings naming [WebXR features](https://developer.mozilla.org/en-US/docs/Web/API/XRSystem/requestSession#optionalfeatures) to request with the session. A session will fail to start if a required feature is unavailable, so prefer optional ones. Both default to `[]`.
 - `targetFrameRate`: a number for the display refresh rate to request, in Hz. Wilson picks the closest rate the headset actually supports. If unspecified, the headset's default is used. Can be changed during a session by setting `wilson.xrTargetFrameRate`.
 - `fixedFoveation`: a number in `[0, 1]` for how aggressively to reduce resolution toward the edges of the view. Defaults to `0.3`. Headsets that don't support foveation ignore it. Can be changed during a session by setting `wilson.xrFixedFoveation`.
@@ -435,22 +436,32 @@ All of these live inside `xrOptions` in a WilsonGL instance's options object. On
 - `gl`: the WebGL or WebGL2 context.
 - `drawFrame()`: draws a frame with the current shader program.
 - `loadShader({ id?: string, shader: string, uniforms?: UniformInitializers })`: loads a new shader program **and sets it as the current one**. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders. See `setUniforms` for more information on `UniformInitializers`.
+- `shaderReady(id?: string)`: returns a promise that resolves when the given shader has finished compiling.
+- `allShaderReady()`: returns a promise that resolves when all loaded shaders have finished compiling.
 - `useShader(id: string)`: sets the current shader program.
 - `setUniforms(uniforms: UniformInitializers, shader?: string)`: sets uniforms for the shader program with the given ID. If no shader ID is specified, it defaults to that of the current shader program. `UniformInitializers` is the type `{ [name: string]: number | number[] | number[][] | Float32Array }`; ints and floats are set with numbers, and vectors are set with 1D arrays. Matrices can be set in two ways: passing a 2D array sets the uniform assuming the matrix is in **row-major** order (i.e. the way matrices are set in JS, but not WebGL). Passing a `Float32Array` bypasses that transposing, setting the uniform as an array in **column-major** order. This functionality exists to support passing in column-major outputs of other WebGL functions without needing to arbitrarily transpose them. Arrays of `int`s or `float`s (e.g. `uniform int foo[3];`) are set with 1D arrays, and arrays of vectors (e.g. `uniform vec3 foo[3];`) are set with 2D arrays.
 - `setUniform(name: string, value: number | number[] | number[][] | Float32Array, shader?: string)`: sets a single uniform for the shader program with the given ID, with the same conventions as `setUniforms`. For use instead of `setUniforms` on hot paths, since it avoids constructing an object per call.
 - `downloadFrame(filename: string, drawNewFrame?: boolean)`: downloads the current frame as a png file. For this to work properly, a new frame must be drawn immediately before downloading. Setting drawNewFrame to `false` will skip this step; only use this if you are manually drawing a frame directly before calling this method.
 - `async downloadHighResFrame({ filename: string, resolution?: number, uniforms?: UniformInitializers, tileSize?: number, render?: RenderHighResTile })`: renders a frame at the given resolution (defaulting to the current canvas resolution) by stitching together small tiles, then downloads it as a PNG with the given filename. Individual uniform values can be overridden for the render by passing the `uniforms` object; they are restored afterwards, so the live canvas is unaffected. See the section on rendering high-resolution frames for more information on `render`.
-- `async readHighResPixels({ resolution?: number, uniforms?: UniformInitializers, format?: "unsignedByte" | "float", tileSize?: number, render?: RenderHighResTile })`: renders a frame at the given resolution by stitching together small tiles, then returns the pixels in the given format. Behaves like `readHighResPixels` otherwise.
+- `async readHighResPixels({ resolution?: number, uniforms?: UniformInitializers, format?: "unsignedByte" | "float", tileSize?: number, render?: RenderHighResTile })`: renders a frame at the given resolution by stitching together small tiles, then returns the pixels in the given format. Behaves like `downloadHighResFrame` otherwise.
 - `createFramebufferTexturePair({ id: string, width?: number, height?: number, textureType: "unsignedByte" | "float" })`: creates a framebuffer texture pair with a given ID and type. If width or height are unspecified, they default to the canvas width and height (or to the headset's framebuffer width and height during a WebXR session). If a pair with the given ID already exists, it is deleted first.
 - `deleteFramebufferTexturePair(id: string)`: deletes the framebuffer texture pair with the given ID, freeing both. Does nothing if no such pair exists.
 - `useFramebuffer(id: string | null)`: sets the current framebuffer. Passing `null` sets the canvas (or the headset's framebuffer during a WebXR session) and restores the viewport.
 - `useTexture(id: string | null)`: sets the current texture.
 - `setTexture({ id: string, data?: Float32Array | Uint8Array | TexImageSource | null })`: writes `data` to the texture with the given ID. The type of `data` must match the texture type if it is an array (i.e. if the texture is of type `float`, the data must be a `Float32Array`), and the length of `data` must be equal to the texture's width times its height times 4. Passing `null`, or leaving `data` out entirely, zeroes the texture instead.
 - `readPixels({ row: number, col: number, height: number, width: number, format: "unsignedByte" | "float", includeAlpha: boolean })`: reads a rectangle of pixels out of the current frame as either a `Uint8Array` or `Float32Array`, depending on the format. `row` and `col` default to `0`, and `height` and `width` default to the canvas height and width, respectively. The size of the returned array is `width * height * 4`.
+- `useGpuTiming`: a boolean for whether to measure how long the GPU spends on `drawFrame` calls, initialized from the option of the same name. Can be changed dynamically; when it is `false`, no queries are issued and the readings below stop updating.
+- `gpuTimingSupported`: a boolean for whether a timer query extension is available. Readonly. Browsers often withhold it as an anti-fingerprinting measure, so check this before relying on any of the readings.
+- `lastGpuFrameTime`: the number of milliseconds of GPU time the most recently completed measurement took, or `undefined` if none has finished yet. Readonly. Results arrive asynchronously, typically one to three frames after the draw they measured.
+- `averageGpuFrameTime`: an exponential moving average of `lastGpuFrameTime`, or `undefined` if no measurement has finished. Readonly. This is an appropriate measurement to check shader performance with.
+- `gpuTimingSmoothing`: a number between `0` and `1` for the weight of each new sample in that average. Defaults to `0.15`.
+- `beginGpuTimer()`, `endGpuTimer()`: opens and closes a timing range manually. `drawFrame` already wraps itself in one, so these are only needed to measure several draws together — both eyes of an XR frame, say. Only one query can be active at a time, so nested calls are folded into the outermost range rather than timed separately.
+- `pollGpuTimers()`: collects any finished measurements and updates the readings above. `beginGpuTimer` calls this itself, so an applet that draws every frame never needs to; one that draws on demand can call it to pick up a result without drawing.
+- `resetGpuTimings()`: sets both `lastGpuFrameTime` and `averageGpuFrameTime` back to `undefined`, discarding the running average.
 
 ### WebXR Fields and Methods
 
-All of these on fields and methods available on WilsonGL when `xrOptions` has been passed in the constructor options. The fields that describe an active session are `undefined` when there isn't one.
+All of these are fields and methods available on WilsonGL when `xrOptions` has been passed in the constructor options. The fields that describe an active session are `undefined` when there isn't one.
 
 - `async enterXR(): Promise<boolean>`: starts a WebXR session, resolving to `true` if one started and `false` if no headset was available or the user declined. Must be called from a user gesture.
 - `async exitXR()`: ends the current session, resolving once it has ended. Does nothing if there isn't one. Because the session ends asynchronously, await this before calling `enterXR` again.
@@ -469,9 +480,10 @@ All of these on fields and methods available on WilsonGL when `xrOptions` has be
 Each controller has the following fields:
 
 - `handedness`: `"left"`, `"right"`, or `"none"`.
-- `grip`: the transform matrix for where the controller is held, relative to the session's reference space, in the form of a column-major `Float32Array`. Wilson overwrites it every frame, so copy it if it needs to outlive a frame. `null` on a frame where the controller isn't tracked, or for input sources that don't have a position, such as gaze.
-- `targetRay`: identical to `grip`, but for the orientation of the controller instead of its position.
+- `grip`: the transform matrix for where the controller is held, relative to the session's reference space, in the form of a column-major `Float32Array`. Wilson overwrites it every frame, so copy it if it needs to outlive a frame. `null` on a frame where the controller isn't tracked, and always `null` for input sources with no grip space, such as gaze.
+- `targetRay`: the same, but for the ray the controller points along, whose -Z axis is the pointing direction. Unlike `grip`, every input source has one.
 - `buttons`: an object with a state for each button in the `xr-standard` mapping — `trigger`, `squeeze`, `touchpad`, `thumbstick`, `a`, and `b`, the last two being the ones labeled X and Y on a left controller. Each has `pressed` and an analog `value` in `[0, 1]`, which is only ever 0 or 1 on anything but the trigger and the squeeze. Use `onButtonDown` and `onButtonUp` if you need to detect changes.
 - `thumbstick`: an `[x, y]` pair, with forward being positive `y`.
+- `inputSource`: the underlying `XRInputSource`, for anything Wilson doesn't wrap.
 - `pulse(intensity: number, duration: number)`: fires the device's haptics at an intensity in `[0, 1]` for a duration in milliseconds, resolving to whether it actually happened. Resolves to `false` on devices without haptics.
 - `inputSource`: the underlying `XRInputSource`.
