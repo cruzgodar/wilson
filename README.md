@@ -423,7 +423,7 @@ All of these live inside `xrOptions` in a WilsonGL instance's options object. On
 - `interpolateCanvasToWorld([row: number, col: number]): [number, number]`: converts a point in canvas coordinates to world coordinates.
 - `interpolateWorldToCanvas([x: number, y: number]): [number, number]`: converts a point in world coordinates to canvas coordinates.
 - `destroy()`: destroys the Wilson instace, removes all event listeners, and returns the canvas div structure to its original state.
-- `replaceCanvas(): HTMLCanvasElement`: replaces the canvas element in the DOM with an exact copy (old references will be stale). Use this when destroying and later recreating a WilsonGL instance (A canvas cannot have a new WebGL contexts after an old one is lost).
+- `replaceCanvas(): HTMLCanvasElement`: replaces the canvas element in the DOM with an exact copy (old references will be stale). Use this when destroying and later recreating a WilsonGL instance (A canvas cannot have a new WebGL context after an old one is lost).
 
 ### WilsonCPU Fields and Methods
 

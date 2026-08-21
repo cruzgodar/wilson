@@ -163,13 +163,6 @@ function initWilson2()
 				}
 			}
 		},
-
-		xrOptions:
-		{
-			useButton: true,
-			buttonIconPath: "/xr.png",
-			renderFrame: () => {},
-		}
 	};
 
 	const wilson = new WilsonGL(canvas, options);
