@@ -1,4 +1,4 @@
-import { WilsonCPU, WilsonGPU } from "/wilson.js";
+import { WilsonCPU, WilsonGL } from "/wilson.js";
 function initWilson1() {
     const canvas = document.querySelector("#demo-canvas");
     const resolution = 1000;
@@ -124,9 +124,9 @@ function initWilson2() {
                     }
                 }
             }
-        }
+        },
     };
-    const wilson = new WilsonGPU(canvas, options);
+    const wilson = new WilsonGL(canvas, options);
     drawFrame();
     function drawFrame() {
         wilson.setUniforms({

@@ -1,4 +1,4 @@
-type InteractionCallbacks = {
+export type InteractionCallbacks = {
 	mousedown: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
 
 	mouseup: ({ x, y, event }: { x: number, y: number, event: MouseEvent }) => void,
@@ -79,7 +79,7 @@ const defaultInteractionCallbacks: InteractionCallbacks = {
 	wheel: ({ x, y, scrollDelta, event }) => {},
 };
 
-type DraggableCallBacks = {
+export type DraggableCallBacks = {
 	grab: ({ id, x, y, event }: { id: string, x: number, y: number, event?: Event }) => void,
 
 	drag: ({
@@ -107,7 +107,7 @@ const defaultDraggableCallbacks: DraggableCallBacks = {
 	release: ({ id, x, y, event }) => {},
 };
 
-type InteractionOptions = ({
+export type InteractionOptions = ({
 	useForPanAndZoom?: false
 } | {
 	useForPanAndZoom?: true,
@@ -123,16 +123,16 @@ type InteractionOptions = ({
 	callbacks?: Partial<InteractionCallbacks>,
 };
 
-type DraggableLocations = {[id: string]: [number, number]};
+export type DraggableLocations = {[id: string]: [number, number]};
 
-type DraggableOptions = {
+export type DraggableOptions = {
 	draggables?: DraggableLocations,
 	radius?: number,
 	static?: boolean,
 	callbacks?: Partial<DraggableCallBacks>,
 };
 
-type DraggablesData = {
+export type DraggablesData = {
 	[id: string]: {
 		element: HTMLDivElement,
 		location: [number, number],
@@ -140,7 +140,7 @@ type DraggablesData = {
 	}
 };
 
-type FullscreenOptions = {
+export type FullscreenOptions = {
 	fillScreen?: boolean,
 	animate?: boolean,
 	crossfade?: boolean,
@@ -157,6 +157,27 @@ type FullscreenOptions = {
 		useFullscreenButton?: false,
 	}
 );
+
+/*
+	An extra element that travels with the built-in buttons during a fullscreen
+	transition. Elements that aren't shown in one of the two states declare it
+	here rather than hiding themselves in CSS: a view transition has nothing to
+	animate a one-sided element against, so a stylesheet `display: none` leaves
+	its snapshot fading in place while everything around it slides. Wilson
+	instead does the hiding itself and animates the element to (or from) the spot
+	it would have occupied, so it moves along with its neighbors while they close
+	the gap where it was.
+*/
+export type FullscreenViewTransitionElement = {
+	element: HTMLElement,
+	hideInFullscreen?: boolean,
+	hideOutOfFullscreen?: boolean,
+};
+
+type FullscreenTransitionElementRect = {
+	rect: DOMRect,
+	hidden: boolean,
+};
 
 type ResetButtonOptions = {
 	useResetButton?: true,
@@ -359,13 +380,14 @@ class Wilson
 	#appletContainer: HTMLDivElement;
 	#canvasContainer: HTMLDivElement;
 	#draggablesContainer: HTMLDivElement;
-	#buttonContainer: HTMLDivElement;
+	protected buttonContainer: HTMLDivElement;
 	#fullscreenContainer: HTMLDivElement;
 	#fullscreenContainerLocation: HTMLDivElement;
 
 	#metaThemeColorElement: HTMLMetaElement | null = document.querySelector("meta[name='theme-color']");
 	#oldMetaThemeColor: string | null = null;
 
+	protected additionalFullscreenViewTransitionElements: FullscreenViewTransitionElement[] = [];
 	#salt = Date.now().toString(36) + Math.random().toString(36).slice(2);
 
 
@@ -373,8 +395,8 @@ class Wilson
 	constructor(canvas: HTMLCanvasElement, options: WilsonOptions)
 	{
 		this.canvas = canvas;
-        //@ts-expect-error
-        canvas.wilson = this;
+		//@ts-expect-error
+		canvas.wilson = this;
 
 		const computedStyle = getComputedStyle(this.canvas);
 		this.#canvasAspectRatio = parseFloat(computedStyle.width) / parseFloat(computedStyle.height);
@@ -603,9 +625,9 @@ class Wilson
 
 
 
-		this.#buttonContainer = document.createElement("div");
-		this.#buttonContainer.classList.add("WILSON_button-container");
-		this.#canvasContainer.appendChild(this.#buttonContainer);
+		this.buttonContainer = document.createElement("div");
+		this.buttonContainer.classList.add("WILSON_button-container");
+		this.#canvasContainer.appendChild(this.buttonContainer);
 
 
 
@@ -719,7 +741,7 @@ class Wilson
 		this.#fullscreenContainerLocation.remove();
 	}
 
-    replaceCanvas()
+	replaceCanvas()
 	{
 		const newCanvas = document.createElement("canvas");
 
@@ -744,9 +766,9 @@ class Wilson
 			this.canvas.parentNode.replaceChild(newCanvas, this.canvas);
 		}
 
-        this.canvas = newCanvas;
+		this.canvas = newCanvas;
 
-        return newCanvas;
+		return newCanvas;
 	}
 
 	
@@ -1024,7 +1046,7 @@ class Wilson
 	
 	
 
-	resizeCanvasGPU = () => {}
+	protected resizeCanvasGPU = () => {}
 
 	#resizeCanvas(
 		dimensions: { width: number, height?: undefined }
@@ -2211,9 +2233,37 @@ class Wilson
 		this.#lastInteractionCol = e.clientX;
 	}
 	
+	#animationFrameLoopPaused = false;
 	#lastPanAndZoomTimestamp = -1;
+	
+	protected set animationFrameLoopPaused(value: boolean)
+	{
+		if (value === this.#animationFrameLoopPaused)
+		{
+			return;
+		}
+		
+		this.#animationFrameLoopPaused = value;
+		this.#lastPanAndZoomTimestamp = -1;
+
+		if (this.#animationFrameLoopPaused)
+		{
+			this.#zeroVelocities();
+		}
+
+		else
+		{
+			requestAnimationFrame(this.#animationFrameLoop);
+		}
+	}
+
 	#animationFrameLoop = (timestamp: number) =>
 	{
+		if (this.#animationFrameLoopPaused || this.#destroyed)
+		{
+			return;
+		}
+
 		const timeElapsed = timestamp - this.#lastPanAndZoomTimestamp;
 		this.#lastPanAndZoomTimestamp = timestamp;
 
@@ -2234,7 +2284,7 @@ class Wilson
 			// It would seem like we should divide by timeElapsed,
 			// but this is a lag compensation measure --- if we're dropping
 			// frames, we increase the velocity factor so that the inertia effect
-			// isn't halted so quickly
+			// isn't halted so quickly.
 			this.#lastVelocityFactors.shift();
 			this.#lastVelocityFactors.push(
 				Math.max(timeElapsed / (1000 / 60), 1)
@@ -2793,8 +2843,9 @@ class Wilson
 			this.#fullscreenEnterFullscreenButton = document.createElement("div");
 
 			this.#fullscreenEnterFullscreenButton.classList.add("WILSON_enter-fullscreen-button");
+			this.#fullscreenEnterFullscreenButton.classList.add("WILSON_button");
 
-			this.#buttonContainer.appendChild(this.#fullscreenEnterFullscreenButton);
+			this.buttonContainer.appendChild(this.#fullscreenEnterFullscreenButton);
 
 			const img = document.createElement("img");
 			img.src = this.#fullscreenEnterFullscreenButtonIconPath as string;
@@ -2810,8 +2861,9 @@ class Wilson
 			this.#fullscreenExitFullscreenButton = document.createElement("div");
 
 			this.#fullscreenExitFullscreenButton.classList.add("WILSON_exit-fullscreen-button");
+			this.#fullscreenExitFullscreenButton.classList.add("WILSON_button");
 
-			this.#buttonContainer.appendChild(this.#fullscreenExitFullscreenButton);
+			this.buttonContainer.appendChild(this.#fullscreenExitFullscreenButton);
 
 			const img2 = document.createElement("img");
 			img2.src = this.#fullscreenExitFullscreenButtonIconPath as string;
@@ -2832,7 +2884,8 @@ class Wilson
 		{
 			this.#resetButton = document.createElement("div");
 			this.#resetButton.classList.add("WILSON_reset-button");
-			this.#buttonContainer.appendChild(this.#resetButton);
+			this.#resetButton.classList.add("WILSON_button");
+			this.buttonContainer.appendChild(this.#resetButton);
 
 			const img = document.createElement("img");
 			img.src = this.#resetButtonIconPath as string;
@@ -2903,6 +2956,8 @@ class Wilson
 		this.canvas.classList.add("WILSON_fullscreen");
 		this.#canvasContainer.classList.add("WILSON_fullscreen");
 		this.#fullscreenContainer.classList.add("WILSON_fullscreen");
+
+		this.#syncFullscreenHiddenElements();
 
 
 
@@ -3091,6 +3146,150 @@ class Wilson
 		return styleElement;
 	}
 
+
+
+	protected addFullscreenViewTransitionElement(entry: FullscreenViewTransitionElement)
+	{
+		this.additionalFullscreenViewTransitionElements.push(entry);
+		this.#syncFullscreenHiddenElements();
+	}
+
+	// Wilson owns the hiding of one-sided transition elements so that it can briefly
+	// undo it to measure them -- see #fullscreenTransitionElementRect.
+	#syncFullscreenHiddenElements()
+	{
+		for (const entry of this.additionalFullscreenViewTransitionElements)
+		{
+			entry.element.classList.toggle(
+				"WILSON_fullscreen-hidden",
+				!!(this.#currentlyFullscreen ? entry.hideInFullscreen : entry.hideOutOfFullscreen)
+			);
+		}
+	}
+
+	/*
+		The rect an element occupies, or the one it would occupy if it weren't hidden
+		for the current fullscreen state. Un-hiding for the measurement forces a
+		layout but never paints, and letting the layout engine answer the question
+		means any arrangement of buttons works without hardcoded geometry.
+	*/
+	#fullscreenTransitionElementRect(element: HTMLElement)
+	{
+		const hidden = element.classList.contains("WILSON_fullscreen-hidden");
+
+		if (hidden)
+		{
+			element.classList.remove("WILSON_fullscreen-hidden");
+		}
+
+		const rect = element.getBoundingClientRect();
+
+		if (hidden)
+		{
+			element.classList.add("WILSON_fullscreen-hidden");
+		}
+
+		return { rect, hidden };
+	}
+
+	#measureFullscreenTransitionElements()
+	{
+		return this.additionalFullscreenViewTransitionElements.map(
+			({ element }) => this.#fullscreenTransitionElementRect(element)
+		);
+	}
+
+	/*
+		An element shown in only one of the two states has no counterpart for the
+		browser to interpolate against, so its snapshot would just fade where it
+		stands while every other button slides. Give it keyframes running between
+		where it is and where it would be instead, so it drifts along with the rest
+		of the row and lands (invisible) exactly where the layout closed over it.
+	*/
+	#addFullscreenHiddenElementTransitionStyle(
+		before: FullscreenTransitionElementRect[],
+		after: FullscreenTransitionElementRect[]
+	) {
+		let rules = "";
+
+		for (let i = 0; i < this.additionalFullscreenViewTransitionElements.length; i++)
+		{
+			const oldState = before[i];
+			const newState = after[i];
+
+			// Nothing to do when the element is on both sides (the default group
+			// animation already moves it) or on neither (there's no snapshot at all).
+			if (
+				!oldState
+				|| !newState
+				|| oldState.hidden === newState.hidden
+				|| (!oldState.rect.width && !oldState.rect.height)
+				|| (!newState.rect.width && !newState.rect.height)
+			) {
+				continue;
+			}
+
+			const name = `WILSON_transitioning-element-${i}-${this.#salt}`;
+			const keyframesName = `WILSON_transitioning-element-${i}-fade-${this.#salt}`;
+
+			const dx = newState.rect.left - oldState.rect.left;
+			const dy = newState.rect.top - oldState.rect.top;
+
+			/*
+				The scaleX squeezes the snapshot down to nothing so that the element
+				reads as collapsing out of the row rather than merely fading. Scaling
+				about the default center origin lands the collapse on the midpoint of
+				the slot the element would have filled, which is where its neighbors
+				meet -- the translate is written first so it applies after the scale.
+
+				Only ::view-transition-old exists when the element is leaving, and only
+				::view-transition-new when it's arriving.
+			*/
+			rules += newState.hidden
+				? `
+					@keyframes ${keyframesName}
+					{
+						from { transform: translate(0px, 0px) scaleX(1); opacity: 1; }
+						to { transform: translate(${dx}px, ${dy}px) scaleX(0); opacity: 0; }
+					}
+
+					::view-transition-group(${name}) { animation: none; }
+
+					::view-transition-old(${name})
+					{
+						animation-name: ${keyframesName};
+						animation-fill-mode: both;
+					}
+				`
+				: `
+					@keyframes ${keyframesName}
+					{
+						from { transform: translate(${-dx}px, ${-dy}px) scaleX(0); opacity: 0; }
+						to { transform: translate(0px, 0px) scaleX(1); opacity: 1; }
+					}
+
+					::view-transition-group(${name}) { animation: none; }
+
+					::view-transition-new(${name})
+					{
+						animation-name: ${keyframesName};
+						animation-fill-mode: both;
+					}
+				`;
+		}
+
+		if (!rules)
+		{
+			return null;
+		}
+
+		const styleElement = document.createElement("style");
+		styleElement.innerHTML = rules;
+		document.head.appendChild(styleElement);
+
+		return styleElement;
+	}
+
 	async enterFullscreen()
 	{
 		await this.beforeSwitchFullscreen(true);
@@ -3100,7 +3299,8 @@ class Wilson
 			this.#fullscreenExitFullscreenButton,
 			this.#resetButton,
 			this.canvas,
-			...(Object.values(this.#draggables).map(draggable => draggable.element))
+			...(Object.values(this.#draggables).map(entry => entry.element)),
+			...this.additionalFullscreenViewTransitionElements.map(entry => entry.element),
 		];
 
 		for (const element of elements)
@@ -3118,7 +3318,11 @@ class Wilson
 				? this.#addEnterFullscreenFillScreenTransitionStyle()
 				: null;
 
-			if (!this.reduceMotion && !this.crossfadeFullscreen && this.animateFullscreen)
+			const useTransitionNames = !this.reduceMotion
+				&& !this.crossfadeFullscreen
+				&& this.animateFullscreen;
+
+			if (useTransitionNames)
 			{
 				if (this.#fullscreenEnterFullscreenButton)
 				{
@@ -3150,6 +3354,19 @@ class Wilson
 				{
 					data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}-${this.#salt}`);
 				}
+
+				for (let i = 0; i < this.additionalFullscreenViewTransitionElements.length; i++)
+				{
+					const entry = this.additionalFullscreenViewTransitionElements[i];
+
+					if (entry)
+					{
+						entry.element.style.setProperty(
+							"view-transition-name",
+							`WILSON_transitioning-element-${i}-${this.#salt}`
+						);
+					}
+				}
 			}
 
 			// For non-fill-screen mode, suppress the default crossfade on
@@ -3178,24 +3395,46 @@ class Wilson
 
 			if (this.animateFullscreen)
 			{
+				const rectsBefore = useTransitionNames
+					? this.#measureFullscreenTransitionElements()
+					: null;
+
+				// Where the one-sided elements end up is only knowable once the new state
+				// is laid out, so the style goes in from inside the callback -- still
+				// before the browser captures the new snapshots.
+				let hiddenElementStyleElement: HTMLStyleElement | null = null;
+
 				// @ts-ignore
-				const transition = document.startViewTransition(() => this.#enterFullscreen());
+				const transition = document.startViewTransition(() =>
+				{
+					this.#enterFullscreen();
+
+					if (rectsBefore)
+					{
+						hiddenElementStyleElement = this.#addFullscreenHiddenElementTransitionStyle(
+							rectsBefore,
+							this.#measureFullscreenTransitionElements()
+						);
+					}
+				});
+
+				const removeStyleElements = () =>
+				{
+					styleElement?.remove();
+					draggableStyleElement?.remove();
+					hiddenElementStyleElement?.remove();
+				};
 
 				if (transition.finished !== undefined)
 				{
 					await transition.finished;
 
-					styleElement?.remove();
-					draggableStyleElement?.remove();
+					removeStyleElements();
 				}
 
 				else
 				{
-					setTimeout(() =>
-					{
-						styleElement?.remove();
-						draggableStyleElement?.remove();
-					}, 1000);
+					setTimeout(removeStyleElements, 1000);
 				}
 			}
 
@@ -3249,6 +3488,8 @@ class Wilson
 		this.canvas.classList.remove("WILSON_fullscreen");
 		this.#canvasContainer.classList.remove("WILSON_fullscreen");
 		this.#fullscreenContainer.classList.remove("WILSON_fullscreen");
+
+		this.#syncFullscreenHiddenElements();
 
 
 
@@ -3423,7 +3664,8 @@ class Wilson
 			this.#fullscreenExitFullscreenButton,
 			this.#resetButton,
 			this.canvas,
-			...(Object.values(this.#draggables).map(draggable => draggable.element))
+			...(Object.values(this.#draggables).map(entry => entry.element)),
+			...this.additionalFullscreenViewTransitionElements.map(entry => entry.element),
 		];
 
 		for (const element of elements)
@@ -3441,8 +3683,7 @@ class Wilson
 				? this.#addExitFullscreenFillScreenTransitionStyle()
 				: null;
 
-			if (
-				!this.reduceMotion
+			const useTransitionNames = !this.reduceMotion
 				&& !this.crossfadeFullscreen
 				&& this.animateFullscreen
 				&& (
@@ -3451,8 +3692,10 @@ class Wilson
 						window.innerWidth == this.#fullscreenInitialWindowInnerWidth
 						&& window.innerHeight == this.#fullscreenInitialWindowInnerHeight
 					)
-				)
-			) {
+				);
+
+			if (useTransitionNames)
+			{
 				if (this.#fullscreenEnterFullscreenButton)
 				{
 					this.#fullscreenEnterFullscreenButton.style.setProperty(
@@ -3483,6 +3726,19 @@ class Wilson
 				{
 					data.element.style.setProperty("view-transition-name", `WILSON_draggable-${id}-${this.#salt}`);
 				}
+
+				for (let i = 0; i < this.additionalFullscreenViewTransitionElements.length; i++)
+				{
+					const entry = this.additionalFullscreenViewTransitionElements[i];
+
+					if (entry)
+					{
+						entry.element.style.setProperty(
+							"view-transition-name",
+							`WILSON_transitioning-element-${i}-${this.#salt}`
+						);
+					}
+				}
 			}
 
 			// For non-fill-screen mode, suppress the default crossfade on
@@ -3511,24 +3767,46 @@ class Wilson
 
 			if (this.animateFullscreen)
 			{
+				const rectsBefore = useTransitionNames
+					? this.#measureFullscreenTransitionElements()
+					: null;
+
+				// Where the one-sided elements come from is only knowable once the new
+				// state is laid out, so the style goes in from inside the callback --
+				// still before the browser captures the new snapshots.
+				let hiddenElementStyleElement: HTMLStyleElement | null = null;
+
 				// @ts-ignore
-				const transition = document.startViewTransition(() => this.#exitFullscreen());
+				const transition = document.startViewTransition(() =>
+				{
+					this.#exitFullscreen();
+
+					if (rectsBefore)
+					{
+						hiddenElementStyleElement = this.#addFullscreenHiddenElementTransitionStyle(
+							rectsBefore,
+							this.#measureFullscreenTransitionElements()
+						);
+					}
+				});
+
+				const removeStyleElements = () =>
+				{
+					styleElement?.remove();
+					draggableStyleElement?.remove();
+					hiddenElementStyleElement?.remove();
+				};
 
 				if (transition.finished !== undefined)
 				{
 					await transition.finished;
 
-					styleElement?.remove();
-					draggableStyleElement?.remove();
+					removeStyleElements();
 				}
 
 				else
 				{
-					setTimeout(() =>
-					{
-						styleElement?.remove();
-						draggableStyleElement?.remove();
-					}, 1000);
+					setTimeout(removeStyleElements, 1000);
 				}
 			}
 
@@ -3656,7 +3934,34 @@ class Wilson
 				* this.#canvasWidth)
 		];
 	}
+
+	// A blob URL pins the whole blob in memory until it's revoked or the page goes away, and a
+	// high-res png runs to tens of megabytes, so leaving them behind is not cheap.
+	//
+	// The revoke can't happen inline: click() only queues the download, and the browser reads
+	// the URL afterwards, so pulling it out from under that cancels the download. Waiting a
+	// task would technically be enough, but the ordering between that task and the download's
+	// isn't guaranteed, and Safari in particular has wanted more room. A few seconds is
+	// invisible to the user and still returns the memory promptly instead of at unload.
+	protected downloadBlob(blob: Blob, filename: string)
+	{
+		const url = window.URL.createObjectURL(blob);
+
+		const link = document.createElement("a");
+
+		link.download = filename;
+
+		link.href = url;
+
+		link.click();
+
+		link.remove();
+
+		setTimeout(() => window.URL.revokeObjectURL(url), DOWNLOAD_URL_LIFETIME);
+	}
 }
+
+const DOWNLOAD_URL_LIFETIME = 10000;
 
 
 
@@ -3721,15 +4026,7 @@ export class WilsonCPU extends Wilson
 				return;
 			}
 
-			const link = document.createElement("a");
-
-			link.download = filename;
-
-			link.href = window.URL.createObjectURL(blob);
-
-			link.click();
-
-			link.remove();
+			this.downloadBlob(blob, filename);
 		});
 	}
 }
@@ -3750,8 +4047,8 @@ type UniformType = "int"
 	| "mat2"
 	| "mat3"
 	| "mat4";
-type UniformValue = number | number[] | number[][];
-type UniformInitializers = {[name: string]: UniformValue};
+type UniformValue = number | number[] | number[][] | Float32Array;
+export type UniformInitializers = {[name: string]: UniformValue};
 
 const uniformFunctions: {[key in UniformType]: any} = {
 	int: (
@@ -3799,47 +4096,107 @@ const uniformFunctions: {[key in UniformType]: any} = {
 	vec2Array: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
-		value: [number, number][]
-	) => gl.uniform2fv(location, value.flat()),
+		value: Float32Array | [number, number][]
+	) => {
+		return value instanceof Float32Array
+			? gl.uniform2fv(location, value)
+			: gl.uniform2fv(location, value.flat());
+	},
 
 	vec3Array: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
-		value: [number, number, number][]
-	) => gl.uniform3fv(location, value.flat()),
+		value: Float32Array | [number, number, number][]
+	) => {
+		return value instanceof Float32Array
+			? gl.uniform3fv(location, value)
+			: gl.uniform3fv(location, value.flat());
+	},
 	
 	vec4Array: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
-		value: [number, number, number, number][]
-	) => gl.uniform4fv(location, value.flat()),
+		value: Float32Array | [number, number, number, number][]
+	) => {
+		return value instanceof Float32Array
+			? gl.uniform4fv(location, value)
+			: gl.uniform4fv(location, value.flat());
+	},
 
 	mat2: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
-		value: [[number, number], [number, number]]
-	) => gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]]),
+		value: Float32Array | [[number, number], [number, number]]
+	) => {
+		return value instanceof Float32Array
+			? gl.uniformMatrix2fv(location, false, value)
+			: gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]]);
+	},
 	
 	mat3: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
-		value: [[number, number, number], [number, number, number], [number, number, number]]
-	) => gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]]),
+		value: Float32Array | [[number, number, number], [number, number, number], [number, number, number]]
+	) => {
+		return value instanceof Float32Array
+			? gl.uniformMatrix3fv(location, false, value)
+			: gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]]);
+	},
 	
 	mat4: (
 		gl: WebGLRenderingContext | WebGL2RenderingContext,
 		location: WebGLUniformLocation,
-		value: [[number, number, number, number], [number, number, number, number], [number, number, number, number], [number, number, number, number]]
-	) => gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]),
+		value: Float32Array | [[number, number, number, number], [number, number, number, number], [number, number, number, number], [number, number, number, number]]
+	) => {
+		return value instanceof Float32Array
+			? gl.uniformMatrix4fv(location, false, value)
+			: gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]);
+	},
 };
 
-type ReadPixelsOptions = {
+export type ReadPixelsOptions = {
 	row: number,
 	col: number,
 	height: number,
 	width: number,
 	format: "unsignedByte" | "float",
 }
+
+// Big enough that the per-tile overhead disappears, small enough that one tile is roughly a
+// frame's worth of GPU work even for an expensive shader.
+const DEFAULT_HIGH_RES_TILE_SIZE = 512;
+
+// Only exists for the duration of a high-res render. Named so that it can't collide with a
+// framebuffer the caller made, since creating a pair deletes any existing one with its id.
+const HIGH_RES_FRAMEBUFFER_ID = "__wilsonHighResTile";
+
+// One tile of a high-res render, ready to be placed in the finished image. col and row are
+// its top left corner there, but the rows inside pixels run bottom-up, the way readPixels
+// returns them.
+export type HighResTile = {
+	pixels: Uint8Array | Float32Array,
+	col: number,
+	row: number,
+	width: number,
+	height: number,
+};
+
+// Draws one tile. The default just draws the current shader, but anything that ends with the
+// finished tile in the given framebuffer works, which is what makes multi-pass renders
+// possible. Shaders keep using uv as the coordinate over the whole image; a pass that samples
+// a framebuffer an earlier pass of the same tile wrote should use uvTile instead. Every tile
+// is this same size, so intermediate framebuffers can be created once at it and reused.
+export type RenderHighResTile = (data: {
+	framebufferId: string,
+	width: number,
+	height: number,
+}) => void;
+
+type HighResEncoder = {
+	addTile: (tile: HighResTile) => void,
+	finish: () => Promise<Blob | null>,
+	destroy: () => void,
+};
 
 type SingleShader = {
 	shader: string,
@@ -3851,13 +4208,171 @@ type MultipleShaders = {
 	uniforms?: {[id: ShaderProgramId]: UniformInitializers},
 };
 
-export type WilsonGPUOptions = WilsonOptions
+const XR_MODE = "immersive-vr";
+const REFERENCE_SPACE = "local";
+
+// Shared between the layer built when a session starts and every replacement that
+// xrFramebufferScale swaps in, so that changing the scale can't quietly change anything
+// else about the framebuffer.
+const XR_LAYER_OPTIONS: XRWebGLLayerInit = {
+	antialias: false,
+	depth: false,
+	stencil: false,
+	alpha: true,
+};
+
+type WilsonGLXRData = {
+	session: XRSession,
+	refSpace: XRReferenceSpace,
+	baseLayer: XRWebGLLayer,
+};
+
+// Only the things that differ between the eyes. Everything that's fixed for the whole frame
+// is handed to onFrameStart instead, which runs once before either eye.
+export type RenderXRFrame = (data: {
+	projectionMatrix: Float32Array,
+	cameraToWorld: Float32Array,
+	eye: XREye,
+	viewIndex: number,
+	// The per-eye escape hatch, for anything Wilson doesn't wrap.
+	view: XRView,
+}) => void;
+
+// The session and reference space aren't here because they're the same for the whole session;
+// read them off the Wilson instance as xrSession and xrRefSpace.
+export type OnXRFrameStart = (data: {
+	time: number,
+	deltaTime: number,
+	frame: XRFrame,
+	pose: XRViewerPose,
+}) => void;
+
+
+
+// The xr-standard mapping, in order. Anything past index 5 is device-specific (the Quest's
+// thumbrest, for instance) and isn't exposed, and the system/menu button is reserved by the
+// runtime and is never visible to the page at all.
+const XR_BUTTON_NAMES = ["trigger", "squeeze", "touchpad", "thumbstick", "a", "b"] as const;
+
+export type XRButtonName = (typeof XR_BUTTON_NAMES)[number];
+
+export type XRButtonState = {
+	pressed: boolean,
+	// Analog, in [0, 1]. Only the trigger and squeeze report anything other than 0 or 1.
+	value: number,
+};
+
+export type WilsonXRController = {
+	inputSource: XRInputSource,
+	handedness: XRHandedness,
+
+	// Column-major transforms relative to the session's reference space, and null on frames
+	// where the device isn't tracked. Buttons keep working when that happens, since a
+	// controller that's momentarily out of view is still being pressed. Each is a persistent
+	// buffer that's overwritten every frame rather than a fresh array, so that posing
+	// controllers doesn't allocate on the hot path; copy one if it needs to outlive the frame.
+	targetRay: Float32Array | null,
+	grip: Float32Array | null,
+
+	buttons: {[name in XRButtonName]: XRButtonState},
+
+	// Y is negated from the raw axis value, so that +y is forward/up.
+	thumbstick: [number, number],
+
+	pulse: (intensity: number, duration: number) => Promise<boolean>,
+};
+
+// The full list as it stands after the change is the instance's xrControllers.
+export type OnXRControllerChange = (controller: WilsonXRController) => void;
+
+export type OnXRButtonEvent = (data: {
+	controller: WilsonXRController,
+	name: XRButtonName,
+	state: XRButtonState,
+}) => void;
+
+// The public controller object, plus the persistent buffers backing it. The matrices are held
+// here rather than only on the controller so that losing tracking can null out the controller's
+// fields without throwing them away.
+type WilsonXRControllerData = {
+	controller: WilsonXRController,
+	targetRayMatrix: Float32Array,
+	gripMatrix: Float32Array,
+};
+
+function createXRButtonState(): XRButtonState
+{
+	return {
+		pressed: false,
+		value: 0,
+	};
+}
+
+type XRButtonOptions = {
+	useButton?: true,
+	buttonIconPath: string,
+} | {
+	useButton?: false,
+};
+
+export type XROptions = {
+	renderFrame: RenderXRFrame,
+
+	onEnter?: () => void,
+	onExit?: () => void,
+	onFrameStart?: OnXRFrameStart,
+	onAvailabilityChange?: (isSupported: boolean) => void,
+	onVisibilityChange?: (state: XRVisibilityState) => void,
+
+	onControllerConnect?: OnXRControllerChange,
+	onControllerDisconnect?: OnXRControllerChange,
+
+	onButtonDown?: OnXRButtonEvent,
+	onButtonUp?: OnXRButtonEvent,
+
+	requiredFeatures?: string[],
+	optionalFeatures?: string[],
+
+	framebufferScale?: number;
+	fixedFoveation?: number;
+	targetFrameRate?: number;
+} & XRButtonOptions;
+
+export type WilsonGLOptions = WilsonOptions
 	& (SingleShader | MultipleShaders)
+	& { useWebGL2?: boolean }
+	& { xrOptions?: XROptions}
 	& {
-		useWebGL2?: boolean,
+		// Measures how long the GPU actually spends on drawFrame() calls. Off by default:
+		// the queries are cheap but not free, and the underlying extension is unavailable
+		// on plenty of configurations.
+		useGpuTiming?: boolean,
 	}
 
-export class WilsonGPU extends Wilson
+// Everything needed to finish a shader once the driver reports it's done compiling.
+type PendingShader = {
+	program: WebGLProgram,
+	vertexShader: WebGLShader,
+	fragShader: WebGLShader,
+	vertexShaderSource: string,
+	source: string,
+	uniforms: UniformInitializers,
+	callbacks: { resolve: () => void, reject: (error: Error) => void }[],
+
+	// Restored as the current shader if this one turns out not to compile, so a failed load
+	// leaves the previously working shader selected rather than a dead id.
+	previousShaderId: ShaderProgramId,
+};
+
+// KHR_parallel_shader_compile only exposes this one constant.
+const COMPLETION_STATUS_KHR = 0x91B1;
+
+// What a pending shader's promise rejects with when the load is abandoned rather than failed,
+// which lets whenAllShadersReady() tell "superseded by a newer load" apart from a shader that
+// couldn't compile.
+class ShaderSupersededError extends Error {}
+
+export class WilsonGL extends Wilson
 {
 	gl: WebGLRenderingContext | WebGL2RenderingContext;
 
@@ -3866,6 +4381,10 @@ export class WilsonGPU extends Wilson
 	#shaderPrograms: {[id: ShaderProgramId]: WebGLProgram} = {};
 
 	#shaderProgramSources: {[id: ShaderProgramId]: string} = {};
+
+	// The base class's destroyed flag is private to it, and the deferred shader polling needs
+	// to know to stop.
+	#destroyedGPU: boolean = false;
 
 	#uniforms: {
 		[id: ShaderProgramId]: {
@@ -3876,6 +4395,193 @@ export class WilsonGPU extends Wilson
 			}
 		}
 	} = {};
+
+	// The built-in tile window uniforms from the vertex shader. They're kept apart from
+	// #uniforms because that map is built by scanning the fragment shader source for
+	// declarations, and these are declared in the vertex shader instead. Either location can
+	// be null: a fragment shader that ignores uv lets the linker drop the whole chain.
+	#tileUniforms: {
+		[id: ShaderProgramId]: {
+			scale: WebGLUniformLocation | null,
+			center: WebGLUniformLocation | null
+		}
+	} = {};
+
+
+	
+	#useXRButton: boolean = false;
+	#xrButtonIconPath?: string;
+	#xrButton: HTMLElement | null = null;
+	#xrButtonImg: HTMLImageElement | null = null;
+	#xrButtonText: HTMLElement | null = null;
+
+	// Null until the first check resolves, and null again for the duration of every recheck.
+	#xrIsSupportedNow: boolean | null = null;
+
+	#renderXRFrame: RenderXRFrame = () => {};
+
+	// The single source of truth about the base layer. Its baseLayer is always the one the
+	// current frame is rendering into, which is not necessarily the newest one handed to
+	// updateRenderState(); #onXRFrame resyncs it from the session at the top of every frame.
+	#xrData?: WilsonGLXRData;
+
+	#xrRequiredFeatures: string[] = [];
+	#xrOptionalFeatures: string[] = [];
+
+	#xrFramebufferScale: number = 1;
+
+	get xrFramebufferScale() { return this.#xrFramebufferScale; }
+	set xrFramebufferScale(value: number)
+	{
+		if (value <= 0)
+		{
+			if (this.verbose)
+			{
+				console.warn("[Wilson] Setting xrFramebufferScale to a nonpositive value has no effect.");
+			}
+
+			return;
+		}
+
+		// Rebuilding the layer is expensive enough that it's worth not doing it for a write
+		// that wouldn't change anything.
+		if (value === this.#xrFramebufferScale)
+		{
+			return;
+		}
+
+		this.#xrFramebufferScale = value;
+
+		if (!this.#xrData)
+		{
+			return;
+		}
+
+		// framebufferScaleFactor is fixed once a layer exists, so changing the render resolution
+		// means building a replacement and swapping it in. That's allowed mid-session, but it
+		// reallocates the swapchain and usually costs a frame or two, so this is a coarse quality
+		// step to be debounced rather than a per-frame knob.
+		this.#xrData.session.updateRenderState({
+			baseLayer: this.#createXRBaseLayer(this.#xrData.session)
+		});
+	}
+
+	#createXRBaseLayer(session: XRSession)
+	{
+		const baseLayer = new XRWebGLLayer(session, this.gl, {
+			...XR_LAYER_OPTIONS,
+			// Headsets can run in a low-res mode by default for headroom, so the native factor
+			// ensures we're rendering all the pixels available, and the applet's own factor
+			// scales down from there.
+			framebufferScaleFactor: XRWebGLLayer.getNativeFramebufferScaleFactor(session)
+				* this.#xrFramebufferScale
+		});
+
+		// Foveation is a property of the layer, so a replacement starts at the runtime's default
+		// instead of inheriting what the layer it's replacing had.
+		baseLayer.fixedFoveation = this.#xrFixedFoveation;
+
+		return baseLayer;
+	}
+
+	#xrTargetFrameRate: number | undefined;
+
+	get xrSupportedFrameRates() { return this.#xrData?.session.supportedFrameRates; }
+	get xrFrameRate() { return this.#xrData?.session.frameRate; }
+
+	get xrTargetFrameRate() { return this.#xrTargetFrameRate; }
+
+	set xrTargetFrameRate(value: number | undefined)
+	{
+		this.#xrTargetFrameRate = value;
+		this.#applyXRTargetFrameRate();
+	}
+
+	#lastXRTime: number | undefined = undefined;
+
+	get inXR() { return this.#xrData !== undefined; }
+	#enteringXR: boolean = false;
+
+	get xrSession() { return this.#xrData?.session; }
+	get xrRefSpace() { return this.#xrData?.refSpace; }
+
+	get xrFramebufferWidth() { return this.#xrData?.baseLayer.framebufferWidth; }
+	get xrFramebufferHeight() { return this.#xrData?.baseLayer.framebufferHeight; }
+	
+	#xrFixedFoveation: number | undefined;
+
+	get xrFixedFoveation()
+	{
+		// When in an XR session, return the actual foveation value; it may be undefined if
+		// the headset doesn't support it. Outside a session, the base layer doesn't exist,
+		// so return the value that was passed in, if any.
+		if (this.#xrData)
+		{
+			// WebXR declares fixedFoveation as nullable, but the WebXR type is number | undefined,
+			// so this normalizes null away.
+			return this.#xrData.baseLayer.fixedFoveation ?? undefined;
+		}
+
+		return this.#xrFixedFoveation;
+	}
+
+	set xrFixedFoveation(value: number | undefined)
+	{
+		this.#xrFixedFoveation = value;
+
+		const baseLayer = this.#xrData?.baseLayer;
+
+		if (baseLayer)
+		{
+			baseLayer.fixedFoveation = value;
+		}
+	}
+
+	#xrCallbacks: {
+		onEnter: () => void,
+		onExit: () => void,
+		onFrameStart: OnXRFrameStart,
+		onAvailabilityChange: (isSupported: boolean) => void,
+		onVisibilityChange: (state: XRVisibilityState) => void,
+		onControllerConnect: OnXRControllerChange,
+		onControllerDisconnect: OnXRControllerChange,
+		onButtonDown: OnXRButtonEvent,
+		onButtonUp: OnXRButtonEvent,
+	} = {
+		onEnter: () => {},
+		onExit: () => {},
+		onFrameStart: () => {},
+		onAvailabilityChange: () => {},
+		onVisibilityChange: () => {},
+		onControllerConnect: () => {},
+		onControllerDisconnect: () => {},
+		onButtonDown: () => {},
+		onButtonUp: () => {}
+	};
+
+	// Keyed on the XRInputSource, whose object identity is stable for as long as the device
+	// stays connected.
+	#xrControllerData: Map<XRInputSource, WilsonXRControllerData> = new Map();
+
+	// Rebuilt whenever the set of input sources changes, so that applets can hold onto it for
+	// the duration of a frame without it being reallocated underneath them.
+	#xrControllerList: WilsonXRController[] = [];
+
+	get xrControllers(): WilsonXRController[] { return this.#xrControllerList; }
+
+	getXRController(handedness: XRHandedness): WilsonXRController | undefined
+	{
+		return this.#xrControllerList.find(controller => controller.handedness === handedness);
+	}
+
+	// Used to restore the eye viewport correctly when switching back to the
+	// headset's framebuffer.
+	#xrViewport: XRViewport | null = null;
+
+	// The viewport of the eye currently being rendered, and null outside of a renderFrame call.
+	get xrViewport() { return this.#xrViewport; }
+
+
 
 	#logShaderSource(source: string, infoLog: string)
 	{
@@ -3889,8 +4595,8 @@ export class WilsonGPU extends Wilson
 
 		const errorLine = parseInt(match[1]);
 		const lines = source.split("\n");
-        
-        const numContextLines = 4;
+		
+		const numContextLines = 4;
 
 		const start = Math.max(0, errorLine - numContextLines - 1);
 		const end = Math.min(lines.length, errorLine + numContextLines);
@@ -3911,15 +4617,25 @@ export class WilsonGPU extends Wilson
 		console.log(parts.join("\n"), ...styles);
 	}
 
-	constructor(canvas: HTMLCanvasElement, options: WilsonGPUOptions)
+	constructor(canvas: HTMLCanvasElement, options: WilsonGLOptions)
 	{
 		super(canvas, options);
 
 		this.#useWebGL2 = options.useWebGL2 ?? true;
 
+		this.#initXR(options.xrOptions);
+
+		const getContextOptions: WebGLContextAttributes = {
+			xrCompatible: true,
+			powerPreference: "high-performance",
+			antialias: false,
+			depth: false,
+			stencil: false,
+		};
+
 		const gl = this.#useWebGL2
-			? canvas.getContext("webgl2") ?? canvas.getContext("webgl")
-			: canvas.getContext("webgl");
+			? canvas.getContext("webgl2", getContextOptions) ?? canvas.getContext("webgl", getContextOptions)
+			: canvas.getContext("webgl", getContextOptions);
 
 		if (!gl)
 		{
@@ -3928,7 +4644,9 @@ export class WilsonGPU extends Wilson
 
 		this.gl = gl;
 
-		this.gl.getExtension("KHR_parallel_shader_compile");
+		this.#parallelCompileSupported = this.gl.getExtension("KHR_parallel_shader_compile") !== null;
+
+		this.#initGpuTiming(options.useGpuTiming ?? false);
 
 		if (
 			this.gl instanceof WebGL2RenderingContext
@@ -3979,13 +4697,229 @@ export class WilsonGPU extends Wilson
 		}
 	}
 
+	#initXR(options?: XROptions)
+	{
+		this.#useXRButton = options?.useButton ?? false;
+		this.#xrButtonIconPath = options?.useButton ? options.buttonIconPath : undefined;
+		this.#initXRButton();
+
+		navigator.xr?.addEventListener("devicechange", this.#onDeviceChange);
+
+		// Chrome on Windows doesn't reliably fire devicechange when an OpenXR runtime starts
+		// after the page has already checked, so a headset connected mid-session never shows
+		// the button. Re-checking when the tab regains focus covers the usual flow of leaving
+		// to connect the headset and coming back.
+		window.addEventListener("focus", this.#onPageFocus);
+		document.addEventListener("visibilitychange", this.#onPageFocus);
+
+		this.#renderXRFrame = options?.renderFrame ?? (() => {});
+
+		this.#xrCallbacks = {
+			onEnter: options?.onEnter ?? (() => {}),
+			onExit: options?.onExit ?? (() => {}),
+			onFrameStart: options?.onFrameStart ?? (() => {}),
+			onAvailabilityChange: options?.onAvailabilityChange ?? (() => {}),
+			onVisibilityChange: options?.onVisibilityChange ?? (() => {}),
+			onControllerConnect: options?.onControllerConnect ?? (() => {}),
+			onControllerDisconnect: options?.onControllerDisconnect ?? (() => {}),
+			onButtonDown: options?.onButtonDown ?? (() => {}),
+			onButtonUp: options?.onButtonUp ?? (() => {})
+		};
+
+		// Deliberately after the callbacks are in place: the first check reports its result, and
+		// an applet that passed onAvailabilityChange should hear about it.
+		this.#checkXRSupport();
+
+		this.#xrRequiredFeatures = options?.requiredFeatures ?? [];
+		this.#xrOptionalFeatures = options?.optionalFeatures ?? [];
+
+
+		this.#xrFramebufferScale = options?.framebufferScale ?? 1;
+
+		// Foveated rendering defaults to on.
+		this.#xrFixedFoveation = options?.fixedFoveation ?? 0.3;
+
+		this.#xrTargetFrameRate = options?.targetFrameRate;
+	}
+
+	// Tracked separately from #xrIsSupportedNow, which every check resets to null before it
+	// knows the answer, so that a check whose result matches the last one reported can tell.
+	#lastReportedXRAvailability: boolean | null = null;
+
+	#checkXRSupport()
+	{
+		this.#xrIsSupportedNow = null;
+
+		(
+			navigator.xr
+				? navigator.xr.isSessionSupported(XR_MODE)
+				: Promise.resolve(false)
+		)
+			.catch(() => false)
+			.then(supported =>
+			{
+				this.#xrIsSupportedNow = supported;
+
+				if (this.#xrButton)
+				{
+					this.#xrButton.style.display = supported ? "flex" : "none";
+				}
+
+				// Rechecks happen on every devicechange and every time the page regains focus, so
+				// most of them find exactly what the last one did; only actual changes are worth
+				// reporting. The first check always is one, since availability starts unknown.
+				if (supported !== this.#lastReportedXRAvailability)
+				{
+					this.#lastReportedXRAvailability = supported;
+
+					this.#xrCallbacks.onAvailabilityChange(supported);
+				}
+			});
+	}
+
+	// Needs to be an arrow function to maintain its binding when passed to addEventListener
+	#onDeviceChange = () =>
+	{
+		this.#checkXRSupport();
+	};
+
+	#onPageFocus = () =>
+	{
+		if (!document.hidden && this.#xrIsSupportedNow !== true && !this.inXR)
+		{
+			this.#checkXRSupport();
+		}
+	};
+
+	#setXRButtonLoading(loading: boolean)
+	{
+		if (!this.#xrButton || !this.#xrButtonImg)
+		{
+			return;
+		}
+
+		if (this.#xrButtonText)
+		{
+			this.#xrButtonText.textContent = loading ? "Loading..." : "Enter VR";
+		}
+
+		this.#xrButton.classList.toggle("WILSON_xr-button-loading", loading);
+	}
+
+	#initXRButton()
+	{
+		if (this.#useXRButton)
+		{
+			this.#xrButton = document.createElement("div");
+			this.#xrButton.classList.add("WILSON_xr-button");
+			this.#xrButton.classList.add("WILSON_button");
+
+			// If #xrIsSupportedNow is a boolean already, this will correctly set the style.
+			// If it's still null, it will keep it hidden until #checkXRSupport finishes.
+			this.#xrButton.style.display = this.#xrIsSupportedNow ? "flex" : "none";
+
+			this.buttonContainer.appendChild(this.#xrButton);
+
+			const img = document.createElement("img");
+			img.src = this.#xrButtonIconPath as string;
+			this.#xrButton.appendChild(img);
+			this.#xrButtonImg = img;
+
+			const text = document.createElement("div");
+			text.classList.add("WILSON_button-text");
+			text.textContent = "Enter VR";
+			this.#xrButton.appendChild(text);
+			this.#xrButtonText = text;
+
+			this.addFullscreenViewTransitionElement({
+				element: this.#xrButton,
+				hideInFullscreen: true,
+			});
+
+			this.#xrButton.addEventListener("click", async () =>
+			{
+				this.#setXRButtonLoading(true);
+
+				// Resolves once the session is running, or immediately on any failure, so the
+				// icon never stays spinning after a cancelled or rejected launch.
+				const result = await this.enterXR();
+
+				if (!result)
+				{
+					window.alert("Failed to enter VR. Try reconnecting your headset and restarting your browser.");
+				}
+
+				this.#setXRButtonLoading(false);
+			});
+		}
+	}
+
+
+
+	// Set when drawFrame() had to bail because the shader wasn't linked yet, so that
+	// #finalizeShader can honor the request as soon as it can. Without this, a caller that
+	// only draws when something changes would drop its one and only draw and stay blank.
+	#drawFrameRequestedWhilePending: boolean = false;
+
 	drawFrame()
 	{
+		// A shader that's still linking has no program to draw with.
+		if (this.#pendingShaders[this.#currentShaderId])
+		{
+			this.#pollPendingShaders();
+
+			if (this.#pendingShaders[this.#currentShaderId])
+			{
+				this.#drawFrameRequestedWhilePending = true;
+				return;
+			}
+		}
+
+		this.beginGpuTimer();
+
 		this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
+		this.endGpuTimer();
 	}
 
 	#numShaders = 0;
-	#currentShaderId = "0";
+	#currentShaderId: ShaderProgramId = "0";
+	#currentProgram: WebGLProgram | null = null;
+
+	// KHR_parallel_shader_compile lets the driver compile and link on its own threads, but
+	// any question about the result -- COMPILE_STATUS, LINK_STATUS, getAttribLocation,
+	// getUniformLocation -- blocks the main thread until it's finished, which is the exact
+	// stall the extension exists to remove. So everything after linkProgram is deferred
+	// until COMPLETION_STATUS_KHR says the program is done.
+	#parallelCompileSupported: boolean = false;
+	#pendingShaders: {[id: ShaderProgramId]: PendingShader} = {};
+	#pendingUniforms: {[id: ShaderProgramId]: UniformInitializers} = {};
+	#pollPendingShadersScheduled: boolean = false;
+
+	static #vertexShaderSource = /* glsl*/`
+		attribute vec3 position;
+		varying vec2 uv;
+		varying vec2 uvTile;
+
+		// The window of the image that this draw covers, which is all of it except when
+		// readHighResPixels() is rendering a tile. Keeping it here rather than in the fragment
+		// shader is what lets tiled rendering work without any shader knowing about it: uv
+		// spans the whole image no matter which tile is being drawn.
+		uniform vec2 wilsonUvScale;
+		uniform vec2 wilsonUvCenter;
+
+		void main(void)
+		{
+			gl_Position = vec4(position, 1.0);
+
+			//Interpolate quad coordinates in the fragment shader.
+			uv = position.xy * wilsonUvScale + wilsonUvCenter;
+
+			// Always the full -1 to 1 range, so a shader sampling a framebuffer that was drawn
+			// by an earlier pass of the same tile has coordinates that line up with it.
+			uvTile = position.xy;
+		}
+	`;
 
 	loadShader({
 		id = this.#numShaders.toString(),
@@ -3996,18 +4930,11 @@ export class WilsonGPU extends Wilson
 		shader: string,
 		uniforms?: UniformInitializers
 	}) {
-		const vertexShaderSource = /* glsl*/`
-			attribute vec3 position;
-			varying vec2 uv;
+		const vertexShaderSource = WilsonGL.#vertexShaderSource;
 
-			void main(void)
-			{
-				gl_Position = vec4(position, 1.0);
-
-				//Interpolate quad coordinates in the fragment shader.
-				uv = position.xy;
-			}
-		`;
+		// A second load of the same id while the first is still in flight: the old attempt
+		// is never going to be used, so drop it rather than letting it finalize on top of us.
+		this.#discardPendingShader(id);
 
 		const vertexShader = this.gl.createShader(this.gl.VERTEX_SHADER);
 		const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
@@ -4017,8 +4944,6 @@ export class WilsonGPU extends Wilson
 			throw new Error(`[Wilson] Couldn't create shader: ${vertexShader}, ${fragShader}`);
 		}
 
-		this.#shaders.push(vertexShader, fragShader);
-
 		const shaderProgram = this.gl.createProgram();
 
 		if (!shaderProgram)
@@ -4026,11 +4951,11 @@ export class WilsonGPU extends Wilson
 			throw new Error(`[Wilson] Couldn't create shader program. Full shader source: ${shader}`);
 		}
 
-		this.#shaderPrograms[id] = shaderProgram;
 		this.#shaderProgramSources[id] = shader;
+		this.#numShaders++;
 
-		this.gl.attachShader(this.#shaderPrograms[id], vertexShader);
-		this.gl.attachShader(this.#shaderPrograms[id], fragShader);
+		this.gl.attachShader(shaderProgram, vertexShader);
+		this.gl.attachShader(shaderProgram, fragShader);
 
 		this.gl.shaderSource(vertexShader, vertexShaderSource);
 		this.gl.shaderSource(fragShader, shader);
@@ -4038,16 +4963,243 @@ export class WilsonGPU extends Wilson
 		this.gl.compileShader(vertexShader);
 		this.gl.compileShader(fragShader);
 
+		this.gl.linkProgram(shaderProgram);
+
+		this.#pendingShaders[id] = {
+			program: shaderProgram,
+			vertexShader,
+			fragShader,
+			vertexShaderSource,
+			source: shader,
+			uniforms,
+			callbacks: [],
+			previousShaderId: this.#currentShaderId,
+		};
+
+		// loadShader has always made its shader the current one, and callers rely on that to
+		// address it with the default shader argument of setUniforms. That stays true while
+		// it's pending; #useProgram just has nothing to bind yet.
+		this.#currentShaderId = id;
+
+		if (this.#parallelCompileSupported)
+		{
+			this.#schedulePollPendingShaders();
+		}
+
+		else
+		{
+			// Without the extension there's nothing to wait for -- the driver has already
+			// done the work synchronously inside compileShader/linkProgram.
+			this.#finalizeShader(id);
+		}
+	}
+
+	get #numPendingShaders() { return Object.keys(this.#pendingShaders).length; }
+
+	#shaderReadyNow(id: ShaderProgramId = this.#currentShaderId)
+	{
+		return this.#shaderPrograms[id] !== undefined && this.#pendingShaders[id] === undefined;
+	}
+
+	// Resolves once the shader is drawable, or rejects with the compile/link error. Since
+	// compilation is deferred off the main thread, a shader is generally not drawable in the
+	// same tick that loadShader() is called, and callers that only draw on demand need to know
+	// when to ask for that first frame.
+	shaderReady(id: ShaderProgramId = this.#currentShaderId): Promise<void>
+	{
+		if (this.#shaderReadyNow(id))
+		{
+			return Promise.resolve();
+		}
+
+		const pending = this.#pendingShaders[id];
+
+		if (!pending)
+		{
+			return Promise.reject(new Error(`[Wilson] No shader with id ${id}.`));
+		}
+
+		return new Promise((resolve, reject) => pending.callbacks.push({ resolve, reject }));
+	}
+
+	// Resolves once nothing is left compiling, or rejects with the first compile/link error.
+	// Shaders requested while this is being awaited are waited on too, so a load kicked off in
+	// response to the first batch finishing doesn't slip past an in-flight await, and calling
+	// this again always reflects what's pending at that moment.
+	async allShadersReady(): Promise<void>
+	{
+		while (this.#numPendingShaders !== 0)
+		{
+			const results = await Promise.allSettled(
+				Object.keys(this.#pendingShaders).map(id => this.shaderReady(id))
+			);
+
+			for (const result of results)
+			{
+				// A shader that was replaced mid-flight isn't a failure -- the load that
+				// replaced it is pending in its place, and the next pass waits on that.
+				if (
+					result.status === "rejected"
+					&& !(result.reason instanceof ShaderSupersededError)
+				) {
+					throw result.reason;
+				}
+			}
+		}
+	}
+
+	#schedulePollPendingShaders()
+	{
+		if (this.#pollPendingShadersScheduled || this.#numPendingShaders === 0)
+		{
+			return;
+		}
+
+		this.#pollPendingShadersScheduled = true;
+
+		// requestAnimationFrame keeps the check in step with rendering, but it never fires on
+		// a hidden tab, and compilation still has to finish there -- whenShaderReady() is what
+		// readHighResPixels() waits on, and that runs happily in the background. So a timer
+		// races the frame callback and whichever arrives first does the work.
+		let alreadyRan = false;
+
+		const run = () =>
+		{
+			if (alreadyRan)
+			{
+				return;
+			}
+
+			alreadyRan = true;
+			this.#pollPendingShadersScheduled = false;
+
+			if (this.#destroyedGPU)
+			{
+				return;
+			}
+
+			this.#pollPendingShaders();
+			this.#schedulePollPendingShaders();
+		};
+
+		requestAnimationFrame(run);
+		setTimeout(run, 16);
+	}
+
+	#pollPendingShaders()
+	{
+		for (const id of Object.keys(this.#pendingShaders))
+		{
+			const pending = this.#pendingShaders[id];
+
+			if (
+				!this.#parallelCompileSupported
+				|| this.gl.getProgramParameter(pending.program, COMPLETION_STATUS_KHR)
+			) {
+				// One shader failing to compile must not stop the others from finalizing, so
+				// the error is rethrown out of band: still an uncaught error in the console,
+				// but not one that unwinds the sweep and kills the polling loop with it.
+				try
+				{
+					this.#finalizeShader(id);
+				}
+
+				catch(error)
+				{
+					setTimeout(() => { throw error; });
+				}
+			}
+		}
+	}
+
+	#discardPendingShader(id: ShaderProgramId)
+	{
+		const pending = this.#pendingShaders[id];
+
+		if (!pending)
+		{
+			return;
+		}
+
+		delete this.#pendingShaders[id];
+
+		this.gl.deleteShader(pending.vertexShader);
+		this.gl.deleteShader(pending.fragShader);
+		this.gl.deleteProgram(pending.program);
+
+		const error = new ShaderSupersededError(`[Wilson] Shader with id ${id} was replaced before it finished loading.`);
+
+		for (const { reject } of pending.callbacks)
+		{
+			reject(error);
+		}
+	}
+
+	// Everything that has to wait for the driver: status checks, attribute and uniform
+	// locations, and the buffer setup that depends on them.
+	#finalizeShader(id: ShaderProgramId)
+	{
+		const pending = this.#pendingShaders[id];
+
+		if (!pending)
+		{
+			return;
+		}
+
+		const {
+			program,
+			vertexShader,
+			fragShader,
+			vertexShaderSource,
+			source: shader,
+			uniforms,
+			callbacks,
+			previousShaderId
+		} = pending;
+
+		delete this.#pendingShaders[id];
+
+		const fail = (message: string) =>
+		{
+			this.gl.deleteShader(vertexShader);
+			this.gl.deleteShader(fragShader);
+			this.gl.deleteProgram(program);
+
+			delete this.#pendingUniforms[id];
+
+			// Don't leave a broken shader selected -- go back to whatever was current before.
+			if (this.#currentShaderId === id && previousShaderId !== id)
+			{
+				this.useShader(previousShaderId);
+			}
+
+			const error = new Error(message);
+
+			for (const { reject } of callbacks)
+			{
+				reject(error);
+			}
+
+			// Callers that never asked for the promise still need to hear about this.
+			if (callbacks.length === 0)
+			{
+				throw error;
+			}
+
+			return error;
+		};
+
 		if (!this.gl.getShaderParameter(vertexShader, this.gl.COMPILE_STATUS))
 		{
 			const infoLog = this.gl.getShaderInfoLog(vertexShader) ?? "";
 			this.#logShaderSource(vertexShaderSource, infoLog);
 
-            console.groupCollapsed(`[Wilson] Full non-compiled vertex shader source:`);
+			console.groupCollapsed(`[Wilson] Full non-compiled vertex shader source:`);
 			console.log(shader);
 			console.groupEnd();
 
-			throw new Error(`[Wilson] Couldn't compile vertex shader with id ${id}. ${infoLog}`);
+			fail(`[Wilson] Couldn't compile vertex shader with id ${id}. ${infoLog}`);
+			return;
 		}
 
 		if (!this.gl.getShaderParameter(fragShader, this.gl.COMPILE_STATUS))
@@ -4055,21 +5207,59 @@ export class WilsonGPU extends Wilson
 			const infoLog = this.gl.getShaderInfoLog(fragShader) ?? "";
 			this.#logShaderSource(shader, infoLog);
 
-            console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+			console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
 			console.log(shader);
 			console.groupEnd();
 
-			throw new Error(`[Wilson] Couldn't compile fragment shader with id ${id}. ${infoLog}`);
+			fail(`[Wilson] Couldn't compile fragment shader with id ${id}. ${infoLog}`);
+			return;
 		}
 
-		this.gl.linkProgram(this.#shaderPrograms[id]);
-
-		if (!this.gl.getProgramParameter(shaderProgram, this.gl.LINK_STATUS))
+		if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS))
 		{
-			throw new Error(`[Wilson] Couldn't link shader program with id ${id}: ${this.gl.getProgramInfoLog(shaderProgram)}`);
+			fail(`[Wilson] Couldn't link shader program with id ${id}: ${this.gl.getProgramInfoLog(program)}`);
+			return;
 		}
 
-		this.useShader(id);
+		const positionAttribute = this.gl.getAttribLocation(program, "position");
+
+		if (positionAttribute === -1)
+		{
+			console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+			console.log(shader);
+			console.groupEnd();
+
+			fail(`[Wilson] Couldn't get position attribute for shader with id ${id}.`);
+			return;
+		}
+
+		// The program is good, so it can replace whatever was under this id before. Reloading
+		// a shader keeps drawing the old one right up to this point.
+		const oldProgram = this.#shaderPrograms[id];
+
+		if (oldProgram)
+		{
+			if (this.#currentProgram === oldProgram)
+			{
+				this.#currentProgram = null;
+			}
+
+			this.gl.deleteProgram(oldProgram);
+		}
+
+		this.#shaderPrograms[id] = program;
+		this.#shaders.push(vertexShader, fragShader);
+
+		this.#useProgram(program);
+
+		// Uniforms start out as zero, which would collapse uv to a single point, so the
+		// identity window has to be uploaded before this program can draw anything at all.
+		this.#tileUniforms[id] = {
+			scale: this.gl.getUniformLocation(program, "wilsonUvScale"),
+			center: this.gl.getUniformLocation(program, "wilsonUvCenter"),
+		};
+
+		this.#setTileWindowForProgram(id, 1, 1, 0, 0);
 
 		const positionBuffer = this.gl.createBuffer();
 
@@ -4090,29 +5280,36 @@ export class WilsonGPU extends Wilson
 		];
 		this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(quad), this.gl.STATIC_DRAW);
 
-		const positionAttribute = this.gl.getAttribLocation(this.#shaderPrograms[id], "position");
-
-		if (positionAttribute === -1)
-		{
-            console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
-			console.log(shader);
-			console.groupEnd();
-            
-			throw new Error(`[Wilson] Couldn't get position attribute for shader with id ${id}.`);
-		}
-
 		this.gl.enableVertexAttribArray(positionAttribute);
 		this.gl.vertexAttribPointer(positionAttribute, 3, this.gl.FLOAT, false, 0, 0);
-		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
+
+		// Finalizing can land in the middle of an XR frame, since drawFrame() polls. Resetting
+		// to the canvas viewport there would render the eye into the wrong part of the layer.
+		if (this.#xrViewport)
+		{
+			const { x, y, width, height } = this.#xrViewport;
+			this.gl.viewport(x, y, width, height);
+		}
+
+		else
+		{
+			this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
+		}
 
 
 
-		// Initialize the uniforms.
+		// Initialize the uniforms. Anything set while the shader was pending was buffered
+		// rather than uploaded, and those values win over the initializers.
 		this.#uniforms[id] = {};
 
-		for (const [name, value] of Object.entries(uniforms))
+		const bufferedUniforms = this.#pendingUniforms[id] ?? {};
+		delete this.#pendingUniforms[id];
+
+		const allUniforms = { ...uniforms, ...bufferedUniforms };
+
+		for (const [name, value] of Object.entries(allUniforms))
 		{
-			const location = this.gl.getUniformLocation(this.#shaderPrograms[id], name);
+			const location = this.gl.getUniformLocation(program, name);
 
 			if (location === null)
 			{
@@ -4130,56 +5327,439 @@ export class WilsonGPU extends Wilson
 			);
 			if (!match)
 			{
-                console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
-                console.log(shader);
-                console.groupEnd();
-                
+				console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+				console.log(shader);
+				console.groupEnd();
+
 				throw new Error(`[Wilson] Couldn't find uniform ${name} in shader with id ${id}.`);
 			}
-			
+
 			const type = match[1].trim() + (match[2] ? "Array" : "");
 
 			if (!(type in uniformFunctions))
 			{
-                console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
-                console.log(shader);
-                console.groupEnd();
-                
+				console.groupCollapsed(`[Wilson] Full non-compiled fragment shader source:`);
+				console.log(shader);
+				console.groupEnd();
+
 				throw new Error(`[Wilson] Invalid uniform type ${type} for uniform ${name} in shader with id ${id}.`);
 			}
 
 			this.#uniforms[id][name] = { location, type: type as UniformType };
-			this.setUniforms({ [name]: value });
+			this.setUniforms({ [name]: value }, id);
+		}
+
+		// Make sure the program bound at the end is the one the caller expects, which is not
+		// necessarily this one if several shaders were in flight at once.
+		if (this.#shaderPrograms[this.#currentShaderId])
+		{
+			this.#useProgram(this.#shaderPrograms[this.#currentShaderId]);
+		}
+
+		for (const { resolve } of callbacks)
+		{
+			resolve();
+		}
+
+		// Replay a draw that was dropped while this shader was compiling, so callers that
+		// draw on demand rather than every frame don't need to know any of this happened.
+		if (this.#drawFrameRequestedWhilePending && !this.#pendingShaders[this.#currentShaderId])
+		{
+			this.#drawFrameRequestedWhilePending = false;
+			this.drawFrame();
 		}
 	}
 
-	setUniforms(uniforms: UniformInitializers, shader: ShaderProgramId = this.#currentShaderId)
+	// GPU timing. EXT_disjoint_timer_query measures how long the GPU spent on a range of
+	// commands, which is the only honest way to profile a fragment-bound renderer: rAF deltas
+	// tell you when frames landed, not how much headroom is left, and they cap out at the
+	// display refresh rate no matter how fast the shader is.
+	//
+	// Results come back asynchronously -- typically one to three frames later -- so queries
+	// are pooled and polled rather than waited on. Reading a result before it's available
+	// would stall the pipeline and defeat the purpose.
+
+	#gpuTimerExtension: any = null;
+	#gpuTimerUsesWebGL2Api: boolean = false;
+	#gpuTimerPool: WebGLQuery[] = [];
+	#gpuTimerPending: WebGLQuery[] = [];
+	#gpuTimerActive: WebGLQuery | null = null;
+	#gpuTimerDepth: number = 0;
+	#lastGpuFrameTime: number | undefined = undefined;
+	#averageGpuFrameTime: number | undefined = undefined;
+
+	// If results stop arriving (a lost or hung context), stop allocating queries forever.
+	#maxPendingGpuTimers: number = 8;
+
+	useGpuTiming: boolean = false;
+
+	// Weight of each new sample in the running average. Low enough to ride out a single
+	// expensive frame, high enough to follow a real change within a few frames.
+	gpuTimingSmoothing: number = 0.15;
+
+	get gpuTimingSupported() { return this.#gpuTimerExtension !== null; }
+
+	// Milliseconds of GPU time for the most recently completed measurement, or undefined if
+	// none has finished yet.
+	get lastGpuFrameTime() { return this.#lastGpuFrameTime; }
+
+	// Exponential moving average of the above, which is what a resolution controller wants.
+	get averageGpuFrameTime() { return this.#averageGpuFrameTime; }
+
+	#initGpuTiming(useGpuTiming: boolean)
 	{
-		this.gl.useProgram(this.#shaderPrograms[shader]);
-		
-		for (const [name, value] of Object.entries(uniforms))
+		this.useGpuTiming = useGpuTiming;
+
+		// The WebGL2 extension reuses the core query entry points; the WebGL1 one brings its
+		// own. Everything else about them is the same.
+		if (this.gl instanceof WebGL2RenderingContext)
 		{
-			if (this.#uniforms[shader][name] === undefined)
+			this.#gpuTimerExtension = this.gl.getExtension("EXT_disjoint_timer_query_webgl2");
+			this.#gpuTimerUsesWebGL2Api = this.#gpuTimerExtension !== null;
+		}
+
+		if (!this.#gpuTimerExtension)
+		{
+			this.#gpuTimerExtension = this.gl.getExtension("EXT_disjoint_timer_query");
+			this.#gpuTimerUsesWebGL2Api = false;
+		}
+
+		if (!this.#gpuTimerExtension && useGpuTiming && this.verbose)
+		{
+			console.warn("[Wilson] GPU timing was requested, but no timer query extension is available. Browsers often withhold it for fingerprinting reasons.");
+		}
+	}
+
+	#createGpuTimerQuery(): WebGLQuery | null
+	{
+		return this.#gpuTimerUsesWebGL2Api
+			? (this.gl as WebGL2RenderingContext).createQuery()
+			: this.#gpuTimerExtension.createQueryEXT();
+	}
+
+	#deleteGpuTimerQuery(query: WebGLQuery)
+	{
+		if (this.#gpuTimerUsesWebGL2Api)
+		{
+			(this.gl as WebGL2RenderingContext).deleteQuery(query);
+		}
+
+		else
+		{
+			this.#gpuTimerExtension.deleteQueryEXT(query);
+		}
+	}
+
+	// Opens a GPU timing range. Nested calls are folded into the outermost one, since only a
+	// single TIME_ELAPSED query may be active at a time -- so wrapping several drawFrame()
+	// calls (both eyes of an XR frame, say) measures them together.
+	beginGpuTimer()
+	{
+		if (!this.useGpuTiming || !this.#gpuTimerExtension)
+		{
+			return;
+		}
+
+		if (this.#gpuTimerDepth++ > 0)
+		{
+			return;
+		}
+
+		this.pollGpuTimers();
+
+		const query = this.#gpuTimerPool.pop() ?? this.#createGpuTimerQuery();
+
+		if (!query)
+		{
+			this.#gpuTimerDepth = 0;
+			return;
+		}
+
+		this.#gpuTimerActive = query;
+
+		if (this.#gpuTimerUsesWebGL2Api)
+		{
+			(this.gl as WebGL2RenderingContext).beginQuery(
+				this.#gpuTimerExtension.TIME_ELAPSED_EXT,
+				query
+			);
+		}
+
+		else
+		{
+			this.#gpuTimerExtension.beginQueryEXT(
+				this.#gpuTimerExtension.TIME_ELAPSED_EXT,
+				query
+			);
+		}
+	}
+
+	endGpuTimer()
+	{
+		if (!this.#gpuTimerActive || this.#gpuTimerDepth === 0)
+		{
+			return;
+		}
+
+		if (--this.#gpuTimerDepth > 0)
+		{
+			return;
+		}
+
+		if (this.#gpuTimerUsesWebGL2Api)
+		{
+			(this.gl as WebGL2RenderingContext).endQuery(this.#gpuTimerExtension.TIME_ELAPSED_EXT);
+		}
+
+		else
+		{
+			this.#gpuTimerExtension.endQueryEXT(this.#gpuTimerExtension.TIME_ELAPSED_EXT);
+		}
+
+		this.#gpuTimerPending.push(this.#gpuTimerActive);
+		this.#gpuTimerActive = null;
+
+		// Drop the oldest measurements rather than growing without bound. These are deleted
+		// rather than pooled because their results were never read, and reusing a query whose
+		// result is still outstanding is asking for trouble.
+		while (this.#gpuTimerPending.length > this.#maxPendingGpuTimers)
+		{
+			this.#deleteGpuTimerQuery(this.#gpuTimerPending.shift() as WebGLQuery);
+		}
+	}
+
+	// Collects whatever results the driver has finished. Called automatically by
+	// beginGpuTimer, and safe to call directly if timing without drawing.
+	pollGpuTimers()
+	{
+		if (!this.#gpuTimerExtension || this.#gpuTimerPending.length === 0)
+		{
+			return;
+		}
+
+		// A disjoint means the GPU was interrupted (clock change, context switch) and every
+		// in-flight timing is untrustworthy. Reading the flag also clears it.
+		if (this.gl.getParameter(this.#gpuTimerExtension.GPU_DISJOINT_EXT))
+		{
+			for (const query of this.#gpuTimerPending)
 			{
-				continue;
+				this.#deleteGpuTimerQuery(query);
 			}
-			
+
+			this.#gpuTimerPending = [];
+			return;
+		}
+
+		// Results complete in order, so the first one that isn't ready ends the sweep.
+		while (this.#gpuTimerPending.length > 0)
+		{
+			const query = this.#gpuTimerPending[0];
+
+			const available = this.#gpuTimerUsesWebGL2Api
+				? (this.gl as WebGL2RenderingContext).getQueryParameter(
+					query,
+					(this.gl as WebGL2RenderingContext).QUERY_RESULT_AVAILABLE
+				)
+				: this.#gpuTimerExtension.getQueryObjectEXT(
+					query,
+					this.#gpuTimerExtension.QUERY_RESULT_AVAILABLE_EXT
+				);
+
+			if (!available)
+			{
+				return;
+			}
+
+			this.#gpuTimerPending.shift();
+
+			const nanoseconds = this.#gpuTimerUsesWebGL2Api
+				? (this.gl as WebGL2RenderingContext).getQueryParameter(
+					query,
+					(this.gl as WebGL2RenderingContext).QUERY_RESULT
+				)
+				: this.#gpuTimerExtension.getQueryObjectEXT(
+					query,
+					this.#gpuTimerExtension.QUERY_RESULT_EXT
+				);
+
+			this.#gpuTimerPool.push(query);
+
+			this.#lastGpuFrameTime = nanoseconds / 1000000;
+
+			this.#averageGpuFrameTime = this.#averageGpuFrameTime === undefined
+				? this.#lastGpuFrameTime
+				: this.#averageGpuFrameTime
+					+ this.gpuTimingSmoothing * (this.#lastGpuFrameTime - this.#averageGpuFrameTime);
+		}
+	}
+
+	resetGpuTimings()
+	{
+		this.#lastGpuFrameTime = undefined;
+		this.#averageGpuFrameTime = undefined;
+	}
+
+	#destroyGpuTiming()
+	{
+		if (!this.#gpuTimerExtension)
+		{
+			return;
+		}
+
+		// Leaving a query open would keep it alive past the delete.
+		if (this.#gpuTimerActive)
+		{
+			this.#gpuTimerDepth = 1;
+			this.endGpuTimer();
+		}
+
+		for (const query of [...this.#gpuTimerPool, ...this.#gpuTimerPending])
+		{
+			this.#deleteGpuTimerQuery(query);
+		}
+
+		this.#gpuTimerPool = [];
+		this.#gpuTimerPending = [];
+		this.#gpuTimerActive = null;
+		this.#gpuTimerExtension = null;
+	}
+
+
+
+	setUniform(name: string, value: UniformValue, shader: ShaderProgramId = this.#currentShaderId)
+	{
+		if (this.#pendingShaders[shader])
+		{
+			(this.#pendingUniforms[shader] ??= {})[name] = value;
+			return;
+		}
+
+		// A shader that failed to compile leaves neither a pending entry nor a uniform map.
+		if (!this.#uniforms[shader])
+		{
+			return;
+		}
+
+		this.#useProgram(this.#shaderPrograms[shader]);
+
+		if (this.#uniforms[shader][name] !== undefined)
+		{
 			const { location, type } = this.#uniforms[shader][name];
 			const uniformFunction = uniformFunctions[type];
 			this.#uniforms[shader][name].value = value;
 			uniformFunction(this.gl, location, value);
 		}
 
-		this.gl.useProgram(this.#shaderPrograms[this.#currentShaderId]);
+		this.#restoreCurrentProgram();
+	}
+
+	setUniforms(uniforms: UniformInitializers, shader: ShaderProgramId = this.#currentShaderId)
+	{
+		if (this.#pendingShaders[shader])
+		{
+			Object.assign(this.#pendingUniforms[shader] ??= {}, uniforms);
+			return;
+		}
+
+		// A shader that failed to compile leaves neither a pending entry nor a uniform map.
+		if (!this.#uniforms[shader])
+		{
+			return;
+		}
+
+		this.#useProgram(this.#shaderPrograms[shader]);
+
+		for (const [name, value] of Object.entries(uniforms))
+		{
+			if (this.#uniforms[shader][name] === undefined)
+			{
+				continue;
+			}
+
+			const { location, type } = this.#uniforms[shader][name];
+			const uniformFunction = uniformFunctions[type];
+			this.#uniforms[shader][name].value = value;
+			uniformFunction(this.gl, location, value);
+		}
+
+		this.#restoreCurrentProgram();
 	}
 
 	useShader(id: ShaderProgramId)
 	{
 		this.#currentShaderId = id;
-		this.gl.useProgram(this.#shaderPrograms[id]);
+
+		if (this.#shaderPrograms[id])
+		{
+			this.#useProgram(this.#shaderPrograms[id]);
+		}
 	}
 
-	
+	// The current shader can be pending, in which case there's no program to go back to and
+	// whatever is bound stays bound -- nothing will be drawn with it until it finalizes.
+	#restoreCurrentProgram()
+	{
+		const program = this.#shaderPrograms[this.#currentShaderId];
+
+		if (program)
+		{
+			this.#useProgram(program);
+		}
+	}
+
+	#useProgram(program: WebGLProgram | undefined)
+	{
+		if (!program || program === this.#currentProgram)
+		{
+			return;
+		}
+
+		this.#currentProgram = program;
+		this.gl.useProgram(program);
+	}
+
+	// Assumes the program is already bound, since the only callers are in the middle of
+	// walking a set of them and rebinding per uniform would be wasted work.
+	#setTileWindowForProgram(
+		id: ShaderProgramId,
+		scaleX: number,
+		scaleY: number,
+		centerX: number,
+		centerY: number
+	) {
+		const locations = this.#tileUniforms[id];
+
+		if (!locations)
+		{
+			return;
+		}
+
+		if (locations.scale)
+		{
+			this.gl.uniform2f(locations.scale, scaleX, scaleY);
+		}
+
+		if (locations.center)
+		{
+			this.gl.uniform2f(locations.center, centerX, centerY);
+		}
+	}
+
+	// Uniform values live on the program, not the context, so every shader that a tile might
+	// be drawn with needs its own copy. Doing all of them means a multi-pass render callback
+	// can switch shaders mid-tile without having to say which ones it plans to use.
+	#setTileWindow(scaleX: number, scaleY: number, centerX: number, centerY: number)
+	{
+		for (const id of Object.keys(this.#shaderPrograms))
+		{
+			this.#useProgram(this.#shaderPrograms[id]);
+			this.#setTileWindowForProgram(id, scaleX, scaleY, centerX, centerY);
+		}
+
+		this.#restoreCurrentProgram();
+	}
+
+
 
 	#framebuffers: {[id: string]: WebGLFramebuffer} = {};
 	#textures: {
@@ -4191,13 +5771,16 @@ export class WilsonGPU extends Wilson
 		}
 	} = {};
 
+	#currentFramebufferId: string | null = null;
+	#currentTextureId: string | null = null;
+
 	#positionBuffers: WebGLBuffer[] = [];
 	#shaders: WebGLShader[] = [];
 
 	createFramebufferTexturePair({
 		id,
-		width = this.canvasWidth,
-		height = this.canvasHeight,
+		width,
+		height,
 		textureType
 	}: {
 		id: string,
@@ -4205,6 +5788,32 @@ export class WilsonGPU extends Wilson
 		height?: number,
 		textureType: "unsignedByte" | "float"
 	}) {
+		const currentFramebufferId = this.#currentFramebufferId;
+		const currentTextureId = this.#currentTextureId;
+		
+		// Delete any existing pair with this ID so they don't leak.
+		this.deleteFramebufferTexturePair(id);
+
+		// Set default width and height.
+		if (this.inXR)
+		{
+			width ??= this.xrFramebufferWidth;
+			height ??= this.xrFramebufferHeight;
+
+			if (width === undefined || height === undefined)
+			{
+				throw new Error("[Wilson] Cannot get XR framebuffer size.")
+			}
+		}
+
+		else
+		{
+			width ??= this.canvasWidth;
+			height ??= this.canvasHeight;
+		}
+
+
+
 		if (textureType !== "unsignedByte" && textureType !== "float")
 		{
 			throw new Error(`[Wilson] Invalid texture type "${textureType}".`);
@@ -4224,7 +5833,11 @@ export class WilsonGPU extends Wilson
 			throw new Error(`[Wilson] Couldn't create a texture with id ${id}.`);
 		}
 
+
+
 		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+		this.#currentTextureId = id;
+
 		this.gl.texImage2D(
 			this.gl.TEXTURE_2D,
 			0,
@@ -4246,9 +5859,9 @@ export class WilsonGPU extends Wilson
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
 		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
 
-		this.gl.disable(this.gl.DEPTH_TEST);
-
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+		this.#currentFramebufferId = id;
+
 		this.gl.framebufferTexture2D(
 			this.gl.FRAMEBUFFER,
 			this.gl.COLOR_ATTACHMENT0,
@@ -4264,21 +5877,92 @@ export class WilsonGPU extends Wilson
 			height,
 			type: textureType,
 		};
+
+		this.useFramebuffer(currentFramebufferId);
+		this.useTexture(currentTextureId);
+	}
+
+	deleteFramebufferTexturePair(id: string)
+	{
+		if (this.#framebuffers[id])
+		{
+			// Deleting a bound framebuffer makes WebGL revert the binding to the default one,
+			// so the cached ID has to follow.
+			if (this.#currentFramebufferId === id)
+			{
+				this.#currentFramebufferId = null;
+			}
+
+			this.gl.deleteFramebuffer(this.#framebuffers[id]);
+			delete this.#framebuffers[id];
+		}
+
+		if (this.#textures[id])
+		{
+			// Likewise, deleting a bound texture reverts the binding to null.
+			if (this.#currentTextureId === id)
+			{
+				this.#currentTextureId = null;
+			}
+
+			this.gl.deleteTexture(this.#textures[id].texture);
+			delete this.#textures[id];
+		}
 	}
 
 	useFramebuffer(id: string | null)
 	{
+		if (id === this.#currentFramebufferId)
+		{
+			return;
+		}
+
+		if (id !== null && !this.#framebuffers[id])
+		{
+			throw new Error(`[Wilson] No framebuffer with ID ${id}.`);
+		}
+
+		this.#currentFramebufferId = id;
+
 		if (id === null)
 		{
+			if (this.#xrData)
+			{
+				this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.#xrData.baseLayer.framebuffer);
+
+				if (this.#xrViewport)
+				{
+					const { x, y, width, height } = this.#xrViewport;
+					this.gl.viewport(x, y, width, height);
+				}
+
+				return;
+			}
+
 			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+			this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
 			return;
 		}
 
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.#framebuffers[id]);
+		const { width, height } = this.#textures[id];
+		this.gl.viewport(0, 0, width, height);
 	}
 
 	useTexture(id: string | null)
 	{
+		if (id === this.#currentTextureId)
+		{
+			return;
+		}
+
+		if (id !== null && !this.#textures[id])
+		{
+			throw new Error(`[Wilson] No texture with ID ${id}.`);
+		}
+		
+		this.#currentTextureId = id;
+		
 		if (id === null)
 		{
 			this.gl.bindTexture(this.gl.TEXTURE_2D, null);
@@ -4288,12 +5972,14 @@ export class WilsonGPU extends Wilson
 		this.gl.bindTexture(this.gl.TEXTURE_2D, this.#textures[id].texture);
 	}
 
+	// Omitting data, or passing null, reallocates the texture at its current size with every
+	// channel zeroed, which is how you throw away what's in it.
 	setTexture({
 		id,
-		data,
+		data = null,
 	}: {
 		id: string,
-		data: Uint8Array | Float32Array | TexImageSource | null
+		data?: Uint8Array | Float32Array | TexImageSource | null
 	}) {
 		if (!this.#textures[id])
 		{
@@ -4307,9 +5993,21 @@ export class WilsonGPU extends Wilson
 			throw new Error(`[Wilson] Tried to set a texture with id ${id}, but the data type does not match the texture type (the data type should be a ${this.#textures[id].type === 'unsignedByte' ? 'Uint8Array' : 'Float32Array'}).`);
 		}
 
-		this.gl.bindTexture(this.gl.TEXTURE_2D, this.#textures[id].texture);
+		const oldId = this.#currentTextureId;
 
-		if (data === null || data instanceof Uint8Array || data instanceof Float32Array)
+		this.useTexture(id);
+
+		// texImage2D() with null is meant to hand back zeroed storage, but browsers are free
+		// to skip the reallocation when the size and format haven't changed, which leaves
+		// whatever was in the texture sitting there -- with no GL error to say so. Uploading
+		// the zeros is the only way to be sure it's actually been cleared.
+		const pixels = data === null
+			? (this.#textures[id].type === "float"
+				? new Float32Array(this.#textures[id].width * this.#textures[id].height * 4)
+				: new Uint8Array(this.#textures[id].width * this.#textures[id].height * 4))
+			: data;
+
+		if (pixels instanceof Uint8Array || pixels instanceof Float32Array)
 		{
 			this.gl.texImage2D(
 				this.gl.TEXTURE_2D,
@@ -4324,7 +6022,7 @@ export class WilsonGPU extends Wilson
 				this.#textures[id].type === "float"
 					? this.gl.FLOAT
 					: this.gl.UNSIGNED_BYTE,
-				data
+				pixels
 			);
 		}
 
@@ -4336,9 +6034,11 @@ export class WilsonGPU extends Wilson
 				this.gl.RGBA,
 				this.gl.RGBA,
 				this.gl.UNSIGNED_BYTE,
-				data
+				pixels
 			);
 		}
+
+		this.useTexture(oldId);
 	}
 
 	readPixels(options: ReadPixelsOptions)
@@ -4374,7 +6074,7 @@ export class WilsonGPU extends Wilson
 
 
 
-	resizeCanvasGPU = () =>
+	protected resizeCanvasGPU = () =>
 	{
 		this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
 	};
@@ -4394,466 +6094,1403 @@ export class WilsonGPU extends Wilson
 				return;
 			}
 
-			const link = document.createElement("a");
-
-			link.download = filename;
-
-			link.href = window.URL.createObjectURL(blob);
-
-			link.click();
-
-			link.remove();
+			this.downloadBlob(blob, filename);
 		});
+	}
+
+	// Rendering a big image in a single draw stalls the GPU for long enough that the
+	// compositor stops answering, and the readPixels that has to follow it blocks the main
+	// thread for the entire time. Both problems come from the size of one operation, so both
+	// go away if the image is rendered as a grid of ordinary-sized tiles with a yield in
+	// between: every tile is about a frame's worth of work, and the page stays responsive the
+	// whole way through. It also lifts the resolution ceiling, since no single texture ever
+	// has to be as large as the finished image.
+
+	// Two of these at once would interleave their tiles and fight over the same GL state, so
+	// a second call waits for the first to finish instead of corrupting both.
+	#highResRenderQueue: Promise<unknown> = Promise.resolve();
+
+	#queueHighResRender<T>(render: () => Promise<T>): Promise<T>
+	{
+		// Runs on rejection too -- one caller's failure shouldn't strand everything behind it.
+		const result = this.#highResRenderQueue.then(render, render);
+
+		this.#highResRenderQueue = result.catch(() => {});
+
+		return result;
+	}
+
+	#getHighResDimensions(resolution: number)
+	{
+		return {
+			width: Math.round(
+				Math.sqrt(resolution * resolution * this.canvasWidth / this.canvasHeight)
+			),
+
+			height: Math.round(
+				Math.sqrt(resolution * resolution * this.canvasHeight / this.canvasWidth)
+			),
+		};
+	}
+
+	#getHighResTileSize(tileSize?: number)
+	{
+		const maxTileSize = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) as number;
+
+		return Math.max(1, Math.min(tileSize ?? DEFAULT_HIGH_RES_TILE_SIZE, maxTileSize));
+	}
+
+	// A tile can only be drawn with a shader that's finished linking, and with a custom
+	// render callback there's no telling which ones those are.
+	//
+	// This runs before every tile, not just once at the start. drawFrame() quietly skips the
+	// draw when its shader is pending, which is harmless for a canvas that will redraw next
+	// frame but not here: the tile would go into the image undrawn. A reload landing partway
+	// through a render is exactly how that happens, and a render now spans many tasks, so
+	// there is plenty of room for one to land.
+	async #highResShadersReady(render: RenderHighResTile | undefined, shaderId: ShaderProgramId)
+	{
+		if (render)
+		{
+			await this.allShadersReady();
+			return;
+		}
+
+		// Waiting on whatever is pending under this id can itself be superseded by another
+		// reload, so this waits the whole sequence out rather than just the first one.
+		while (this.#pendingShaders[shaderId])
+		{
+			try
+			{
+				await this.shaderReady(shaderId);
+			}
+
+			catch(ex)
+			{
+				if (!(ex instanceof ShaderSupersededError))
+				{
+					throw ex;
+				}
+			}
+		}
+	}
+
+	// Between tiles, so that input handlers, timers, and animation frames get to run instead
+	// of sitting behind a render that can take minutes. A message to ourselves is the cheapest
+	// way to reach the back of the task queue: setTimeout would be clamped to 4ms once nested,
+	// which at a few thousand tiles costs more than the render, and scheduler.yield() resumes
+	// at a priority that starves everything else the page had queued -- measurably so, and
+	// with no throughput to show for it.
+	#yieldToBrowser(): Promise<void>
+	{
+		return new Promise(resolve =>
+		{
+			const channel = new MessageChannel();
+
+			channel.port1.addEventListener("message", () =>
+			{
+				channel.port1.close();
+				channel.port2.close();
+
+				resolve();
+			});
+
+			channel.port1.start();
+			channel.port2.postMessage(null);
+		});
+	}
+
+	async #renderHighResTiles({
+		width,
+		height,
+		tileSize,
+		format,
+		uniforms,
+		render,
+		onTile,
+	}: {
+		width: number,
+		height: number,
+		tileSize: number,
+		format: "unsignedByte" | "float",
+		uniforms: UniformInitializers,
+		render: RenderHighResTile,
+		onTile: (tile: HighResTile) => void,
+	}) {
+		const previousFramebufferId = this.#currentFramebufferId;
+		const previousTextureId = this.#currentTextureId;
+		const previousUseGpuTiming = this.useGpuTiming;
+
+		// The render is spread over many tasks, so the app can call useShader() or reload a
+		// shader in the middle of one. Pinning what was current when the render started is
+		// what makes "it uses the current shader" mean anything: without it, half an image
+		// can come out drawn with one program and half with another.
+		const shaderId = this.#currentShaderId;
+		const previousShaderId = shaderId;
+
+		// Identity rather than id, since a reload keeps the id and swaps the program.
+		const pinnedProgram = this.#shaderPrograms[shaderId];
+		let warnedAboutReload = false;
+
+		// Tiles aren't frames, and letting them into the running average would make it
+		// meaningless to anything reading it to pick a live resolution.
+		this.useGpuTiming = false;
+
+		// Every tile is drawn at this size, including the ones that hang off the right and top
+		// edges when the image doesn't divide evenly -- those just have the part past the edge
+		// thrown away instead of being drawn smaller. Keeping the size fixed is what lets a
+		// multi-pass callback allocate its own framebuffers once and never think about the
+		// edges: useFramebuffer() takes the viewport from the texture, so every pass of every
+		// tile lines up with every other one for free.
+		const tileWidth = Math.min(tileSize, width);
+		const tileHeight = Math.min(tileSize, height);
+
+		this.createFramebufferTexturePair({
+			id: HIGH_RES_FRAMEBUFFER_ID,
+			width: tileWidth,
+			height: tileHeight,
+			textureType: format,
+		});
+
+		try
+		{
+			tiles: for (let y = 0; y < height; y += tileHeight)
+			{
+				for (let x = 0; x < width; x += tileWidth)
+				{
+					// destroy() can land between tiles now that this yields, and every shader
+					// and framebuffer the render was using is gone by the time it returns.
+					if (this.#destroyedGPU)
+					{
+						break tiles;
+					}
+
+					await this.#highResShadersReady(render, shaderId);
+
+					// Waiting above keeps the image whole, but it can't make the two halves
+					// match: everything already rendered used the old program. Worth saying so
+					// rather than handing back an image that quietly mixes two shaders.
+					if (
+						this.verbose
+						&& !warnedAboutReload
+						&& this.#shaderPrograms[shaderId] !== pinnedProgram
+					) {
+						warnedAboutReload = true;
+
+						console.warn(`[Wilson] The shader with id ${shaderId} was reloaded while a high-res frame was rendering, so the tiles drawn before the reload used the old shader and the rest used the new one. Await readHighResPixels()/downloadHighResFrame() before reloading.`);
+					}
+
+					const readWidth = Math.min(tileWidth, width - x);
+					const readHeight = Math.min(tileHeight, height - y);
+
+					const pixels = this.#renderHighResTile({
+						shaderId,
+						x,
+						y,
+						tileWidth,
+						tileHeight,
+						readWidth,
+						readHeight,
+						width,
+						height,
+						format,
+						uniforms,
+						render,
+					});
+
+					onTile({
+						pixels,
+						col: x,
+
+						// x and y count up from the bottom left the way WebGL does, and images
+						// count down from the top left.
+						row: height - y - readHeight,
+
+						width: readWidth,
+						height: readHeight,
+					});
+
+					await this.#yieldToBrowser();
+				}
+			}
+		}
+
+		finally
+		{
+			// If destroy() got here first there's nothing left to put back, and asking for the
+			// framebuffer that was current before would just throw.
+			if (!this.#destroyedGPU)
+			{
+				this.deleteFramebufferTexturePair(HIGH_RES_FRAMEBUFFER_ID);
+
+				this.useGpuTiming = previousUseGpuTiming;
+				this.useShader(previousShaderId);
+
+				// Deleting the pair reverts the binding to the canvas but leaves the
+				// tile-sized viewport in place, and useFramebuffer() is a no-op when handed
+				// the id it already has -- which is exactly the case when the render started
+				// on the canvas. Pointing the cached id at the framebuffer that no longer
+				// exists forces a real rebind.
+				this.#currentFramebufferId = HIGH_RES_FRAMEBUFFER_ID;
+				this.useFramebuffer(previousFramebufferId);
+
+				this.useTexture(previousTextureId);
+			}
+		}
+	}
+
+	// Everything from binding the tile framebuffer to reading it back stays in one
+	// synchronous run. An animation frame that landed in the middle of it would draw the
+	// canvas with this tile's uv window and uniform overrides still applied.
+	#renderHighResTile({
+		shaderId,
+		x,
+		y,
+		tileWidth,
+		tileHeight,
+		readWidth,
+		readHeight,
+		width,
+		height,
+		format,
+		uniforms,
+		render,
+	}: {
+		shaderId: ShaderProgramId,
+		x: number,
+		y: number,
+		tileWidth: number,
+		tileHeight: number,
+		readWidth: number,
+		readHeight: number,
+		width: number,
+		height: number,
+		format: "unsignedByte" | "float",
+		uniforms: UniformInitializers,
+		render: RenderHighResTile,
+	}): Uint8Array | Float32Array {
+		const previousFramebufferId = this.#currentFramebufferId;
+		const previousTextureId = this.#currentTextureId;
+		const previousShaderId = this.#currentShaderId;
+
+		// The app may have drawn with something else between tiles; this tile is still the
+		// pinned shader's. A render callback is free to switch to whatever it likes from here.
+		this.useShader(shaderId);
+
+		const uniformNames = Object.keys(uniforms);
+		const previousUniforms: UniformInitializers = {};
+
+		for (const name of uniformNames)
+		{
+			const uniform = this.#uniforms[shaderId]?.[name];
+
+			if (uniform?.value !== undefined)
+			{
+				previousUniforms[name] = uniform.value;
+			}
+		}
+
+		// This also sets the viewport to the tile, since useFramebuffer() takes it from the
+		// texture the framebuffer is backed by.
+		this.useFramebuffer(HIGH_RES_FRAMEBUFFER_ID);
+
+		// The quad is always the full viewport; the window is what places it in the image.
+		// Deriving it from the tile's pixel rectangle rather than its index is what keeps the
+		// tiles that hang off the edge lined up with the rest.
+		this.#setTileWindow(
+			tileWidth / width,
+			tileHeight / height,
+			-1 + (2 * x + tileWidth) / width,
+			-1 + (2 * y + tileHeight) / height
+		);
+
+		if (uniformNames.length !== 0)
+		{
+			this.setUniforms(uniforms, shaderId);
+		}
+
+		render({
+			framebufferId: HIGH_RES_FRAMEBUFFER_ID,
+			width: tileWidth,
+			height: tileHeight,
+		});
+
+		// A multi-pass callback can finish with any of its own framebuffers bound, and the
+		// tile is the one that needs reading.
+		this.useFramebuffer(HIGH_RES_FRAMEBUFFER_ID);
+
+		// Only the part of the tile that's actually inside the image.
+		const pixels = this.readPixels({
+			row: 0,
+			col: 0,
+			width: readWidth,
+			height: readHeight,
+			format,
+		});
+
+		this.#setTileWindow(1, 1, 0, 0);
+
+		if (uniformNames.length !== 0)
+		{
+			this.setUniforms(previousUniforms, shaderId);
+		}
+
+		// Everything the caller had set has to be back in place before the yield that follows
+		// this, not just at the end of the whole render. Otherwise the tile framebuffer stays
+		// bound across it, and an animation frame landing between two tiles draws into the
+		// tile instead of the canvas -- which freezes the canvas for the length of the export
+		// and puts the app's frame where the next tile is about to go.
+		this.useShader(previousShaderId);
+		this.useFramebuffer(previousFramebufferId);
+		this.useTexture(previousTextureId);
+
+		return pixels;
 	}
 
 	async readHighResPixels({
 		resolution = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight)),
 		uniforms = {},
 		format = "unsignedByte",
+		tileSize,
+		render,
 	}: {
 		resolution?: number,
 		uniforms?: UniformInitializers,
 		format?: "unsignedByte" | "float",
+		tileSize?: number,
+		render?: RenderHighResTile,
 	}): Promise<{
 		pixels: Uint8Array | Float32Array,
 		width: number,
 		height: number,
 	}> {
-		const workerCode = `${""}
-			const uniformFunctions = {
-				int: (
-					gl,
-					location,
-					value,
-				) => gl.uniform1i(location, value),
-				
-				float: (
-					gl,
-					location,
-					value,
-				) => gl.uniform1f(location, value),
-				
-				vec2: (
-					gl,
-					location,
-					value,
-				) => gl.uniform2fv(location, value),
+		return this.#queueHighResRender(async () =>
+		{
+			const { width, height } = this.#getHighResDimensions(resolution);
 
-				vec3: (
-					gl,
-					location,
-					value,
-				) => gl.uniform3fv(location, value),
-				
-				vec4: (
-					gl,
-					location,
-					value,
-				) => gl.uniform4fv(location, value),
+			await this.#highResShadersReady(render, this.#currentShaderId);
 
-				intArray: (
-					gl,
-					location,
-					value,
-				) => gl.uniform1iv(location, value),
-				
-				floatArray: (
-					gl,
-					location,
-					value,
-				) => gl.uniform1fv(location, value),
-				
-				vec2Array: (
-					gl,
-					location,
-					value,
-				) => gl.uniform2fv(location, value.flat()),
+			// format picks the element type of both this and every tile at once, which is more
+			// than the union can express, so the copy below asserts what it already knows.
+			const pixels = format === "float"
+				? new Float32Array(width * height * 4)
+				: new Uint8Array(width * height * 4);
 
-				vec3Array: (
-					gl,
-					location,
-					value,
-				) => gl.uniform3fv(location, value.flat()),
-				
-				vec4Array: (
-					gl,
-					location,
-					value,
-				) => gl.uniform4fv(location, value.flat()),
+			const imageRowLength = width * 4;
 
-				mat2: (
-					gl,
-					location,
-					value,
-				) => gl.uniformMatrix2fv(location, false, [value[0][0], value[1][0], value[0][1], value[1][1]]),
-				
-				mat3: (
-					gl,
-					location,
-					value,
-				) => gl.uniformMatrix3fv(location, false, [value[0][0], value[1][0], value[2][0], value[0][1], value[1][1], value[2][1], value[0][2], value[1][2], value[2][2]]),
-				
-				mat4: (
-					gl,
-					location,
-					value,
-				) => gl.uniformMatrix4fv(location, false, [value[0][0], value[1][0], value[2][0], value[3][0], value[0][1], value[1][1], value[2][1], value[3][1], value[0][2], value[1][2], value[2][2], value[3][2], value[0][3], value[1][3], value[2][3], value[3][3]]),
-			};
+			await this.#renderHighResTiles({
+				width,
+				height,
+				tileSize: this.#getHighResTileSize(tileSize),
+				format,
+				uniforms,
+				render: render ?? (() => this.drawFrame()),
 
-			self.addEventListener("message", (event) => 
-			{
-				const { offscreen, canvasWidth, canvasHeight, shader, uniforms, options } = event.data;
-
-				const gl = options.useWebGL2
-					? offscreen.getContext("webgl2") ?? offscreen.getContext("webgl")
-					: offscreen.getContext("webgl");
-
-				if (!gl)
+				onTile: (tile) =>
 				{
-					throw new Error("[Wilson] Failed to get WebGL or WebGL2 context.");
-				}
+					const tileRowLength = tile.width * 4;
 
-				gl.getExtension("KHR_parallel_shader_compile");
-
-				if (
-					gl instanceof WebGL2RenderingContext
-					&& !gl.getExtension("EXT_color_buffer_float")
-				) {
-					// No support for float textures.
-				}
-
-				else if (
-					gl instanceof WebGLRenderingContext
-					&& !gl.getExtension("OES_texture_float")
-				) {
-					// No support for float textures.
-				}
-
-				if ("drawingBufferColorSpace" in gl && options.useP3ColorSpace)
-				{
-					gl.drawingBufferColorSpace = "display-p3";
-				}
-
-				const vertexShaderSource = \`
-					attribute vec3 position;
-					varying vec2 uv;
-
-					void main(void)
+					// readPixels counts rows up from the bottom of the tile, so the last one
+					// it hands back is the one that belongs at the tile's top edge.
+					for (let i = 0; i < tile.height; i++)
 					{
-						gl_Position = vec4(position, 1.0);
-
-						// !!!IMPORTANT!!!
-						// Flip the y coordinate because WebGL's coordinate system is different from the one used by ctx, and this is the fastest way to fix that.
-						uv = vec2(position.x, -position.y);
+						(pixels as Uint8Array).set(
+							(tile.pixels as Uint8Array).subarray(
+								i * tileRowLength,
+								(i + 1) * tileRowLength
+							),
+							(tile.row + tile.height - 1 - i) * imageRowLength + tile.col * 4
+						);
 					}
-				\`;
+				},
+			});
 
-				const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-				const fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+			return { pixels, width, height };
+		});
+	}
 
-				const shaderProgram = gl.createProgram();
+	// Stitching tiles together and encoding a png are pure CPU work on buffers the GPU is
+	// already finished with, which makes them the one part of this that genuinely belongs on
+	// another thread. The worker never touches WebGL, so it stays small enough to read.
+	#createHighResEncoder({
+		width,
+		height,
+		colorSpace,
+	}: {
+		width: number,
+		height: number,
+		colorSpace: PredefinedColorSpace,
+	}): HighResEncoder {
+		if (typeof Worker !== "undefined" && typeof OffscreenCanvas !== "undefined")
+		{
+			try
+			{
+				return this.#createWorkerHighResEncoder({ width, height, colorSpace });
+			}
 
-				gl.attachShader(shaderProgram, vertexShader);
-				gl.attachShader(shaderProgram, fragShader);
-
-				gl.shaderSource(vertexShader, vertexShaderSource);
-				gl.shaderSource(fragShader, shader);
-
-				gl.compileShader(vertexShader);
-				gl.compileShader(fragShader);
-
-				if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS))
+			catch(ex)
+			{
+				if (this.verbose)
 				{
-					console.groupCollapsed("[Wilson] Full non-compiled vertex shader source:");
-					console.log(vertexShaderSource);
-					console.groupEnd();
+					console.warn(`[Wilson] Couldn't start the image encoding worker, so the image will be assembled on the main thread instead: ${ex}`);
+				}
+			}
+		}
 
-					throw new Error("[Wilson] Couldn't compile vertex shader: " + gl.getShaderInfoLog(vertexShader));
+		return this.#createMainThreadHighResEncoder({ width, height, colorSpace });
+	}
+
+	#createWorkerHighResEncoder({
+		width,
+		height,
+		colorSpace,
+	}: {
+		width: number,
+		height: number,
+		colorSpace: PredefinedColorSpace,
+	}): HighResEncoder {
+		const workerCode = `
+			let canvas;
+			let ctx;
+			let colorSpace = "srgb";
+
+			// Deliberately not an async listener: a throw inside one of those becomes an
+			// unhandled rejection rather than an error event, so a tile that failed to be
+			// written would be dropped silently and the image would come out wrong with
+			// nothing to show for it.
+			self.addEventListener("message", (event) =>
+			{
+				const data = event.data;
+
+				try
+				{
+					if (data.type === "init")
+					{
+						colorSpace = data.colorSpace;
+
+						canvas = new OffscreenCanvas(data.width, data.height);
+						ctx = canvas.getContext("2d", { colorSpace });
+
+						if (!ctx)
+						{
+							throw new Error("Couldn't get a 2d context to assemble the image in.");
+						}
+
+						return;
+					}
+
+					if (!ctx)
+					{
+						throw new Error("A tile arrived before the image was set up.");
+					}
+
+					if (data.type === "tile")
+					{
+						// readPixels counts rows up from the bottom of the tile, and ImageData
+						// counts them down from the top.
+						const rowLength = data.width * 4;
+						const rows = new Uint8ClampedArray(data.pixels.length);
+
+						for (let i = 0; i < data.height; i++)
+						{
+							rows.set(
+								data.pixels.subarray(i * rowLength, (i + 1) * rowLength),
+								(data.height - i - 1) * rowLength
+							);
+						}
+
+						ctx.putImageData(
+							new ImageData(rows, data.width, data.height, { colorSpace }),
+							data.col,
+							data.row
+						);
+
+						return;
+					}
+
+					if (data.type === "encode")
+					{
+						canvas.convertToBlob({ type: "image/png" }).then(
+							blob => self.postMessage({ type: "blob", blob }),
+							error => self.postMessage({ type: "error", message: String(error) })
+						);
+					}
 				}
 
-				if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS))
+				catch(error)
 				{
-					console.groupCollapsed("[Wilson] Full non-compiled fragment shader source:");
-					console.log(shader);
-					console.groupEnd();
-
-					throw new Error("[Wilson] Couldn't compile fragment shader: " + gl.getShaderInfoLog(fragShader));
+					self.postMessage({ type: "error", message: String(error) });
 				}
-
-				gl.linkProgram(shaderProgram);
-
-				gl.useProgram(shaderProgram);
-
-				const positionBuffer = gl.createBuffer();
-
-				gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-
-				const quad = [
-					-1, -1, 0,
-					-1,  1, 0,
-					1, -1, 0,
-					1,  1, 0
-				];
-				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quad), gl.STATIC_DRAW);
-
-				const positionAttribute = gl.getAttribLocation(shaderProgram, "position");
-
-				gl.enableVertexAttribArray(positionAttribute);
-				gl.vertexAttribPointer(positionAttribute, 3, gl.FLOAT, false, 0, 0);
-				gl.viewport(0, 0, canvasWidth, canvasHeight);
-
-				for (const [name, data] of Object.entries(uniforms))
-				{
-					const location = gl.getUniformLocation(shaderProgram, name);
-					const type = data.type;
-					const uniformFunction = uniformFunctions[type];
-					uniformFunction(gl, location, data.value);
-				}
-
-
-
-				const framebuffer = gl.createFramebuffer();
-
-				const texture = gl.createTexture();
-
-				gl.bindTexture(gl.TEXTURE_2D, texture);
-
-				gl.texImage2D(
-					gl.TEXTURE_2D,
-					0,
-					(${format === "float"} && gl instanceof WebGL2RenderingContext)
-						? gl.RGBA32F
-						: gl.RGBA,
-					canvasWidth,
-					canvasHeight,
-					0,
-					gl.RGBA,
-					${format === "float"}
-						? gl.FLOAT
-						: gl.UNSIGNED_BYTE,
-					null
-				);
-
-			
-
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-				gl.disable(gl.DEPTH_TEST);
-
-				gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-
-				gl.framebufferTexture2D(
-					gl.FRAMEBUFFER,
-					gl.COLOR_ATTACHMENT0,
-					gl.TEXTURE_2D,
-					texture,
-					0
-				);
-
-				gl.bindTexture(gl.TEXTURE_2D, null);
-
-
-
-				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-				gl.finish();
-			
-				const pixels = new ${format === "float" ? "Float32Array" : "Uint8Array"}(canvasWidth * canvasHeight * 4);
-				gl.readPixels(0, 0, canvasWidth, canvasHeight, gl.RGBA, ${format === "float" ? "gl.FLOAT" : "gl.UNSIGNED_BYTE"}, pixels);
-
-				self.postMessage({
-					type: "frame-ready",
-					pixels,
-				});
 			});
 		`;
 
-		const blob = new Blob([workerCode], { type: "application/javascript" });
-		const workerUrl = URL.createObjectURL(blob);
+		const workerUrl = URL.createObjectURL(
+			new Blob([workerCode], { type: "application/javascript" })
+		);
+
 		const worker = new Worker(workerUrl);
 
-		const canvasWidth = Math.round(
-			Math.sqrt(resolution * resolution * this.canvasWidth / this.canvasHeight)
-		);
-		
-		const canvasHeight = Math.round(
-			Math.sqrt(resolution * resolution * this.canvasHeight / this.canvasWidth)
-		);
+		let resolveBlob: (blob: Blob | null) => void;
+		let rejectBlob: (error: Error) => void;
 
-		let resolve: ({
-			pixels,
-			width,
-			height,
-		}: {
-			pixels: Uint8Array | Float32Array,
-			width: number,
-			height: number,
-		}) => void;
-
-		const promise = new Promise<{
-			pixels: Uint8Array | Float32Array,
-			width: number,
-			height: number,
-		}>((r) => (resolve = r));
-
-		worker.addEventListener("message", (event) => 
+		const blobPromise = new Promise<Blob | null>((resolve, reject) =>
 		{
-			if (event.data.type === "frame-ready")
-			{
-				const { pixels } = event.data;
+			resolveBlob = resolve;
+			rejectBlob = reject;
+		});
 
-				resolve({
-					pixels,
-					width: canvasWidth,
-					height: canvasHeight,
-				});
+		worker.addEventListener("message", (event) =>
+		{
+			if (event.data.type === "blob")
+			{
+				resolveBlob(event.data.blob);
+			}
+
+			else if (event.data.type === "error")
+			{
+				rejectBlob(new Error(
+					`[Wilson] The image encoding worker failed: ${event.data.message}`
+				));
 			}
 		});
 
-		// Clean up the blob URL
-		URL.revokeObjectURL(workerUrl);
-
-		const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight);
-
-		const uniformData: {[name: string]: {type: UniformType, value: any}} = {};
-
-		for (const [name, data] of Object.entries(this.#uniforms[this.#currentShaderId]))
+		// Attached now rather than in finish(), so that a failure while the tiles are still
+		// streaming in surfaces as a rejection instead of an uncaught error in the worker.
+		worker.addEventListener("error", (event) =>
 		{
-			uniformData[name] = {
-				type: data.type,
-				value: data.value,
-			};
-		}
+			event.preventDefault();
 
-		for (const [name, value] of Object.entries(uniforms))
-		{
-			uniformData[name].value = value;
-		}
-		
-		worker.postMessage({
-			offscreen,
-			shader: this.#shaderProgramSources[this.#currentShaderId],
-			uniforms: uniformData,
-			canvasWidth,
-			canvasHeight,
+			rejectBlob(new Error(`[Wilson] The image encoding worker failed: ${event.message}`));
+		});
 
-			options: {
-				useWebGL2: this.#useWebGL2,
-				useP3ColorSpace: this.useP3ColorSpace,
-			}
-		}, [offscreen]);
+		worker.postMessage({ type: "init", width, height, colorSpace });
 
-		return promise;
+		return {
+			addTile: ({ pixels, col, row, width, height }) =>
+			{
+				// readPixels allocates the buffer fresh and nothing on this side looks at it
+				// again, so it can be handed over instead of copied.
+				worker.postMessage(
+					{ type: "tile", pixels, col, row, width, height },
+					[pixels.buffer]
+				);
+			},
+
+			finish: () =>
+			{
+				worker.postMessage({ type: "encode" });
+
+				return blobPromise;
+			},
+
+			destroy: () =>
+			{
+				worker.terminate();
+
+				// Revoked here rather than straight after the constructor: the worker's script
+				// is fetched asynchronously, and browsers have not always been reliable about
+				// holding onto the blob across a revoke that lands mid-fetch.
+				URL.revokeObjectURL(workerUrl);
+			},
+		};
 	}
 
-	async downloadHighResFrame(
-		filename: string,
-		resolution: number = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight)),
-		uniforms: UniformInitializers = {}
-	) {
-		const { pixels, width, height } = await this.readHighResPixels({
-			resolution,
-			uniforms,
-		});
-		
-		const colorSpace = (this.useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
-			? "display-p3"
-			: "srgb";
-
-		const imageData = new ImageData(new Uint8ClampedArray(pixels), width, height, { colorSpace });
-
+	#createMainThreadHighResEncoder({
+		width,
+		height,
+		colorSpace,
+	}: {
+		width: number,
+		height: number,
+		colorSpace: PredefinedColorSpace,
+	}): HighResEncoder {
 		const canvas = document.createElement("canvas");
 
 		canvas.width = width;
 		canvas.height = height;
 
-		const ctx = canvas.getContext("2d", {
-			colorSpace,
-		});
+		const ctx = canvas.getContext("2d", { colorSpace });
 
 		if (!ctx)
 		{
+			throw new Error("[Wilson] Couldn't get a 2d context to assemble the image in.");
+		}
+
+		return {
+			addTile: ({ pixels, col, row, width, height }) =>
+			{
+				// readPixels counts rows up from the bottom of the tile, and ImageData counts
+				// them down from the top.
+				const rowLength = width * 4;
+				const rows = new Uint8ClampedArray(pixels.length);
+
+				for (let i = 0; i < height; i++)
+				{
+					rows.set(
+						(pixels as Uint8Array).subarray(i * rowLength, (i + 1) * rowLength),
+						(height - i - 1) * rowLength
+					);
+				}
+
+				ctx.putImageData(new ImageData(rows, width, height, { colorSpace }), col, row);
+			},
+
+			finish: () => new Promise<Blob | null>(resolve => canvas.toBlob(resolve)),
+
+			destroy: () => {},
+		};
+	}
+
+	async downloadHighResFrame({
+		filename,
+		resolution = Math.round(Math.sqrt(this.canvasWidth * this.canvasHeight)),
+		uniforms = {},
+		tileSize,
+		render,
+	}: {
+		filename: string,
+		resolution: number,
+		uniforms?: UniformInitializers,
+		tileSize?: number,
+		render?: RenderHighResTile,
+	}) {
+		const colorSpace: PredefinedColorSpace =
+			(this.useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
+				? "display-p3"
+				: "srgb";
+
+		const blob = await this.#queueHighResRender(async () =>
+		{
+			const { width, height } = this.#getHighResDimensions(resolution);
+
+			await this.#highResShadersReady(render, this.#currentShaderId);
+
+			const encoder = this.#createHighResEncoder({ width, height, colorSpace });
+
+			try
+			{
+				await this.#renderHighResTiles({
+					width,
+					height,
+					tileSize: this.#getHighResTileSize(tileSize),
+					format: "unsignedByte",
+					uniforms,
+					render: render ?? (() => this.drawFrame()),
+					onTile: tile => encoder.addTile(tile),
+				});
+
+				return await encoder.finish();
+			}
+
+			finally
+			{
+				encoder.destroy();
+			}
+		});
+
+		if (!blob)
+		{
 			if (this.verbose)
 			{
-				console.error("[Wilson] Could not get 2d context for canvas");
+				console.error("[Wilson] Could not create a canvas blob.");
 			}
 
 			return;
 		}
 
-		ctx.putImageData(imageData, 0, 0);
+		this.downloadBlob(blob, filename);
+	}
 
-		canvas.toBlob((blob) =>
+
+
+	async enterXR(): Promise<boolean>
+	{
+		if (this.inXR || this.#enteringXR || this.#xrIsSupportedNow === false)
 		{
-			if (!blob)
-			{
-				if (this.verbose)
-				{
-					console.error("[Wilson] Could not create a canvas blob");
-				}
+			return false;
+		}
 
-				return;
+
+
+		this.#enteringXR = true;
+
+		if (!navigator.xr)
+		{
+			this.#enteringXR = false;
+
+			return false;
+		}
+
+		let session: XRSession;
+
+		try
+		{
+			// This has to happen before any other await, since requestSession consumes the
+			// transient user activation from the click that got us here, and that activation
+			// expires on a timer: awaiting a support check first can let it lapse and make this
+			// throw a SecurityError even though the headset is perfectly available.
+			session = await navigator.xr.requestSession(XR_MODE, {
+				requiredFeatures: this.#xrRequiredFeatures,
+				optionalFeatures: this.#xrOptionalFeatures,
+			});
+		}
+
+		catch(ex)
+		{
+			if (this.verbose)
+			{
+				console.error(`[Wilson] Couldn't create XR session: ${ex}`);
 			}
 
-			const link = document.createElement("a");
+			// The request may have failed because support changed since the last check, so this
+			// resyncs #xrIsSupportedNow and the button's visibility with reality.
+			this.#checkXRSupport();
 
-			link.download = filename;
+			this.#enteringXR = false;
 
-			link.href = window.URL.createObjectURL(blob);
+			return false;
+		}
 
-			link.click();
 
-			link.remove();
+		
+		try
+		{
+			// Initializes the framebuffer (both eyes, side-by-side).
+			const baseLayer = this.#createXRBaseLayer(session);
+
+			// The framebuffer has no depth attachment and the shader reconstructs rays from
+			// the projection matrix's FOV terms, so the session's depth planes are left at
+			// their defaults; nothing here would read the entries they change.
+			session.updateRenderState({ baseLayer });
+		
+			const refSpace = await session.requestReferenceSpace(REFERENCE_SPACE);
+
+			this.#xrData = { session, refSpace, baseLayer };
+
+			this.#applyXRTargetFrameRate();
+
+			session.addEventListener("visibilitychange", () =>
+			{
+				this.#xrCallbacks.onVisibilityChange(session.visibilityState);
+			});
+
+			session.addEventListener("inputsourceschange", this.#onXRInputSourcesChange);
+
+			session.addEventListener("end", this.#onXREnd);
+			session.requestAnimationFrame(this.#onXRFrame);
+
+			this.#enteringXR = false;
+
+			this.#xrCallbacks.onEnter();
+			this.animationFrameLoopPaused = true;
+
+			// Controllers that were already connected when the session started don't necessarily
+			// arrive via inputsourceschange, and this populates xrControllers before enterXR
+			// resolves. After onEnter, so that a session is never reported as having controllers
+			// before it's reported as having started.
+			this.#syncXRControllers();
+
+			return true;
+		}
+
+		catch(ex)
+		{
+			if (this.verbose)
+			{
+				console.error(`[Wilson] Couldn't enter XR: ${ex}`);
+			}
+
+			this.#xrData = undefined;
+			this.#enteringXR = false;
+
+			await session.end().catch(() => {});
+
+			return false;
+		}
+	}
+
+	#onXRFrame = (time: number, frame: XRFrame) =>
+	{
+		if (!this.#xrData)
+		{
+			return;
+		}
+
+		const deltaTime = time - (this.#lastXRTime ?? time);
+		this.#lastXRTime = time;
+
+		const { session, refSpace } = this.#xrData;
+
+		// Queue the next frame first so an exception mid-render doesn't stall the loop.
+		session.requestAnimationFrame(this.#onXRFrame);
+
+		// updateRenderState() takes effect asynchronously, so a layer swapped in by
+		// xrFramebufferScale isn't the one this frame renders into until the runtime says it is.
+		// The session's own render state is the only thing that knows which layer that is, so
+		// everything else reads #xrData.baseLayer and this keeps it honest.
+		const baseLayer = session.renderState.baseLayer;
+
+		if (!baseLayer)
+		{
+			this.#lastXRTime = undefined;
+			return;
+		}
+
+		if (baseLayer !== this.#xrData.baseLayer)
+		{
+			this.#xrData.baseLayer = baseLayer;
+		}
+
+		if (session.visibilityState === "hidden")
+		{
+			// Treat skipped frames as a discontinuity.
+			this.#lastXRTime = undefined;
+
+			// The runtime has taken input for a system menu, and it won't report the releases.
+			// Without this, a button held when the menu opened would still read as pressed once
+			// the applet comes back.
+			for (const { controller } of this.#xrControllerData.values())
+			{
+				this.#releaseXRControllerButtons(controller, true);
+			}
+
+			return;
+		}
+
+		// Deliberately ahead of the viewer pose check below: a controller's buttons and axes are
+		// still perfectly valid on a frame where head tracking dropped out, and skipping the poll
+		// would swallow every button event that happened during it.
+		this.#updateXRControllers(frame, refSpace);
+
+		const pose = frame.getViewerPose(refSpace);
+
+		// Null when tracking is temporarily lost — skip the frame.
+		if (!pose)
+		{
+			this.#lastXRTime = undefined;
+			return;
+		}
+
+		// This binds the framebuffer directly since useFramebuffer() early-returns
+		// if the ID matches the current one, and both the canvas and the XR framebuffer
+		// use null as their ID.
+		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, baseLayer.framebuffer);
+		this.#currentFramebufferId = null;
+
+		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
+
+
+		const { views } = pose;
+
+		// Give the callback a predictable, full-framebuffer viewport; the loop below
+		// sets the per-eye viewport before each view renders.
+		this.gl.viewport(0, 0, baseLayer.framebufferWidth, baseLayer.framebufferHeight);
+
+		this.#xrCallbacks.onFrameStart({
+			time,
+			deltaTime,
+			frame,
+			pose
+		});
+
+		try
+		{
+			// One view per eye (two for stereo VR), sharing the framebuffer via side-by-side viewports.
+			for (let viewIndex = 0; viewIndex < views.length; viewIndex++)
+			{
+				const view = views[viewIndex];
+
+				// Each eye renders into its full share of the framebuffer; requestViewportScale
+				// is the other way to trade quality for frame time, but tethered headsets
+				// widely ignore it, so xrFramebufferScale is the only one Wilson exposes.
+				const viewport = baseLayer.getViewport(view);
+
+				if (!viewport)
+				{
+					// Skip this eye, not the whole frame
+					continue;
+				}
+
+				this.#xrViewport = viewport;
+				this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+		
+				this.#renderXRFrame({
+					projectionMatrix: view.projectionMatrix,
+					cameraToWorld: view.transform.matrix,
+					eye: view.eye,
+					viewIndex,
+					view,
+				});
+			}
+		}
+		
+		finally
+		{
+			this.#xrViewport = null;
+		}
+	}
+
+
+
+	// Needs to be an arrow function to maintain its binding when passed to addEventListener.
+	#onXRInputSourcesChange = () =>
+	{
+		this.#syncXRControllers();
+	};
+
+	// Reconciles the controller map against the session's live input source list. This is
+	// idempotent, so it can be called both from the inputsourceschange event and from the frame
+	// loop; the event gives prompt notification, and the frame loop covers the initial set,
+	// which some runtimes populate without firing the event.
+	#syncXRControllers()
+	{
+		if (!this.#xrData)
+		{
+			return;
+		}
+
+		const inputSources = this.#xrData.session.inputSources;
+
+		let added: WilsonXRController[] | null = null;
+		let removed: WilsonXRController[] | null = null;
+
+		for (const inputSource of inputSources)
+		{
+			if (!this.#xrControllerData.has(inputSource))
+			{
+				const data = this.#createXRControllerData(inputSource);
+				this.#xrControllerData.set(inputSource, data);
+
+				(added = added ?? []).push(data.controller);
+			}
+		}
+
+		for (const [inputSource, data] of this.#xrControllerData)
+		{
+			let stillConnected = false;
+
+			for (const currentInputSource of inputSources)
+			{
+				if (currentInputSource === inputSource)
+				{
+					stillConnected = true;
+					break;
+				}
+			}
+
+			if (!stillConnected)
+			{
+				// Reset silently rather than dispatching button events for a device that no
+				// longer exists; onControllerDisconnect is the signal for that.
+				this.#releaseXRControllerButtons(data.controller, false);
+
+				data.controller.targetRay = null;
+				data.controller.grip = null;
+
+				this.#xrControllerData.delete(inputSource);
+
+				(removed = removed ?? []).push(data.controller);
+			}
+		}
+
+		if (!added && !removed)
+		{
+			return;
+		}
+
+		this.#xrControllerList = [];
+
+		for (const data of this.#xrControllerData.values())
+		{
+			this.#xrControllerList.push(data.controller);
+		}
+
+		if (removed)
+		{
+			for (const controller of removed)
+			{
+				this.#xrCallbacks.onControllerDisconnect(controller);
+			}
+		}
+
+		if (added)
+		{
+			for (const controller of added)
+			{
+				this.#xrCallbacks.onControllerConnect(controller);
+			}
+		}
+	}
+
+	#createXRControllerData(inputSource: XRInputSource): WilsonXRControllerData
+	{
+		const buttons = {} as {[name in XRButtonName]: XRButtonState};
+
+		for (const name of XR_BUTTON_NAMES)
+		{
+			buttons[name] = createXRButtonState();
+		}
+
+		const controller: WilsonXRController = {
+			inputSource,
+			handedness: inputSource.handedness,
+
+			targetRay: null,
+			grip: null,
+
+			buttons,
+
+			thumbstick: [0, 0],
+
+			pulse: (intensity: number, duration: number) =>
+			{
+				// WebXR uses the Gamepad API's hapticActuators rather than the vibrationActuator
+				// that the mainline API settled on, and plenty of devices have neither.
+				const actuator = inputSource.gamepad?.hapticActuators?.[0];
+
+				if (!actuator)
+				{
+					return Promise.resolve(false);
+				}
+
+				return actuator
+					.pulse(Math.min(Math.max(intensity, 0), 1), duration)
+					.catch(() => false);
+			},
+		};
+
+		return {
+			controller,
+			targetRayMatrix: new Float32Array(16),
+			gripMatrix: new Float32Array(16),
+		};
+	}
+
+	// Fills the persistent buffer `target` with the space's transform, so that posing
+	// controllers every frame doesn't allocate on the hot path.
+	#readXRPoseMatrix(
+		frame: XRFrame,
+		space: XRSpace,
+		refSpace: XRReferenceSpace,
+		target: Float32Array
+	): Float32Array | null {
+		let pose: XRPose | undefined;
+
+		try
+		{
+			pose = frame.getPose(space, refSpace);
+		}
+
+		catch(ex)
+		{
+			return null;
+		}
+
+		if (!pose)
+		{
+			return null;
+		}
+
+		target.set(pose.transform.matrix);
+
+		return target;
+	}
+
+	#updateXRControllers(frame: XRFrame, refSpace: XRReferenceSpace)
+	{
+		this.#syncXRControllers();
+
+		// Button transitions are collected and dispatched after every controller has been
+		// updated, so that a callback reading a second controller sees this frame's state
+		// rather than the last frame's.
+		let buttonEvents: {
+			controller: WilsonXRController,
+			name: XRButtonName,
+			state: XRButtonState,
+			pressed: boolean,
+		}[] | null = null;
+
+		for (const data of this.#xrControllerData.values())
+		{
+			const { controller } = data;
+			const { inputSource } = controller;
+
+			controller.targetRay = this.#readXRPoseMatrix(
+				frame,
+				inputSource.targetRaySpace,
+				refSpace,
+				data.targetRayMatrix
+			);
+
+			controller.grip = inputSource.gripSpace
+				? this.#readXRPoseMatrix(frame, inputSource.gripSpace, refSpace, data.gripMatrix)
+				: null;
+
+			const gamepad = inputSource.gamepad;
+
+			// Gaze input has no gamepad at all, and so has nothing to poll.
+			if (!gamepad)
+			{
+				continue;
+			}
+
+			const axes = gamepad.axes;
+
+			// Axes 0 and 1 are the touchpad, which Wilson doesn't expose. The raw axes are
+			// +y down, which is backwards from how a stick is usually read.
+			controller.thumbstick[0] = axes[2] ?? 0;
+			controller.thumbstick[1] = -(axes[3] ?? 0);
+
+			// Anything past the xr-standard mapping is device-specific (a Quest's thumbrest, say)
+			// and isn't exposed.
+			const numButtons = Math.min(gamepad.buttons.length, XR_BUTTON_NAMES.length);
+
+			for (let i = 0; i < numButtons; i++)
+			{
+				const name = XR_BUTTON_NAMES[i];
+				const state = controller.buttons[name];
+
+				const button = gamepad.buttons[i];
+				const wasPressed = state.pressed;
+
+				state.pressed = button.pressed;
+				state.value = button.value;
+
+				if (state.pressed !== wasPressed)
+				{
+					(buttonEvents = buttonEvents ?? []).push({
+						controller,
+						name,
+						state,
+						pressed: state.pressed
+					});
+				}
+			}
+		}
+
+		if (!buttonEvents)
+		{
+			return;
+		}
+
+		for (const { controller, name, state, pressed } of buttonEvents)
+		{
+			const callback = pressed
+				? this.#xrCallbacks.onButtonDown
+				: this.#xrCallbacks.onButtonUp;
+
+			callback({ controller, name, state });
+		}
+	}
+
+	// Forces every button up, firing onButtonUp for the ones that were down if `dispatch` is set.
+	// Idempotent, since a second call finds nothing still pressed.
+	#releaseXRControllerButtons(controller: WilsonXRController, dispatch: boolean)
+	{
+		for (const name of XR_BUTTON_NAMES)
+		{
+			const state = controller.buttons[name];
+
+			const wasPressed = state.pressed;
+
+			state.pressed = false;
+			state.value = 0;
+
+			if (wasPressed && dispatch)
+			{
+				this.#xrCallbacks.onButtonUp({ controller, name, state });
+			}
+		}
+
+		controller.thumbstick[0] = 0;
+		controller.thumbstick[1] = 0;
+	}
+
+	#onXREnd = () =>
+	{
+		const session = this.#xrData?.session;
+		const disconnected = this.#xrControllerList;
+
+		this.#xrData = undefined;
+		this.#lastXRTime = undefined;
+
+		this.#xrControllerData.clear();
+		this.#xrControllerList = [];
+
+		// This binds the framebuffer directly since useFramebuffer() early-returns
+		// if the ID matches the current one, and both the canvas and the XR framebuffer
+		// use null as their ID.
+		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+		this.#currentFramebufferId = null;
+		this.resizeCanvasGPU();
+
+		this.animationFrameLoopPaused = false;
+
+		// Every controller goes away with the session, so applets holding onto them hear about
+		// it the same way they would if a controller had been switched off mid-session.
+		if (session)
+		{
+			for (const controller of disconnected)
+			{
+				this.#releaseXRControllerButtons(controller, false);
+
+				controller.targetRay = null;
+				controller.grip = null;
+
+				this.#xrCallbacks.onControllerDisconnect(controller);
+			}
+		}
+
+		this.#xrCallbacks.onExit();
+	}
+
+	#clearXRFunctions()
+	{
+		this.#xrCallbacks = {
+			onEnter: () => {},
+			onExit: () => {},
+			onFrameStart: () => {},
+			onAvailabilityChange: () => {},
+			onVisibilityChange: (state: XRVisibilityState) => {},
+			onControllerConnect: () => {},
+			onControllerDisconnect: () => {},
+			onButtonDown: () => {},
+			onButtonUp: () => {}
+		};
+
+		this.#renderXRFrame = () => {};
+	}
+	
+	async exitXR()
+	{
+		if (!this.#xrData)
+		{
+			return;
+		}
+
+		await this.#xrData.session.end();
+	}
+
+	#applyXRTargetFrameRate()
+	{
+		const session = this.#xrData?.session;
+
+		if (!session || this.#xrTargetFrameRate === undefined)
+		{
+			return;
+		}
+
+		const supportedFrameRates = session.supportedFrameRates;
+
+		if (!supportedFrameRates || supportedFrameRates.length === 0)
+		{
+			if (this.verbose)
+			{
+				console.warn("[Wilson] This device doesn't support setting the XR frame rate.");
+			}
+
+			return;
+		}
+
+		// updateTargetFrameRate rejects on anything not in supportedFrameRates.
+		let closestRate = supportedFrameRates[0];
+
+		for (const rate of supportedFrameRates)
+		{
+			if (
+				Math.abs(rate - this.#xrTargetFrameRate)
+					< Math.abs(closestRate - this.#xrTargetFrameRate)
+			) {
+				closestRate = rate;
+			}
+		}
+
+		if (this.verbose)
+		{
+			console.log(`[Wilson] Available XR framerates are ${supportedFrameRates}; using ${closestRate}.`);
+		}
+
+		session.updateTargetFrameRate(closestRate).catch((ex) =>
+		{
+			if (this.verbose)
+			{
+				console.warn(`[Wilson] Couldn't set the XR frame rate: ${ex}`);
+			}
 		});
 	}
 
 
 
-    destroy()
+
+	destroy()
 	{
 		super.destroy();
 
-		// Delete all textures
+		this.#destroyedGPU = true;
+
+		this.#destroyGpuTiming();
+
+		for (const id of Object.keys(this.#pendingShaders))
+		{
+			this.#discardPendingShader(id);
+		}
+
+		this.#pendingUniforms = {};
+
+		this.#clearXRFunctions();
+
+		this.exitXR().catch(() => {});
+
+		this.#xrControllerData.clear();
+		this.#xrControllerList = [];
+
+		navigator.xr?.removeEventListener("devicechange", this.#onDeviceChange);
+		window.removeEventListener("focus", this.#onPageFocus);
+		document.removeEventListener("visibilitychange", this.#onPageFocus);
+
+
+
+		// Delete all textures.
 		for (const id in this.#textures)
 		{
 			this.gl.deleteTexture(this.#textures[id].texture);
 		}
 		this.#textures = {};
 
-		// Delete all framebuffers
+		// Delete all framebuffers.
 		for (const id in this.#framebuffers)
 		{
 			this.gl.deleteFramebuffer(this.#framebuffers[id]);
 		}
 		this.#framebuffers = {};
 
-		// Delete all shader programs (this also detaches shaders)
+		// Delete all shader programs (this also detaches shaders).
 		for (const id in this.#shaderPrograms)
 		{
 			this.gl.deleteProgram(this.#shaderPrograms[id]);
 		}
 		this.#shaderPrograms = {};
 		this.#shaderProgramSources = {};
+		this.#currentProgram = null;
 
-		// Delete all buffers
+		// Delete all buffers.
 		for (const buffer of this.#positionBuffers)
 		{
 			this.gl.deleteBuffer(buffer);
 		}
 		this.#positionBuffers = [];
 
-		// Delete all shaders
+		// Delete all shaders.
 		for (const shader of this.#shaders)
 		{
 			this.gl.deleteShader(shader);
 		}
 		this.#shaders = [];
 
-		// Clear uniform references
+		// Clear uniform references.
 		this.#uniforms = {};
+		this.#tileUniforms = {};
 
 		// Lose the WebGL context to free up the context slot.
 		const loseContext = this.gl.getExtension("WEBGL_lose_context");

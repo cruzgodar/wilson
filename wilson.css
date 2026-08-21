@@ -129,6 +129,7 @@
 	z-index: 50;
 
 	display: flex;
+	flex-direction: row-reverse;
 	column-gap: 10px;
 }
 
@@ -144,7 +145,18 @@
 
 
 
-.WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button, .WILSON_reset-button
+/*
+	Applied by Wilson (not by a stylesheet rule) to elements that aren't shown in
+	one of the two fullscreen states, so that it can lift the class for a moment
+	to measure where they'd otherwise sit. !important because the elements
+	themselves may set an inline display.
+*/
+.WILSON_fullscreen-hidden
+{
+	display: none !important;
+}
+
+.WILSON_button
 {
 	width: 16px;
 	height: 16px;
@@ -158,9 +170,38 @@
 	outline: none;
 }
 
+.WILSON_enter-fullscreen-button, .WILSON_exit-fullscreen-button
+{
+	order: 0;
+}
+
 .WILSON_exit-fullscreen-button
 {
 	display: none;
+}
+
+.WILSON_xr-button
+{
+	width: fit-content;
+	height: 19px;
+	padding: 3.5px;
+	display: flex;
+	align-items: center;
+	column-gap: 3.5px;
+}
+
+.WILSON_xr-button img
+{
+	width: 19px;
+	height: 19px;
+
+	display: flex;
+}
+
+.WILSON_button-text
+{
+	font-size: 14px;
+	padding-right: 1px;
 }
 
 .WILSON_reset-button
@@ -168,6 +209,8 @@
 	opacity: 0;
 	display: none;
 	transition: opacity .15s ease-out;
+
+	order: 2;
 
 	width: 20px;
 	height: 20px;
@@ -184,10 +227,21 @@
 	display: block;
 }
 
-.WILSON_enter-fullscreen-button img, .WILSON_exit-fullscreen-button img, .WILSON_reset-button img
+.WILSON_button img
 {
-	width: 100%;
 	height: 100%;
+}
+
+.WILSON_xr-button.WILSON_xr-button-loading img
+{
+	animation: opacityPulse 1.75s ease-in-out infinite;
+	opacity: 1;
+}
+
+@keyframes opacityPulse
+{
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0; }
 }
 
 ::view-transition-old(*)

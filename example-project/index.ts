@@ -1,4 +1,4 @@
-import { WilsonCPU, WilsonCPUOptions, WilsonGPU, WilsonGPUOptions } from "/wilson.js";
+import { WilsonCPU, WilsonCPUOptions, WilsonGL, WilsonGLOptions } from "/wilson.js";
 
 function initWilson1()
 {
@@ -111,7 +111,7 @@ function initWilson2()
 		}
 	`;
 
-	const options: WilsonGPUOptions = {
+	const options: WilsonGLOptions = {
 		shader,
 
 		uniforms: {
@@ -162,10 +162,10 @@ function initWilson2()
 					}
 				}
 			}
-		}
+		},
 	};
 
-	const wilson = new WilsonGPU(canvas, options);
+	const wilson = new WilsonGL(canvas, options);
 
 	drawFrame();
 
