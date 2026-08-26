@@ -3977,9 +3977,12 @@ export class WilsonCPU extends Wilson
 	{
 		super(canvas, options);
 
-		const colorSpace = (this.useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
-			? "display-p3"
-			: "srgb";
+		// P3 is the space the applet draws in, not a property of the monitor it lands on, so
+		// this doesn't ask the display what it can show: a canvas that's p3 everywhere keeps
+		// wide-gamut fills wide on an sRGB screen (the browser converts for the display) and
+		// keeps downloadFrame's png tagged the same way wherever it's downloaded. Matches
+		// WilsonGL, whose drawing buffer is p3 whenever useP3ColorSpace is.
+		const colorSpace: PredefinedColorSpace = this.useP3ColorSpace ? "display-p3" : "srgb";
 
 		const willReadFrequently = options.willReadFrequently ?? false;
 
@@ -3994,8 +3997,6 @@ export class WilsonCPU extends Wilson
 		}
 
 		this.ctx = ctx;
-
-		this.ctx = canvas.getContext("2d")!;
 	}
 
 	drawFrame(image: Uint8ClampedArray)
@@ -6509,6 +6510,18 @@ export class WilsonGL extends Wilson
 		});
 	}
 
+	// Read back off the context rather than derived from useP3ColorSpace, since a browser
+	// that doesn't support the assignment leaves the buffer in srgb.
+	get #drawingBufferColorSpace(): PredefinedColorSpace
+	{
+		return (
+			"drawingBufferColorSpace" in this.gl
+			&& this.gl.drawingBufferColorSpace === "display-p3"
+		)
+			? "display-p3"
+			: "srgb";
+	}
+
 	// Stitching tiles together and encoding a png are pure CPU work on buffers the GPU is
 	// already finished with, which makes them the one part of this that genuinely belongs on
 	// another thread. The worker never touches WebGL, so it stays small enough to read.
@@ -6754,10 +6767,11 @@ export class WilsonGL extends Wilson
 		tileSize?: number,
 		render?: RenderHighResTile,
 	}) {
-		const colorSpace: PredefinedColorSpace =
-			(this.useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
-				? "display-p3"
-				: "srgb";
+		// The tiles come back holding whatever the drawing buffer holds, so the png has to be
+		// tagged with the drawing buffer's color space rather than the display's gamut. Those
+		// two come apart on an sRGB monitor: the buffer is still p3 there, and calling the
+		// pixels srgb is what made downloads come out looking washed out next to the canvas.
+		const colorSpace = this.#drawingBufferColorSpace;
 
 		const blob = await this.#queueHighResRender(async () =>
 		{
