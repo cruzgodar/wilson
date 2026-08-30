@@ -1,6 +1,6 @@
 # Wilson: Applets Made Easy
 
-Wilson is a TypeScript and JavaScript library for creating interactive web applets. It handles boilerplate tasks like panning and zooming, makes parallelized gpu-based applets as easy as writing a shader, and even provides a robust and customizable fullscreen toolkit. All of this streamlines your work and simplifies your applets, letting you focus on the code that matters.
+Wilson is a TypeScript/JavaScript library for creating interactive web applets. It handles tasks like panning and zooming, makes parallelized gpu-based applets as easy as writing a shader, provides a robust and customizable fullscreen toolkit, and even lets you easily run 3D applets in a VR headset. All of this streamlines your work and simplifies your applets, letting you focus on the code that matters.
 
 Wilson does four things:
 1. It removes unnecessary complexity from writing applets using WebGL, including full WebXR support for 3D applets in VR headsets. You need only write a fragment shader (i.e. the actual parallelized code), and list any uniforms you use.
