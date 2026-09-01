@@ -4682,12 +4682,15 @@ export class WilsonGL extends Wilson
 
 		else if ("shaders" in options)
 		{
-			for (const [id, shader] of Object.entries(options.shaders))
+			// The first one is the current shader, rather than whichever happens to be last
+			// in the object -- the rest are loaded without switching away from it.
+			for (const [index, [id, shader]] of Object.entries(options.shaders).entries())
 			{
 				this.loadShader({
 					id,
 					shader,
 					uniforms: options.uniforms?.[id],
+					use: index === 0,
 				});
 			}
 		}
@@ -4925,11 +4928,17 @@ export class WilsonGL extends Wilson
 	loadShader({
 		id = this.#numShaders.toString(),
 		shader,
-		uniforms = {}
+		uniforms = {},
+		use = true
 	}: {
 		id?: ShaderProgramId,
 		shader: string,
-		uniforms?: UniformInitializers
+		uniforms?: UniformInitializers,
+
+		// Whether the new shader becomes the current one. Loading one to switch to later --
+		// a variant behind a UI control, or a second pass for a high-res render -- would
+		// otherwise mean switching away from what's on screen and switching back.
+		use?: boolean
 	}) {
 		const vertexShaderSource = WilsonGL.#vertexShaderSource;
 
@@ -4977,10 +4986,15 @@ export class WilsonGL extends Wilson
 			previousShaderId: this.#currentShaderId,
 		};
 
-		// loadShader has always made its shader the current one, and callers rely on that to
-		// address it with the default shader argument of setUniforms. That stays true while
-		// it's pending; #useProgram just has nothing to bind yet.
-		this.#currentShaderId = id;
+		// A used shader becomes current immediately, since callers rely on that to address it
+		// with the default shader argument of setUniforms. That holds while it's pending;
+		// #useProgram just has nothing to bind yet. A shader loaded with use: false never
+		// becomes current here -- #finalizeShader binds it only to set it up, and puts the
+		// current program back before it returns.
+		if (use)
+		{
+			this.#currentShaderId = id;
+		}
 
 		if (this.#parallelCompileSupported)
 		{
@@ -5351,7 +5365,8 @@ export class WilsonGL extends Wilson
 		}
 
 		// Make sure the program bound at the end is the one the caller expects, which is not
-		// necessarily this one if several shaders were in flight at once.
+		// necessarily this one -- it was loaded with use: false, or several shaders were in
+		// flight at once and a later one is the current shader.
 		if (this.#shaderPrograms[this.#currentShaderId])
 		{
 			this.#useProgram(this.#shaderPrograms[this.#currentShaderId]);

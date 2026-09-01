@@ -2814,11 +2814,14 @@ export class WilsonGL extends Wilson {
             });
         }
         else if ("shaders" in options) {
-            for (const [id, shader] of Object.entries(options.shaders)) {
+            // The first one is the current shader, rather than whichever happens to be last
+            // in the object -- the rest are loaded without switching away from it.
+            for (const [index, [id, shader]] of Object.entries(options.shaders).entries()) {
                 this.loadShader({
                     id,
                     shader,
                     uniforms: (_e = options.uniforms) === null || _e === void 0 ? void 0 : _e[id],
+                    use: index === 0,
                 });
             }
         }
@@ -2839,7 +2842,7 @@ export class WilsonGL extends Wilson {
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
         this.endGpuTimer();
     }
-    loadShader({ id = __classPrivateFieldGet(this, _WilsonGL_numShaders, "f").toString(), shader, uniforms = {} }) {
+    loadShader({ id = __classPrivateFieldGet(this, _WilsonGL_numShaders, "f").toString(), shader, uniforms = {}, use = true }) {
         var _b;
         const vertexShaderSource = __classPrivateFieldGet(_a, _a, "f", _WilsonGL_vertexShaderSource);
         // A second load of the same id while the first is still in flight: the old attempt
@@ -2873,10 +2876,14 @@ export class WilsonGL extends Wilson {
             callbacks: [],
             previousShaderId: __classPrivateFieldGet(this, _WilsonGL_currentShaderId, "f"),
         };
-        // loadShader has always made its shader the current one, and callers rely on that to
-        // address it with the default shader argument of setUniforms. That stays true while
-        // it's pending; #useProgram just has nothing to bind yet.
-        __classPrivateFieldSet(this, _WilsonGL_currentShaderId, id, "f");
+        // A used shader becomes current immediately, since callers rely on that to address it
+        // with the default shader argument of setUniforms. That holds while it's pending;
+        // #useProgram just has nothing to bind yet. A shader loaded with use: false never
+        // becomes current here -- #finalizeShader binds it only to set it up, and puts the
+        // current program back before it returns.
+        if (use) {
+            __classPrivateFieldSet(this, _WilsonGL_currentShaderId, id, "f");
+        }
         if (__classPrivateFieldGet(this, _WilsonGL_parallelCompileSupported, "f")) {
             __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_schedulePollPendingShaders).call(this);
         }
@@ -3736,7 +3743,8 @@ _a = WilsonGL, _WilsonGL_useWebGL2 = new WeakMap(), _WilsonGL_shaderPrograms = n
         this.setUniforms({ [name]: value }, id);
     }
     // Make sure the program bound at the end is the one the caller expects, which is not
-    // necessarily this one if several shaders were in flight at once.
+    // necessarily this one -- it was loaded with use: false, or several shaders were in
+    // flight at once and a later one is the current shader.
     if (__classPrivateFieldGet(this, _WilsonGL_shaderPrograms, "f")[__classPrivateFieldGet(this, _WilsonGL_currentShaderId, "f")]) {
         __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_useProgram).call(this, __classPrivateFieldGet(this, _WilsonGL_shaderPrograms, "f")[__classPrivateFieldGet(this, _WilsonGL_currentShaderId, "f")]);
     }

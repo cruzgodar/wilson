@@ -99,7 +99,7 @@ To draw a frame, call the `drawFrame` method on the `WilsonGL` instance. To set 
 wilson.setUniforms({ c: [0, 1] });
 ```
 
-Specifying the `shaders` field of the `options` object instead of the singular `shader` field allows for specifying multiple shaders, which allows for easier switching without having multiple Wilson instances. The `shaders` field is an object whose keys are the IDs of the shader programs, and whose values are strings containing the GLSL code. Similarly, when `shaders` is specified, the `uniforms` field is an object whose keys are the IDs of the shader programs, and whose values are objects with the same structure as the `uniforms` field of a single shader. Regardless of which field is used, the `loadShader` method allows for dynamically loading shaders later. Shaders are compiled asynchronously if possible, and so you should always `await wilson.allShadersReady()`. If you only need to await a specific shader, `await wilson.shaderReady(shaderId)`;
+Specifying the `shaders` field of the `options` object instead of the singular `shader` field allows for specifying multiple shaders, which allows for easier switching without having multiple Wilson instances. The `shaders` field is an object whose keys are the IDs of the shader programs, and whose values are strings containing the GLSL code. Similarly, when `shaders` is specified, the `uniforms` field is an object whose keys are the IDs of the shader programs, and whose values are objects with the same structure as the `uniforms` field of a single shader. When `shaders` is specified, the first one is the current shader. Regardless of which field is used, the `loadShader` method allows for dynamically loading shaders later, either switching to the new shader or, with `use: false`, leaving the current one in place. Shaders are compiled asynchronously if possible, and so you should always `await wilson.allShadersReady()`. If you only need to await a specific shader, `await wilson.shaderReady(shaderId)`;
 
 
 
@@ -435,7 +435,7 @@ All of these live inside `xrOptions` in a WilsonGL instance's options object. On
 
 - `gl`: the WebGL or WebGL2 context.
 - `drawFrame()`: draws a frame with the current shader program.
-- `loadShader({ id?: string, shader: string, uniforms?: UniformInitializers })`: loads a new shader program **and sets it as the current one**. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders. See `setUniforms` for more information on `UniformInitializers`.
+- `loadShader({ id?: string, shader: string, uniforms?: UniformInitializers, use?: boolean })`: loads a new shader program **and sets it as the current one**, unless `use` is `false`, in which case the current shader is left alone. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders. See `setUniforms` for more information on `UniformInitializers`.
 - `shaderReady(id?: string)`: returns a promise that resolves when the given shader has finished compiling.
 - `allShaderReady()`: returns a promise that resolves when all loaded shaders have finished compiling.
 - `useShader(id: string)`: sets the current shader program.
