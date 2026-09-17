@@ -3977,9 +3977,12 @@ export class WilsonCPU extends Wilson
 	{
 		super(canvas, options);
 
-		const colorSpace = (this.useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
-			? "display-p3"
-			: "srgb";
+		// P3 is the space the applet draws in, not a property of the monitor it lands on, so
+		// this doesn't ask the display what it can show: a canvas that's p3 everywhere keeps
+		// wide-gamut fills wide on an sRGB screen (the browser converts for the display) and
+		// keeps downloadFrame's png tagged the same way wherever it's downloaded. Matches
+		// WilsonGL, whose drawing buffer is p3 whenever useP3ColorSpace is.
+		const colorSpace: PredefinedColorSpace = this.useP3ColorSpace ? "display-p3" : "srgb";
 
 		const willReadFrequently = options.willReadFrequently ?? false;
 
@@ -3994,8 +3997,6 @@ export class WilsonCPU extends Wilson
 		}
 
 		this.ctx = ctx;
-
-		this.ctx = canvas.getContext("2d")!;
 	}
 
 	drawFrame(image: Uint8ClampedArray)
@@ -4681,12 +4682,15 @@ export class WilsonGL extends Wilson
 
 		else if ("shaders" in options)
 		{
-			for (const [id, shader] of Object.entries(options.shaders))
+			// The first one is the current shader, rather than whichever happens to be last
+			// in the object -- the rest are loaded without switching away from it.
+			for (const [index, [id, shader]] of Object.entries(options.shaders).entries())
 			{
 				this.loadShader({
 					id,
 					shader,
 					uniforms: options.uniforms?.[id],
+					use: index === 0,
 				});
 			}
 		}
@@ -4924,11 +4928,17 @@ export class WilsonGL extends Wilson
 	loadShader({
 		id = this.#numShaders.toString(),
 		shader,
-		uniforms = {}
+		uniforms = {},
+		use = true
 	}: {
 		id?: ShaderProgramId,
 		shader: string,
-		uniforms?: UniformInitializers
+		uniforms?: UniformInitializers,
+
+		// Whether the new shader becomes the current one. Loading one to switch to later --
+		// a variant behind a UI control, or a second pass for a high-res render -- would
+		// otherwise mean switching away from what's on screen and switching back.
+		use?: boolean
 	}) {
 		const vertexShaderSource = WilsonGL.#vertexShaderSource;
 
@@ -4976,10 +4986,15 @@ export class WilsonGL extends Wilson
 			previousShaderId: this.#currentShaderId,
 		};
 
-		// loadShader has always made its shader the current one, and callers rely on that to
-		// address it with the default shader argument of setUniforms. That stays true while
-		// it's pending; #useProgram just has nothing to bind yet.
-		this.#currentShaderId = id;
+		// A used shader becomes current immediately, since callers rely on that to address it
+		// with the default shader argument of setUniforms. That holds while it's pending;
+		// #useProgram just has nothing to bind yet. A shader loaded with use: false never
+		// becomes current here -- #finalizeShader binds it only to set it up, and puts the
+		// current program back before it returns.
+		if (use)
+		{
+			this.#currentShaderId = id;
+		}
 
 		if (this.#parallelCompileSupported)
 		{
@@ -5350,7 +5365,8 @@ export class WilsonGL extends Wilson
 		}
 
 		// Make sure the program bound at the end is the one the caller expects, which is not
-		// necessarily this one if several shaders were in flight at once.
+		// necessarily this one -- it was loaded with use: false, or several shaders were in
+		// flight at once and a later one is the current shader.
 		if (this.#shaderPrograms[this.#currentShaderId])
 		{
 			this.#useProgram(this.#shaderPrograms[this.#currentShaderId]);
@@ -6509,6 +6525,18 @@ export class WilsonGL extends Wilson
 		});
 	}
 
+	// Read back off the context rather than derived from useP3ColorSpace, since a browser
+	// that doesn't support the assignment leaves the buffer in srgb.
+	get #drawingBufferColorSpace(): PredefinedColorSpace
+	{
+		return (
+			"drawingBufferColorSpace" in this.gl
+			&& this.gl.drawingBufferColorSpace === "display-p3"
+		)
+			? "display-p3"
+			: "srgb";
+	}
+
 	// Stitching tiles together and encoding a png are pure CPU work on buffers the GPU is
 	// already finished with, which makes them the one part of this that genuinely belongs on
 	// another thread. The worker never touches WebGL, so it stays small enough to read.
@@ -6754,10 +6782,11 @@ export class WilsonGL extends Wilson
 		tileSize?: number,
 		render?: RenderHighResTile,
 	}) {
-		const colorSpace: PredefinedColorSpace =
-			(this.useP3ColorSpace && matchMedia("(color-gamut: p3)").matches)
-				? "display-p3"
-				: "srgb";
+		// The tiles come back holding whatever the drawing buffer holds, so the png has to be
+		// tagged with the drawing buffer's color space rather than the display's gamut. Those
+		// two come apart on an sRGB monitor: the buffer is still p3 there, and calling the
+		// pixels srgb is what made downloads come out looking washed out next to the canvas.
+		const colorSpace = this.#drawingBufferColorSpace;
 
 		const blob = await this.#queueHighResRender(async () =>
 		{
