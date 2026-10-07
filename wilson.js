@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Wilson_instances, _Wilson_destroyed, _Wilson_canvasWidth, _Wilson_canvasHeight, _Wilson_lastCanvasWidth, _Wilson_lastCanvasHeight, _Wilson_canvasAspectRatio, _Wilson_worldWidth, _Wilson_worldHeight, _Wilson_worldCenterX, _Wilson_worldCenterY, _Wilson_nonFullscreenWorldWidth, _Wilson_nonFullscreenWorldHeight, _Wilson_minWorldWidth, _Wilson_maxWorldWidth, _Wilson_minWorldHeight, _Wilson_maxWorldHeight, _Wilson_minWorldX, _Wilson_maxWorldX, _Wilson_minWorldY, _Wilson_maxWorldY, _Wilson_onResizeCanvasCallback, _Wilson_useP3ColorSpace, _Wilson_needDraggablesContainerSizeUpdate, _Wilson_interactionCallbacks, _Wilson_needPanAndZoomUpdate, _Wilson_interactionOnPanAndZoom, _Wilson_lastInteractionTimes, _Wilson_lastInteractionTypes, _Wilson_numPreviousVelocities, _Wilson_lastVelocityFactors, _Wilson_lastPanVelocityX, _Wilson_lastPanVelocityY, _Wilson_lastZoomVelocity, _Wilson_lastPanVelocitiesX, _Wilson_lastPanVelocitiesY, _Wilson_lastZoomVelocities, _Wilson_panVelocityX, _Wilson_panVelocityY, _Wilson_zoomVelocity, _Wilson_panFriction, _Wilson_zoomFriction, _Wilson_panVelocityThreshold, _Wilson_zoomVelocityThreshold, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_currentlyFullscreen, _Wilson_fullscreenOldScroll, _Wilson_fullscreenCanvasRect, _Wilson_fullscreenInitialWindowInnerWidth, _Wilson_fullscreenInitialWindowInnerHeight, _Wilson_fullscreenFillScreen, _Wilson_externalFullscreenOldFillScreen, _Wilson_externalFullscreenActive, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButton, _Wilson_fullscreenExitFullscreenButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_draggables, _Wilson_draggableDefaultId, _Wilson_currentMouseDraggableId, _Wilson_useResetButton, _Wilson_resetButton, _Wilson_resetButtonTimeoutId, _Wilson_resetButtonIconPath, _Wilson_defaultWorldCenterX, _Wilson_defaultWorldCenterY, _Wilson_defaultWorldWidth, _Wilson_defaultWorldHeight, _Wilson_defaultDraggableLocations, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_salt, _Wilson_getDefaultWorldSize, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_resizeCanvas, _Wilson_zeroVelocities, _Wilson_setLastZoomVelocity, _Wilson_setLastPanVelocity, _Wilson_setZoomVelocity, _Wilson_setPanVelocity, _Wilson_currentlyDragging, _Wilson_currentlyPinching, _Wilson_currentlyWheeling, _Wilson_currentlyWheelingTimeoutId, _Wilson_ignoreTouchendCooldown, _Wilson_atMaxWorldSize, _Wilson_atMinWorldSize, _Wilson_lastInteractionRow, _Wilson_lastInteractionCol, _Wilson_lastInteractionRow2, _Wilson_lastInteractionCol2, _Wilson_clampWorldCoordinates, _Wilson_getPanOverscroll, _Wilson_getZoomOverscroll, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMouseenter, _Wilson_onMouseleave, _Wilson_onMousemove, _Wilson_updateFromPinching, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_zoomFixedPoint, _Wilson_zoomCanvas, _Wilson_onWheel, _Wilson_animationFrameLoopPaused, _Wilson_lastPanAndZoomTimestamp, _Wilson_animationFrameLoop, _Wilson_initInteraction, _Wilson_documentDraggableMousemoveListener, _Wilson_documentDraggableMouseupListener, _Wilson_initDraggables, _Wilson_setDraggables, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_updateDraggablesLocation, _Wilson_initFullscreen, _Wilson_initResetButton, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_enterFullscreen, _Wilson_addEnterFullscreenFillScreenTransitionStyle, _Wilson_syncFullscreenHiddenElements, _Wilson_fullscreenTransitionElementRect, _Wilson_measureFullscreenTransitionElements, _Wilson_addFullscreenHiddenElementTransitionStyle, _Wilson_exitFullscreen, _Wilson_addExitFullscreenFillScreenTransitionStyle, _Wilson_interpolatePageToWorld, _WilsonGL_instances, _a, _WilsonGL_useWebGL2, _WilsonGL_shaderPrograms, _WilsonGL_shaderProgramSources, _WilsonGL_destroyedGPU, _WilsonGL_uniforms, _WilsonGL_tileUniforms, _WilsonGL_useXRButton, _WilsonGL_xrButtonIconPath, _WilsonGL_xrButton, _WilsonGL_xrButtonImg, _WilsonGL_xrButtonText, _WilsonGL_xrIsSupportedNow, _WilsonGL_renderXRFrame, _WilsonGL_xrData, _WilsonGL_xrRequiredFeatures, _WilsonGL_xrOptionalFeatures, _WilsonGL_xrFramebufferScale, _WilsonGL_createXRBaseLayer, _WilsonGL_xrTargetFrameRate, _WilsonGL_lastXRTime, _WilsonGL_enteringXR, _WilsonGL_xrFixedFoveation, _WilsonGL_xrCallbacks, _WilsonGL_xrControllerData, _WilsonGL_xrControllerList, _WilsonGL_xrViewport, _WilsonGL_logShaderSource, _WilsonGL_initXR, _WilsonGL_lastReportedXRAvailability, _WilsonGL_checkXRSupport, _WilsonGL_onDeviceChange, _WilsonGL_onPageFocus, _WilsonGL_setXRButtonLoading, _WilsonGL_initXRButton, _WilsonGL_drawFrameRequestedWhilePending, _WilsonGL_numShaders, _WilsonGL_currentShaderId, _WilsonGL_currentProgram, _WilsonGL_parallelCompileSupported, _WilsonGL_pendingShaders, _WilsonGL_pendingUniforms, _WilsonGL_pollPendingShadersScheduled, _WilsonGL_vertexShaderSource, _WilsonGL_numPendingShaders_get, _WilsonGL_shaderReadyNow, _WilsonGL_schedulePollPendingShaders, _WilsonGL_pollPendingShaders, _WilsonGL_discardPendingShader, _WilsonGL_finalizeShader, _WilsonGL_gpuTimerExtension, _WilsonGL_gpuTimerUsesWebGL2Api, _WilsonGL_gpuTimerPool, _WilsonGL_gpuTimerPending, _WilsonGL_gpuTimerActive, _WilsonGL_gpuTimerDepth, _WilsonGL_lastGpuFrameTime, _WilsonGL_averageGpuFrameTime, _WilsonGL_maxPendingGpuTimers, _WilsonGL_initGpuTiming, _WilsonGL_createGpuTimerQuery, _WilsonGL_deleteGpuTimerQuery, _WilsonGL_destroyGpuTiming, _WilsonGL_restoreCurrentProgram, _WilsonGL_useProgram, _WilsonGL_setTileWindowForProgram, _WilsonGL_setTileWindow, _WilsonGL_framebuffers, _WilsonGL_textures, _WilsonGL_currentFramebufferId, _WilsonGL_currentTextureId, _WilsonGL_positionBuffers, _WilsonGL_shaders, _WilsonGL_highResRenderQueue, _WilsonGL_queueHighResRender, _WilsonGL_getHighResDimensions, _WilsonGL_getHighResTileSize, _WilsonGL_highResShadersReady, _WilsonGL_yieldToBrowser, _WilsonGL_renderHighResTiles, _WilsonGL_renderHighResTile, _WilsonGL_drawingBufferColorSpace_get, _WilsonGL_createHighResEncoder, _WilsonGL_createWorkerHighResEncoder, _WilsonGL_createMainThreadHighResEncoder, _WilsonGL_onXRFrame, _WilsonGL_onXRInputSourcesChange, _WilsonGL_syncXRControllers, _WilsonGL_createXRControllerData, _WilsonGL_readXRPoseMatrix, _WilsonGL_updateXRControllers, _WilsonGL_releaseXRControllerButtons, _WilsonGL_onXREnd, _WilsonGL_clearXRFunctions, _WilsonGL_applyXRTargetFrameRate;
+var _Wilson_instances, _Wilson_destroyed, _Wilson_canvasWidth, _Wilson_canvasHeight, _Wilson_lastCanvasWidth, _Wilson_lastCanvasHeight, _Wilson_canvasAspectRatio, _Wilson_worldWidth, _Wilson_worldHeight, _Wilson_worldCenterX, _Wilson_worldCenterY, _Wilson_nonFullscreenWorldWidth, _Wilson_nonFullscreenWorldHeight, _Wilson_minWorldWidth, _Wilson_maxWorldWidth, _Wilson_minWorldHeight, _Wilson_maxWorldHeight, _Wilson_minWorldX, _Wilson_maxWorldX, _Wilson_minWorldY, _Wilson_maxWorldY, _Wilson_onResizeCanvasCallback, _Wilson_useP3ColorSpace, _Wilson_needDraggablesContainerSizeUpdate, _Wilson_interactionCallbacks, _Wilson_needPanAndZoomUpdate, _Wilson_interactionOnPanAndZoom, _Wilson_lastInteractionTimes, _Wilson_lastInteractionTypes, _Wilson_numPreviousVelocities, _Wilson_lastVelocityFactors, _Wilson_lastPanVelocityX, _Wilson_lastPanVelocityY, _Wilson_lastZoomVelocity, _Wilson_lastPanVelocitiesX, _Wilson_lastPanVelocitiesY, _Wilson_lastZoomVelocities, _Wilson_panVelocityX, _Wilson_panVelocityY, _Wilson_zoomVelocity, _Wilson_panFriction, _Wilson_zoomFriction, _Wilson_panVelocityThreshold, _Wilson_zoomVelocityThreshold, _Wilson_draggablesRadius, _Wilson_draggablesStatic, _Wilson_draggableCallbacks, _Wilson_draggablesContainerWidth, _Wilson_draggablesContainerHeight, _Wilson_draggablesContainerRestrictedWidth, _Wilson_draggablesContainerRestrictedHeight, _Wilson_currentlyFullscreen, _Wilson_fullscreenOldScroll, _Wilson_fullscreenCanvasRect, _Wilson_fullscreenInitialWindowInnerWidth, _Wilson_fullscreenInitialWindowInnerHeight, _Wilson_fullscreenFillScreen, _Wilson_externalFullscreenOldFillScreen, _Wilson_externalFullscreenActive, _Wilson_fullscreenUseButton, _Wilson_fullscreenEnterFullscreenButton, _Wilson_fullscreenExitFullscreenButton, _Wilson_fullscreenEnterFullscreenButtonIconPath, _Wilson_fullscreenExitFullscreenButtonIconPath, _Wilson_draggables, _Wilson_draggableDefaultId, _Wilson_currentMouseDraggableId, _Wilson_useResetButton, _Wilson_resetButton, _Wilson_resetButtonTimeoutId, _Wilson_resetButtonIconPath, _Wilson_defaultWorldCenterX, _Wilson_defaultWorldCenterY, _Wilson_defaultWorldWidth, _Wilson_defaultWorldHeight, _Wilson_defaultDraggableLocations, _Wilson_appletContainer, _Wilson_canvasContainer, _Wilson_draggablesContainer, _Wilson_fullscreenContainer, _Wilson_fullscreenContainerLocation, _Wilson_metaThemeColorElement, _Wilson_oldMetaThemeColor, _Wilson_salt, _Wilson_getDefaultWorldSize, _Wilson_onResizeWindow, _Wilson_handleKeydownEvent, _Wilson_resizeCanvas, _Wilson_zeroVelocities, _Wilson_setLastZoomVelocity, _Wilson_setLastPanVelocity, _Wilson_setZoomVelocity, _Wilson_setPanVelocity, _Wilson_currentlyDragging, _Wilson_currentlyPinching, _Wilson_currentlyWheeling, _Wilson_currentlyWheelingTimeoutId, _Wilson_ignoreTouchendCooldown, _Wilson_atMaxWorldSize, _Wilson_atMinWorldSize, _Wilson_lastInteractionRow, _Wilson_lastInteractionCol, _Wilson_lastInteractionRow2, _Wilson_lastInteractionCol2, _Wilson_clampWorldCoordinates, _Wilson_getPanOverscroll, _Wilson_getZoomOverscroll, _Wilson_onMousedown, _Wilson_onMouseup, _Wilson_onMouseenter, _Wilson_onMouseleave, _Wilson_onMousemove, _Wilson_updateFromPinching, _Wilson_onTouchstart, _Wilson_onTouchend, _Wilson_onTouchmove, _Wilson_zoomFixedPoint, _Wilson_zoomCanvas, _Wilson_onWheel, _Wilson_animationFrameLoopPaused, _Wilson_lastPanAndZoomTimestamp, _Wilson_animationFrameLoop, _Wilson_initInteraction, _Wilson_documentDraggableMousemoveListener, _Wilson_documentDraggableMouseupListener, _Wilson_initDraggables, _Wilson_setDraggables, _Wilson_draggableOnMousedown, _Wilson_draggableOnMouseup, _Wilson_draggableOnMousemove, _Wilson_draggableOnTouchstart, _Wilson_draggableOnTouchend, _Wilson_draggableOnTouchmove, _Wilson_updateDraggablesContainerSize, _Wilson_updateDraggablesLocation, _Wilson_initFullscreen, _Wilson_initResetButton, _Wilson_preventGestures, _Wilson_canvasOldWidth, _Wilson_canvasOldWidthStyle, _Wilson_canvasOldHeightStyle, _Wilson_enterFullscreen, _Wilson_addEnterFullscreenFillScreenTransitionStyle, _Wilson_syncFullscreenHiddenElements, _Wilson_fullscreenTransitionElementRect, _Wilson_measureFullscreenTransitionElements, _Wilson_addFullscreenHiddenElementTransitionStyle, _Wilson_exitFullscreen, _Wilson_addExitFullscreenFillScreenTransitionStyle, _Wilson_interpolatePageToWorld, _WilsonGL_instances, _a, _WilsonGL_useWebGL2, _WilsonGL_shaderPrograms, _WilsonGL_shaderProgramSources, _WilsonGL_destroyedGPU, _WilsonGL_uniforms, _WilsonGL_tileUniforms, _WilsonGL_foveaUniforms, _WilsonGL_positionAttribute, _WilsonGL_useXRButton, _WilsonGL_xrButtonIconPath, _WilsonGL_xrButton, _WilsonGL_xrButtonImg, _WilsonGL_xrButtonText, _WilsonGL_xrIsSupportedNow, _WilsonGL_renderXRFrame, _WilsonGL_xrData, _WilsonGL_xrRequiredFeatures, _WilsonGL_xrOptionalFeatures, _WilsonGL_xrFramebufferScale, _WilsonGL_createXRBaseLayer, _WilsonGL_xrTargetFrameRate, _WilsonGL_lastXRTime, _WilsonGL_enteringXR, _WilsonGL_xrFixedFoveation, _WilsonGL_xrSupportsFoveation, _WilsonGL_xrFoveation, _WilsonGL_xrFoveationResolution, _WilsonGL_xrFoveationTargets, _WilsonGL_xrFoveationResolve, _WilsonGL_xrEyeTarget, _WilsonGL_xrFoveaCenter, _WilsonGL_xrFoveaStrength, _WilsonGL_debugFoveationOnCanvas, _WilsonGL_debugFoveationCenter, _WilsonGL_canvasFoveationTarget, _WilsonGL_xrCallbacks, _WilsonGL_xrControllerData, _WilsonGL_xrControllerList, _WilsonGL_xrViewport, _WilsonGL_logShaderSource, _WilsonGL_initXR, _WilsonGL_lastReportedXRAvailability, _WilsonGL_checkXRSupport, _WilsonGL_onDeviceChange, _WilsonGL_onPageFocus, _WilsonGL_setXRButtonLoading, _WilsonGL_initXRButton, _WilsonGL_drawFrameRequestedWhilePending, _WilsonGL_numShaders, _WilsonGL_currentShaderId, _WilsonGL_currentProgram, _WilsonGL_parallelCompileSupported, _WilsonGL_pendingShaders, _WilsonGL_pendingUniforms, _WilsonGL_pollPendingShadersScheduled, _WilsonGL_vertexShaderSource, _WilsonGL_injectFoveation, _WilsonGL_numPendingShaders_get, _WilsonGL_shaderReadyNow, _WilsonGL_schedulePollPendingShaders, _WilsonGL_pollPendingShaders, _WilsonGL_discardPendingShader, _WilsonGL_finalizeShader, _WilsonGL_gpuTimerExtension, _WilsonGL_gpuTimerUsesWebGL2Api, _WilsonGL_gpuTimerPool, _WilsonGL_gpuTimerPending, _WilsonGL_gpuTimerActive, _WilsonGL_gpuTimerDepth, _WilsonGL_lastGpuFrameTime, _WilsonGL_averageGpuFrameTime, _WilsonGL_maxPendingGpuTimers, _WilsonGL_initGpuTiming, _WilsonGL_createGpuTimerQuery, _WilsonGL_deleteGpuTimerQuery, _WilsonGL_destroyGpuTiming, _WilsonGL_restoreCurrentProgram, _WilsonGL_useProgram, _WilsonGL_setTileWindowForProgram, _WilsonGL_setTileWindow, _WilsonGL_setFoveationForProgram, _WilsonGL_setFoveation, _WilsonGL_getFoveationResolve, _WilsonGL_sizeFoveationTarget, _WilsonGL_deleteFoveationTarget, _WilsonGL_deleteFoveationTargets, _WilsonGL_deleteCanvasFoveationTarget, _WilsonGL_applyCanvasFoveation, _WilsonGL_resolveFoveatedEye, _WilsonGL_rebindCurrentTexture, _WilsonGL_framebuffers, _WilsonGL_textures, _WilsonGL_currentFramebufferId, _WilsonGL_currentTextureId, _WilsonGL_positionBuffers, _WilsonGL_shaders, _WilsonGL_highResRenderQueue, _WilsonGL_queueHighResRender, _WilsonGL_getHighResDimensions, _WilsonGL_getHighResTileSize, _WilsonGL_highResShadersReady, _WilsonGL_yieldToBrowser, _WilsonGL_renderHighResTiles, _WilsonGL_renderHighResTile, _WilsonGL_drawingBufferColorSpace_get, _WilsonGL_createHighResEncoder, _WilsonGL_createWorkerHighResEncoder, _WilsonGL_createMainThreadHighResEncoder, _WilsonGL_onXRFrame, _WilsonGL_onXRInputSourcesChange, _WilsonGL_syncXRControllers, _WilsonGL_createXRControllerData, _WilsonGL_readXRPoseMatrix, _WilsonGL_updateXRControllers, _WilsonGL_releaseXRControllerButtons, _WilsonGL_onXREnd, _WilsonGL_clearXRFunctions, _WilsonGL_applyXRTargetFrameRate;
 const defaultInteractionCallbacks = {
     mousedown: ({ x, y, event }) => { },
     mouseup: ({ x, y, event }) => { },
@@ -2452,6 +2452,60 @@ const XR_LAYER_OPTIONS = {
     stencil: false,
     alpha: true,
 };
+// Foveated rendering draws each eye into a smaller offscreen buffer whose pixels are packed
+// densely at the center of view and sparsely toward the edges, then un-warps it into the layer.
+// Along each axis, a point p in [-1, 1] of that buffer lands on screen at
+// c + sinh(kp) / sinh(k) * (the distance from c to the edge on p's side), where c is the center
+// of view and k is the strength. Relative to the buffer, that's sinh(k) / k times as many
+// pixels per unit of screen at the center and tanh(k) / k at the edges, and sinh has a
+// closed-form inverse for the resolve pass. The 1/2s in sinh cancel, so they're left out.
+//
+// Applets read uv as the point on screen, so the warp has to be applied to uv itself for
+// existing shaders to come out right without knowing about it. A warped varying would just be
+// interpolated linearly again, so it happens per pixel instead: the uv varying becomes a global
+// that main() fills in first thing. Everything is spliced in on the lines it replaces, without
+// adding any, so that compile errors still point at the right line of the applet's source.
+const FOVEATION_UV_DECLARATION = /\bvarying\s+(?:(?:highp|mediump|lowp)\s+)?vec2\s+uv\s*;/;
+const FOVEATION_MAIN = /\bvoid\s+main\s*\(\s*(?:void\s*)?\)\s*\{/;
+// The uniforms are explicitly highp because the applet's precision statement might come after
+// the uv declaration, and because uniforms shared with the vertex shader must match its
+// precision exactly.
+const FOVEATION_FRAGMENT_DECLARATIONS = "varying highp vec2 wilsonUvLinear; uniform highp vec2 wilsonUvScale; uniform highp vec2 wilsonUvCenter; uniform highp vec2 wilsonFoveaCenter; uniform highp float wilsonFoveaStrength; highp vec2 uv; highp vec2 wilsonFoveate(highp vec2 p) { if (wilsonFoveaStrength <= 0.0) { return p; } highp vec2 e = exp(wilsonFoveaStrength * p); highp float s = exp(wilsonFoveaStrength); highp vec2 g = (e - 1.0 / e) / (s - 1.0 / s); return wilsonFoveaCenter + g * mix(1.0 + wilsonFoveaCenter, 1.0 - wilsonFoveaCenter, step(0.0, g)); }";
+const FOVEATION_FRAGMENT_MAIN = " uv = wilsonFoveate(wilsonUvLinear) * wilsonUvScale + wilsonUvCenter;";
+// Un-warps one eye's buffer into its viewport, using Wilson's own vertex shader so that the
+// position attribute lines up with every other program's. uvTile spans the viewport no matter
+// what the tile window is set to.
+const FOVEATION_RESOLVE_SHADER = /* glsl */ `
+	precision highp float;
+
+	varying vec2 uvTile;
+
+	uniform sampler2D wilsonFoveatedImage;
+	uniform vec2 wilsonFoveaCenter;
+	uniform float wilsonFoveaStrength;
+
+	// Written in terms of |x| so that negative inputs don't cancel catastrophically.
+	vec2 asinhStable(vec2 x)
+	{
+		vec2 a = abs(x);
+		return sign(x) * log(a + sqrt(a * a + 1.0));
+	}
+
+	void main(void)
+	{
+		vec2 offset = uvTile - wilsonFoveaCenter;
+		vec2 extent = mix(1.0 + wilsonFoveaCenter, 1.0 - wilsonFoveaCenter, step(0.0, offset));
+
+		float k = wilsonFoveaStrength;
+		float sinhK = 0.5 * (exp(k) - exp(-k));
+		vec2 p = asinhStable(offset / extent * sinhK) / k;
+
+		gl_FragColor = texture2D(wilsonFoveatedImage, p * 0.5 + 0.5);
+	}
+`;
+// Below this, the warp's numerator and denominator are both small enough to lose most of their
+// precision, and it's indistinguishable from no warp anyway.
+const MIN_FOVEATION_STRENGTH = 0.01;
 // The xr-standard mapping, in order. Anything past index 5 is device-specific (the Quest's
 // thumbrest, for instance) and isn't exposed, and the system/menu button is reserved by the
 // runtime and is never visible to the page at all.
@@ -2527,6 +2581,47 @@ export class WilsonGL extends Wilson {
             baseLayer.fixedFoveation = value;
         }
     }
+    get xrFoveation() { return __classPrivateFieldGet(this, _WilsonGL_xrFoveation, "f"); }
+    set xrFoveation(value) {
+        if (!(value >= 0) || !Number.isFinite(value)) {
+            if (this.verbose) {
+                console.warn("[Wilson] xrFoveation must be a nonnegative number.");
+            }
+            return;
+        }
+        // The targets aren't deleted here, since this can be set in the middle of an eye
+        // that's rendering into one; the next frame cleans them up.
+        __classPrivateFieldSet(this, _WilsonGL_xrFoveation, value < MIN_FOVEATION_STRENGTH ? 0 : value, "f");
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_applyCanvasFoveation).call(this);
+    }
+    get xrFoveationResolution() { return __classPrivateFieldGet(this, _WilsonGL_xrFoveationResolution, "f"); }
+    set xrFoveationResolution(value) {
+        if (!(value > 0) || !Number.isFinite(value)) {
+            if (this.verbose) {
+                console.warn("[Wilson] xrFoveationResolution must be a positive number.");
+            }
+            return;
+        }
+        // Takes effect on the next eye rendered, which reallocates its target if the size changed.
+        __classPrivateFieldSet(this, _WilsonGL_xrFoveationResolution, value, "f");
+    }
+    get debugFoveationOnCanvas() { return __classPrivateFieldGet(this, _WilsonGL_debugFoveationOnCanvas, "f"); }
+    set debugFoveationOnCanvas(value) {
+        __classPrivateFieldSet(this, _WilsonGL_debugFoveationOnCanvas, value, "f");
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_applyCanvasFoveation).call(this);
+    }
+    get debugFoveationCenter() { return [...__classPrivateFieldGet(this, _WilsonGL_debugFoveationCenter, "f")]; }
+    set debugFoveationCenter(value) {
+        // Clamped just inside the edges, where one side of the warp would have no room at all.
+        __classPrivateFieldSet(this, _WilsonGL_debugFoveationCenter, [
+            Math.min(Math.max(value[0], -0.999), 0.999),
+            Math.min(Math.max(value[1], -0.999), 0.999),
+        ], "f");
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_applyCanvasFoveation).call(this);
+    }
+    // The size of what the current eye actually renders into.
+    get xrEyeWidth() { var _b, _c, _d; return (_c = (_b = __classPrivateFieldGet(this, _WilsonGL_xrEyeTarget, "f")) === null || _b === void 0 ? void 0 : _b.width) !== null && _c !== void 0 ? _c : (_d = __classPrivateFieldGet(this, _WilsonGL_xrViewport, "f")) === null || _d === void 0 ? void 0 : _d.width; }
+    get xrEyeHeight() { var _b, _c, _d; return (_c = (_b = __classPrivateFieldGet(this, _WilsonGL_xrEyeTarget, "f")) === null || _b === void 0 ? void 0 : _b.height) !== null && _c !== void 0 ? _c : (_d = __classPrivateFieldGet(this, _WilsonGL_xrViewport, "f")) === null || _d === void 0 ? void 0 : _d.height; }
     get xrControllers() { return __classPrivateFieldGet(this, _WilsonGL_xrControllerList, "f"); }
     getXRController(handedness) {
         return __classPrivateFieldGet(this, _WilsonGL_xrControllerList, "f").find(controller => controller.handedness === handedness);
@@ -2549,6 +2644,12 @@ export class WilsonGL extends Wilson {
         // declarations, and these are declared in the vertex shader instead. Either location can
         // be null: a fragment shader that ignores uv lets the linker drop the whole chain.
         _WilsonGL_tileUniforms.set(this, {});
+        // Likewise for foveation, whose uniforms are spliced into the fragment shader rather than
+        // declared by the applet. Both are null for a shader that never declared uv.
+        _WilsonGL_foveaUniforms.set(this, {});
+        // Every program shares the vertex shader, so they all agree on this. The foveation resolve
+        // program is bound to it explicitly so the quad already attached there draws it too.
+        _WilsonGL_positionAttribute.set(this, null);
         _WilsonGL_useXRButton.set(this, false);
         _WilsonGL_xrButtonIconPath.set(this, void 0);
         _WilsonGL_xrButton.set(this, null);
@@ -2568,6 +2669,29 @@ export class WilsonGL extends Wilson {
         _WilsonGL_lastXRTime.set(this, undefined);
         _WilsonGL_enteringXR.set(this, false);
         _WilsonGL_xrFixedFoveation.set(this, void 0);
+        // Only shaders loaded by an instance with XR support get the foveation warp spliced in, so
+        // that applets that never enter XR compile exactly what they wrote.
+        _WilsonGL_xrSupportsFoveation.set(this, false);
+        _WilsonGL_xrFoveation.set(this, 0);
+        _WilsonGL_xrFoveationResolution.set(this, 1);
+        // One per view, reallocated whenever that view's viewport or the foveation settings change
+        // its size.
+        _WilsonGL_xrFoveationTargets.set(this, []);
+        // Built the first time a foveated frame needs it, and null after it failed to build.
+        _WilsonGL_xrFoveationResolve.set(this, undefined);
+        // What useFramebuffer(null) binds while a foveated eye renders, in place of the layer.
+        _WilsonGL_xrEyeTarget.set(this, null);
+        // The eye's warp, kept so that a shader finishing compilation mid-eye can be brought in line.
+        _WilsonGL_xrFoveaCenter.set(this, [0, 0]);
+        _WilsonGL_xrFoveaStrength.set(this, 0);
+        // Previews foveation on the canvas, with the same strength and resolution as in XR, so that
+        // it can be tuned and debugged without a headset.
+        _WilsonGL_debugFoveationOnCanvas.set(this, false);
+        // In uv coordinates, i.e. [-1, 1] on each axis of the canvas with +y up. Outside of XR there's
+        // no frustum to find it from, so it's the middle unless set -- to the mouse position, say, to
+        // stand in for gaze tracking.
+        _WilsonGL_debugFoveationCenter.set(this, [0, 0]);
+        _WilsonGL_canvasFoveationTarget.set(this, null);
         _WilsonGL_xrCallbacks.set(this, {
             onEnter: () => { },
             onExit: () => { },
@@ -2716,6 +2840,12 @@ export class WilsonGL extends Wilson {
                 frame,
                 pose
             });
+            // Turning foveation off can happen mid-eye, so its targets are only freed here, where
+            // nothing can be rendering into them.
+            const resolve = __classPrivateFieldGet(this, _WilsonGL_xrFoveation, "f") > 0 ? __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_getFoveationResolve).call(this) : null;
+            if (!resolve && __classPrivateFieldGet(this, _WilsonGL_xrFoveationTargets, "f").length !== 0) {
+                __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_deleteFoveationTargets).call(this);
+            }
             try {
                 // One view per eye (two for stereo VR), sharing the framebuffer via side-by-side viewports.
                 for (let viewIndex = 0; viewIndex < views.length; viewIndex++) {
@@ -2729,7 +2859,26 @@ export class WilsonGL extends Wilson {
                         continue;
                     }
                     __classPrivateFieldSet(this, _WilsonGL_xrViewport, viewport, "f");
-                    this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+                    let target = null;
+                    if (resolve) {
+                        target = __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_sizeFoveationTarget).call(this, __classPrivateFieldGet(this, _WilsonGL_xrFoveationTargets, "f")[viewIndex], viewport.width, viewport.height);
+                        __classPrivateFieldGet(this, _WilsonGL_xrFoveationTargets, "f")[viewIndex] = target;
+                    }
+                    if (target) {
+                        __classPrivateFieldSet(this, _WilsonGL_xrEyeTarget, target, "f");
+                        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, target.framebuffer);
+                        this.gl.viewport(0, 0, target.width, target.height);
+                        this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                        // The target stands in for the layer, which is framebuffer null.
+                        __classPrivateFieldSet(this, _WilsonGL_currentFramebufferId, null, "f");
+                        // The center of view is wherever the eye's forward axis lands, which is
+                        // off-center since every eye's frustum is asymmetric.
+                        const projection = view.projectionMatrix;
+                        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setFoveation).call(this, -projection[8], -projection[9], __classPrivateFieldGet(this, _WilsonGL_xrFoveation, "f"));
+                    }
+                    else {
+                        this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+                    }
                     __classPrivateFieldGet(this, _WilsonGL_renderXRFrame, "f").call(this, {
                         projectionMatrix: view.projectionMatrix,
                         cameraToWorld: view.transform.matrix,
@@ -2737,10 +2886,23 @@ export class WilsonGL extends Wilson {
                         viewIndex,
                         view,
                     });
+                    if (resolve && target) {
+                        __classPrivateFieldSet(this, _WilsonGL_xrEyeTarget, null, "f");
+                        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, baseLayer.framebuffer);
+                        this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+                        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_resolveFoveatedEye).call(this, resolve, target);
+                    }
                 }
             }
             finally {
                 __classPrivateFieldSet(this, _WilsonGL_xrViewport, null, "f");
+                if (resolve) {
+                    // Draws outside an eye -- in onFrameStart, say -- aren't warped.
+                    __classPrivateFieldSet(this, _WilsonGL_xrEyeTarget, null, "f");
+                    __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setFoveation).call(this, 0, 0, 0);
+                    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, baseLayer.framebuffer);
+                    __classPrivateFieldSet(this, _WilsonGL_currentFramebufferId, null, "f");
+                }
             }
         }
         // Needs to be an arrow function to maintain its binding when passed to addEventListener.
@@ -2757,6 +2919,10 @@ export class WilsonGL extends Wilson {
             __classPrivateFieldSet(this, _WilsonGL_lastXRTime, undefined, "f");
             __classPrivateFieldGet(this, _WilsonGL_xrControllerData, "f").clear();
             __classPrivateFieldSet(this, _WilsonGL_xrControllerList, [], "f");
+            // They're sized to the headset, so there's no use for them until the next session.
+            __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_deleteFoveationTargets).call(this);
+            // Back to the canvas preview, if there is one.
+            __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_applyCanvasFoveation).call(this);
             // This binds the framebuffer directly since useFramebuffer() early-returns
             // if the ID matches the current one, and both the canvas and the XR framebuffer
             // use null as their ID.
@@ -2839,7 +3005,27 @@ export class WilsonGL extends Wilson {
             }
         }
         this.beginGpuTimer();
-        this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+        // The canvas preview of foveation has no frame to wrap like XR does, so a draw to the
+        // canvas goes through the warped buffer and is resolved on the spot. Draws to any other
+        // framebuffer are already warped by the uniforms and are sampled in that warped space by
+        // a later pass, so they're left alone.
+        const resolve = (__classPrivateFieldGet(this, _WilsonGL_debugFoveationOnCanvas, "f")
+            && __classPrivateFieldGet(this, _WilsonGL_xrFoveation, "f") > 0
+            && !__classPrivateFieldGet(this, _WilsonGL_xrData, "f")
+            && __classPrivateFieldGet(this, _WilsonGL_currentFramebufferId, "f") === null) ? __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_getFoveationResolve).call(this) : null;
+        if (resolve) {
+            const target = __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_sizeFoveationTarget).call(this, __classPrivateFieldGet(this, _WilsonGL_canvasFoveationTarget, "f"), this.canvasWidth, this.canvasHeight);
+            __classPrivateFieldSet(this, _WilsonGL_canvasFoveationTarget, target, "f");
+            this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, target.framebuffer);
+            this.gl.viewport(0, 0, target.width, target.height);
+            this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+            this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+            this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
+            __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_resolveFoveatedEye).call(this, resolve, target);
+        }
+        else {
+            this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+        }
         this.endGpuTimer();
     }
     loadShader({ id = __classPrivateFieldGet(this, _WilsonGL_numShaders, "f").toString(), shader, uniforms = {}, use = true }) {
@@ -2862,7 +3048,7 @@ export class WilsonGL extends Wilson {
         this.gl.attachShader(shaderProgram, vertexShader);
         this.gl.attachShader(shaderProgram, fragShader);
         this.gl.shaderSource(vertexShader, vertexShaderSource);
-        this.gl.shaderSource(fragShader, shader);
+        this.gl.shaderSource(fragShader, __classPrivateFieldGet(this, _WilsonGL_xrSupportsFoveation, "f") ? __classPrivateFieldGet(_a, _a, "m", _WilsonGL_injectFoveation).call(_a, shader) : shader);
         this.gl.compileShader(vertexShader);
         this.gl.compileShader(fragShader);
         this.gl.linkProgram(shaderProgram);
@@ -3148,6 +3334,13 @@ export class WilsonGL extends Wilson {
         }
         __classPrivateFieldSet(this, _WilsonGL_currentFramebufferId, id, "f");
         if (id === null) {
+            // A foveated eye renders into its warped buffer, which is resolved into the layer
+            // once the eye is done.
+            if (__classPrivateFieldGet(this, _WilsonGL_xrEyeTarget, "f")) {
+                this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, __classPrivateFieldGet(this, _WilsonGL_xrEyeTarget, "f").framebuffer);
+                this.gl.viewport(0, 0, __classPrivateFieldGet(this, _WilsonGL_xrEyeTarget, "f").width, __classPrivateFieldGet(this, _WilsonGL_xrEyeTarget, "f").height);
+                return;
+            }
             if (__classPrivateFieldGet(this, _WilsonGL_xrData, "f")) {
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, __classPrivateFieldGet(this, _WilsonGL_xrData, "f").baseLayer.framebuffer);
                 if (__classPrivateFieldGet(this, _WilsonGL_xrViewport, "f")) {
@@ -3342,6 +3535,9 @@ export class WilsonGL extends Wilson {
             session.updateRenderState({ baseLayer });
             const refSpace = await session.requestReferenceSpace(REFERENCE_SPACE);
             __classPrivateFieldSet(this, _WilsonGL_xrData, { session, refSpace, baseLayer }, "f");
+            // The frame loop owns the warp from here on, and a canvas preview left applied would
+            // warp draws in onFrameStart.
+            __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setFoveation).call(this, 0, 0, 0);
             __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_applyXRTargetFrameRate).call(this);
             session.addEventListener("visibilitychange", () => {
                 __classPrivateFieldGet(this, _WilsonGL_xrCallbacks, "f").onVisibilityChange(session.visibilityState);
@@ -3396,6 +3592,14 @@ export class WilsonGL extends Wilson {
             this.gl.deleteTexture(__classPrivateFieldGet(this, _WilsonGL_textures, "f")[id].texture);
         }
         __classPrivateFieldSet(this, _WilsonGL_textures, {}, "f");
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_deleteFoveationTargets).call(this);
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_deleteCanvasFoveationTarget).call(this);
+        if (__classPrivateFieldGet(this, _WilsonGL_xrFoveationResolve, "f")) {
+            this.gl.deleteProgram(__classPrivateFieldGet(this, _WilsonGL_xrFoveationResolve, "f").program);
+            this.gl.deleteShader(__classPrivateFieldGet(this, _WilsonGL_xrFoveationResolve, "f").vertexShader);
+            this.gl.deleteShader(__classPrivateFieldGet(this, _WilsonGL_xrFoveationResolve, "f").fragShader);
+        }
+        __classPrivateFieldSet(this, _WilsonGL_xrFoveationResolve, undefined, "f");
         // Delete all framebuffers.
         for (const id in __classPrivateFieldGet(this, _WilsonGL_framebuffers, "f")) {
             this.gl.deleteFramebuffer(__classPrivateFieldGet(this, _WilsonGL_framebuffers, "f")[id]);
@@ -3421,6 +3625,7 @@ export class WilsonGL extends Wilson {
         // Clear uniform references.
         __classPrivateFieldSet(this, _WilsonGL_uniforms, {}, "f");
         __classPrivateFieldSet(this, _WilsonGL_tileUniforms, {}, "f");
+        __classPrivateFieldSet(this, _WilsonGL_foveaUniforms, {}, "f");
         // Lose the WebGL context to free up the context slot.
         const loseContext = this.gl.getExtension("WEBGL_lose_context");
         if (loseContext) {
@@ -3428,7 +3633,7 @@ export class WilsonGL extends Wilson {
         }
     }
 }
-_a = WilsonGL, _WilsonGL_useWebGL2 = new WeakMap(), _WilsonGL_shaderPrograms = new WeakMap(), _WilsonGL_shaderProgramSources = new WeakMap(), _WilsonGL_destroyedGPU = new WeakMap(), _WilsonGL_uniforms = new WeakMap(), _WilsonGL_tileUniforms = new WeakMap(), _WilsonGL_useXRButton = new WeakMap(), _WilsonGL_xrButtonIconPath = new WeakMap(), _WilsonGL_xrButton = new WeakMap(), _WilsonGL_xrButtonImg = new WeakMap(), _WilsonGL_xrButtonText = new WeakMap(), _WilsonGL_xrIsSupportedNow = new WeakMap(), _WilsonGL_renderXRFrame = new WeakMap(), _WilsonGL_xrData = new WeakMap(), _WilsonGL_xrRequiredFeatures = new WeakMap(), _WilsonGL_xrOptionalFeatures = new WeakMap(), _WilsonGL_xrFramebufferScale = new WeakMap(), _WilsonGL_xrTargetFrameRate = new WeakMap(), _WilsonGL_lastXRTime = new WeakMap(), _WilsonGL_enteringXR = new WeakMap(), _WilsonGL_xrFixedFoveation = new WeakMap(), _WilsonGL_xrCallbacks = new WeakMap(), _WilsonGL_xrControllerData = new WeakMap(), _WilsonGL_xrControllerList = new WeakMap(), _WilsonGL_xrViewport = new WeakMap(), _WilsonGL_lastReportedXRAvailability = new WeakMap(), _WilsonGL_onDeviceChange = new WeakMap(), _WilsonGL_onPageFocus = new WeakMap(), _WilsonGL_drawFrameRequestedWhilePending = new WeakMap(), _WilsonGL_numShaders = new WeakMap(), _WilsonGL_currentShaderId = new WeakMap(), _WilsonGL_currentProgram = new WeakMap(), _WilsonGL_parallelCompileSupported = new WeakMap(), _WilsonGL_pendingShaders = new WeakMap(), _WilsonGL_pendingUniforms = new WeakMap(), _WilsonGL_pollPendingShadersScheduled = new WeakMap(), _WilsonGL_gpuTimerExtension = new WeakMap(), _WilsonGL_gpuTimerUsesWebGL2Api = new WeakMap(), _WilsonGL_gpuTimerPool = new WeakMap(), _WilsonGL_gpuTimerPending = new WeakMap(), _WilsonGL_gpuTimerActive = new WeakMap(), _WilsonGL_gpuTimerDepth = new WeakMap(), _WilsonGL_lastGpuFrameTime = new WeakMap(), _WilsonGL_averageGpuFrameTime = new WeakMap(), _WilsonGL_maxPendingGpuTimers = new WeakMap(), _WilsonGL_framebuffers = new WeakMap(), _WilsonGL_textures = new WeakMap(), _WilsonGL_currentFramebufferId = new WeakMap(), _WilsonGL_currentTextureId = new WeakMap(), _WilsonGL_positionBuffers = new WeakMap(), _WilsonGL_shaders = new WeakMap(), _WilsonGL_highResRenderQueue = new WeakMap(), _WilsonGL_onXRFrame = new WeakMap(), _WilsonGL_onXRInputSourcesChange = new WeakMap(), _WilsonGL_onXREnd = new WeakMap(), _WilsonGL_instances = new WeakSet(), _WilsonGL_createXRBaseLayer = function _WilsonGL_createXRBaseLayer(session) {
+_a = WilsonGL, _WilsonGL_useWebGL2 = new WeakMap(), _WilsonGL_shaderPrograms = new WeakMap(), _WilsonGL_shaderProgramSources = new WeakMap(), _WilsonGL_destroyedGPU = new WeakMap(), _WilsonGL_uniforms = new WeakMap(), _WilsonGL_tileUniforms = new WeakMap(), _WilsonGL_foveaUniforms = new WeakMap(), _WilsonGL_positionAttribute = new WeakMap(), _WilsonGL_useXRButton = new WeakMap(), _WilsonGL_xrButtonIconPath = new WeakMap(), _WilsonGL_xrButton = new WeakMap(), _WilsonGL_xrButtonImg = new WeakMap(), _WilsonGL_xrButtonText = new WeakMap(), _WilsonGL_xrIsSupportedNow = new WeakMap(), _WilsonGL_renderXRFrame = new WeakMap(), _WilsonGL_xrData = new WeakMap(), _WilsonGL_xrRequiredFeatures = new WeakMap(), _WilsonGL_xrOptionalFeatures = new WeakMap(), _WilsonGL_xrFramebufferScale = new WeakMap(), _WilsonGL_xrTargetFrameRate = new WeakMap(), _WilsonGL_lastXRTime = new WeakMap(), _WilsonGL_enteringXR = new WeakMap(), _WilsonGL_xrFixedFoveation = new WeakMap(), _WilsonGL_xrSupportsFoveation = new WeakMap(), _WilsonGL_xrFoveation = new WeakMap(), _WilsonGL_xrFoveationResolution = new WeakMap(), _WilsonGL_xrFoveationTargets = new WeakMap(), _WilsonGL_xrFoveationResolve = new WeakMap(), _WilsonGL_xrEyeTarget = new WeakMap(), _WilsonGL_xrFoveaCenter = new WeakMap(), _WilsonGL_xrFoveaStrength = new WeakMap(), _WilsonGL_debugFoveationOnCanvas = new WeakMap(), _WilsonGL_debugFoveationCenter = new WeakMap(), _WilsonGL_canvasFoveationTarget = new WeakMap(), _WilsonGL_xrCallbacks = new WeakMap(), _WilsonGL_xrControllerData = new WeakMap(), _WilsonGL_xrControllerList = new WeakMap(), _WilsonGL_xrViewport = new WeakMap(), _WilsonGL_lastReportedXRAvailability = new WeakMap(), _WilsonGL_onDeviceChange = new WeakMap(), _WilsonGL_onPageFocus = new WeakMap(), _WilsonGL_drawFrameRequestedWhilePending = new WeakMap(), _WilsonGL_numShaders = new WeakMap(), _WilsonGL_currentShaderId = new WeakMap(), _WilsonGL_currentProgram = new WeakMap(), _WilsonGL_parallelCompileSupported = new WeakMap(), _WilsonGL_pendingShaders = new WeakMap(), _WilsonGL_pendingUniforms = new WeakMap(), _WilsonGL_pollPendingShadersScheduled = new WeakMap(), _WilsonGL_gpuTimerExtension = new WeakMap(), _WilsonGL_gpuTimerUsesWebGL2Api = new WeakMap(), _WilsonGL_gpuTimerPool = new WeakMap(), _WilsonGL_gpuTimerPending = new WeakMap(), _WilsonGL_gpuTimerActive = new WeakMap(), _WilsonGL_gpuTimerDepth = new WeakMap(), _WilsonGL_lastGpuFrameTime = new WeakMap(), _WilsonGL_averageGpuFrameTime = new WeakMap(), _WilsonGL_maxPendingGpuTimers = new WeakMap(), _WilsonGL_framebuffers = new WeakMap(), _WilsonGL_textures = new WeakMap(), _WilsonGL_currentFramebufferId = new WeakMap(), _WilsonGL_currentTextureId = new WeakMap(), _WilsonGL_positionBuffers = new WeakMap(), _WilsonGL_shaders = new WeakMap(), _WilsonGL_highResRenderQueue = new WeakMap(), _WilsonGL_onXRFrame = new WeakMap(), _WilsonGL_onXRInputSourcesChange = new WeakMap(), _WilsonGL_onXREnd = new WeakMap(), _WilsonGL_instances = new WeakSet(), _WilsonGL_createXRBaseLayer = function _WilsonGL_createXRBaseLayer(session) {
     const baseLayer = new XRWebGLLayer(session, this.gl, {
         ...XR_LAYER_OPTIONS,
         // Headsets can run in a low-res mode by default for headroom, so the native factor
@@ -3463,7 +3668,7 @@ _a = WilsonGL, _WilsonGL_useWebGL2 = new WeakMap(), _WilsonGL_shaderPrograms = n
     }
     console.log(parts.join("\n"), ...styles);
 }, _WilsonGL_initXR = function _WilsonGL_initXR(options) {
-    var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
+    var _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v;
     __classPrivateFieldSet(this, _WilsonGL_useXRButton, (_b = options === null || options === void 0 ? void 0 : options.useButton) !== null && _b !== void 0 ? _b : false, "f");
     __classPrivateFieldSet(this, _WilsonGL_xrButtonIconPath, (options === null || options === void 0 ? void 0 : options.useButton) ? options.buttonIconPath : undefined, "f");
     __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_initXRButton).call(this);
@@ -3494,6 +3699,12 @@ _a = WilsonGL, _WilsonGL_useWebGL2 = new WeakMap(), _WilsonGL_shaderPrograms = n
     __classPrivateFieldSet(this, _WilsonGL_xrFramebufferScale, (_r = options === null || options === void 0 ? void 0 : options.framebufferScale) !== null && _r !== void 0 ? _r : 1, "f");
     // Foveated rendering defaults to on.
     __classPrivateFieldSet(this, _WilsonGL_xrFixedFoveation, (_s = options === null || options === void 0 ? void 0 : options.fixedFoveation) !== null && _s !== void 0 ? _s : 0.3, "f");
+    // The warp is spliced into every shader of an XR applet so that it can be turned on at any
+    // point, but it does nothing until it is.
+    __classPrivateFieldSet(this, _WilsonGL_xrSupportsFoveation, options !== undefined, "f");
+    this.xrFoveation = (_t = options === null || options === void 0 ? void 0 : options.foveation) !== null && _t !== void 0 ? _t : 0;
+    this.xrFoveationResolution = (_u = options === null || options === void 0 ? void 0 : options.foveationResolution) !== null && _u !== void 0 ? _u : 1;
+    this.debugFoveationOnCanvas = (_v = options === null || options === void 0 ? void 0 : options.debugFoveationOnCanvas) !== null && _v !== void 0 ? _v : false;
     __classPrivateFieldSet(this, _WilsonGL_xrTargetFrameRate, options === null || options === void 0 ? void 0 : options.targetFrameRate, "f");
 }, _WilsonGL_checkXRSupport = function _WilsonGL_checkXRSupport() {
     __classPrivateFieldSet(this, _WilsonGL_xrIsSupportedNow, null, "f");
@@ -3555,6 +3766,15 @@ _a = WilsonGL, _WilsonGL_useWebGL2 = new WeakMap(), _WilsonGL_shaderPrograms = n
             __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setXRButtonLoading).call(this, false);
         });
     }
+}, _WilsonGL_injectFoveation = function _WilsonGL_injectFoveation(source) {
+    const mainMatch = FOVEATION_MAIN.exec(source);
+    if (!FOVEATION_UV_DECLARATION.test(source) || !mainMatch) {
+        return source;
+    }
+    const mainEnd = mainMatch.index + mainMatch[0].length;
+    // Main first, since splicing in the declarations would move it.
+    const withMain = source.slice(0, mainEnd) + FOVEATION_FRAGMENT_MAIN + source.slice(mainEnd);
+    return withMain.replace(FOVEATION_UV_DECLARATION, FOVEATION_FRAGMENT_DECLARATIONS);
 }, _WilsonGL_numPendingShaders_get = function _WilsonGL_numPendingShaders_get() { return Object.keys(__classPrivateFieldGet(this, _WilsonGL_pendingShaders, "f")).length; }, _WilsonGL_shaderReadyNow = function _WilsonGL_shaderReadyNow(id = __classPrivateFieldGet(this, _WilsonGL_currentShaderId, "f")) {
     return __classPrivateFieldGet(this, _WilsonGL_shaderPrograms, "f")[id] !== undefined && __classPrivateFieldGet(this, _WilsonGL_pendingShaders, "f")[id] === undefined;
 }, _WilsonGL_schedulePollPendingShaders = function _WilsonGL_schedulePollPendingShaders() {
@@ -3686,6 +3906,14 @@ _a = WilsonGL, _WilsonGL_useWebGL2 = new WeakMap(), _WilsonGL_shaderPrograms = n
         center: this.gl.getUniformLocation(program, "wilsonUvCenter"),
     };
     __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setTileWindowForProgram).call(this, id, 1, 1, 0, 0);
+    __classPrivateFieldGet(this, _WilsonGL_foveaUniforms, "f")[id] = {
+        center: this.gl.getUniformLocation(program, "wilsonFoveaCenter"),
+        strength: this.gl.getUniformLocation(program, "wilsonFoveaStrength"),
+    };
+    // A shader can finish compiling in the middle of a foveated eye, and it has to draw
+    // with the same warp as everything else in it.
+    __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setFoveationForProgram).call(this, id);
+    __classPrivateFieldSet(this, _WilsonGL_positionAttribute, positionAttribute, "f");
     const positionBuffer = this.gl.createBuffer();
     if (!positionBuffer) {
         throw new Error(`[Wilson] Couldn't create position buffer with id ${id}.`);
@@ -3703,7 +3931,10 @@ _a = WilsonGL, _WilsonGL_useWebGL2 = new WeakMap(), _WilsonGL_shaderPrograms = n
     this.gl.vertexAttribPointer(positionAttribute, 3, this.gl.FLOAT, false, 0, 0);
     // Finalizing can land in the middle of an XR frame, since drawFrame() polls. Resetting
     // to the canvas viewport there would render the eye into the wrong part of the layer.
-    if (__classPrivateFieldGet(this, _WilsonGL_xrViewport, "f")) {
+    if (__classPrivateFieldGet(this, _WilsonGL_xrEyeTarget, "f")) {
+        this.gl.viewport(0, 0, __classPrivateFieldGet(this, _WilsonGL_xrEyeTarget, "f").width, __classPrivateFieldGet(this, _WilsonGL_xrEyeTarget, "f").height);
+    }
+    else if (__classPrivateFieldGet(this, _WilsonGL_xrViewport, "f")) {
         const { x, y, width, height } = __classPrivateFieldGet(this, _WilsonGL_xrViewport, "f");
         this.gl.viewport(x, y, width, height);
     }
@@ -3827,6 +4058,146 @@ _a = WilsonGL, _WilsonGL_useWebGL2 = new WeakMap(), _WilsonGL_shaderPrograms = n
         __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setTileWindowForProgram).call(this, id, scaleX, scaleY, centerX, centerY);
     }
     __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_restoreCurrentProgram).call(this);
+}, _WilsonGL_setFoveationForProgram = function _WilsonGL_setFoveationForProgram(id) {
+    const locations = __classPrivateFieldGet(this, _WilsonGL_foveaUniforms, "f")[id];
+    if (!locations) {
+        return;
+    }
+    if (locations.center) {
+        this.gl.uniform2f(locations.center, __classPrivateFieldGet(this, _WilsonGL_xrFoveaCenter, "f")[0], __classPrivateFieldGet(this, _WilsonGL_xrFoveaCenter, "f")[1]);
+    }
+    if (locations.strength) {
+        this.gl.uniform1f(locations.strength, __classPrivateFieldGet(this, _WilsonGL_xrFoveaStrength, "f"));
+    }
+}, _WilsonGL_setFoveation = function _WilsonGL_setFoveation(centerX, centerY, strength) {
+    __classPrivateFieldSet(this, _WilsonGL_xrFoveaCenter, [centerX, centerY], "f");
+    __classPrivateFieldSet(this, _WilsonGL_xrFoveaStrength, strength, "f");
+    for (const id of Object.keys(__classPrivateFieldGet(this, _WilsonGL_shaderPrograms, "f"))) {
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_useProgram).call(this, __classPrivateFieldGet(this, _WilsonGL_shaderPrograms, "f")[id]);
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setFoveationForProgram).call(this, id);
+    }
+    __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_restoreCurrentProgram).call(this);
+}, _WilsonGL_getFoveationResolve = function _WilsonGL_getFoveationResolve() {
+    var _b, _c, _d;
+    if (__classPrivateFieldGet(this, _WilsonGL_xrFoveationResolve, "f") !== undefined) {
+        return __classPrivateFieldGet(this, _WilsonGL_xrFoveationResolve, "f");
+    }
+    // Nothing has finished compiling yet, so there's no attribute layout to match and nothing
+    // to draw anyway. Not cached, since this resolves itself.
+    if (__classPrivateFieldGet(this, _WilsonGL_positionAttribute, "f") === null) {
+        return null;
+    }
+    const vertexShader = this.gl.createShader(this.gl.VERTEX_SHADER);
+    const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
+    const program = this.gl.createProgram();
+    const fail = (message) => {
+        console.error(`[Wilson] Couldn't build the foveation resolve program, so foveation is disabled. ${message}`);
+        this.gl.deleteShader(vertexShader);
+        this.gl.deleteShader(fragShader);
+        this.gl.deleteProgram(program);
+        __classPrivateFieldSet(this, _WilsonGL_xrFoveationResolve, null, "f");
+        return null;
+    };
+    if (!vertexShader || !fragShader || !program) {
+        return fail("Couldn't create its shaders.");
+    }
+    this.gl.shaderSource(vertexShader, __classPrivateFieldGet(_a, _a, "f", _WilsonGL_vertexShaderSource));
+    this.gl.shaderSource(fragShader, FOVEATION_RESOLVE_SHADER);
+    this.gl.compileShader(vertexShader);
+    this.gl.compileShader(fragShader);
+    this.gl.attachShader(program, vertexShader);
+    this.gl.attachShader(program, fragShader);
+    this.gl.bindAttribLocation(program, __classPrivateFieldGet(this, _WilsonGL_positionAttribute, "f"), "position");
+    this.gl.linkProgram(program);
+    // Blocks until the driver finishes, but it's one small program, built once per instance.
+    if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+        return fail(((_b = this.gl.getShaderInfoLog(vertexShader)) !== null && _b !== void 0 ? _b : "")
+            + ((_c = this.gl.getShaderInfoLog(fragShader)) !== null && _c !== void 0 ? _c : "")
+            + ((_d = this.gl.getProgramInfoLog(program)) !== null && _d !== void 0 ? _d : ""));
+    }
+    __classPrivateFieldSet(this, _WilsonGL_xrFoveationResolve, {
+        program,
+        vertexShader,
+        fragShader,
+        center: this.gl.getUniformLocation(program, "wilsonFoveaCenter"),
+        strength: this.gl.getUniformLocation(program, "wilsonFoveaStrength"),
+    }, "f");
+    return __classPrivateFieldGet(this, _WilsonGL_xrFoveationResolve, "f");
+}, _WilsonGL_sizeFoveationTarget = function _WilsonGL_sizeFoveationTarget(existing, viewportWidth, viewportHeight) {
+    const k = __classPrivateFieldGet(this, _WilsonGL_xrFoveation, "f");
+    const scale = __classPrivateFieldGet(this, _WilsonGL_xrFoveationResolution, "f") * k / Math.sinh(k);
+    const width = Math.max(1, Math.round(viewportWidth * scale));
+    const height = Math.max(1, Math.round(viewportHeight * scale));
+    if (existing && existing.width === width && existing.height === height) {
+        return existing;
+    }
+    if (existing) {
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_deleteFoveationTarget).call(this, existing);
+    }
+    const framebuffer = this.gl.createFramebuffer();
+    const texture = this.gl.createTexture();
+    if (!framebuffer || !texture) {
+        throw new Error("[Wilson] Couldn't create a foveation target.");
+    }
+    this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+    this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, width, height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+    // Linear, since each pixel toward the edges covers several on screen, and point sampling
+    // them would make the periphery blocky and shimmer as the head moves.
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+    this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, texture, 0);
+    __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_rebindCurrentTexture).call(this);
+    return { framebuffer, texture, width, height };
+}, _WilsonGL_deleteFoveationTarget = function _WilsonGL_deleteFoveationTarget(target) {
+    this.gl.deleteFramebuffer(target.framebuffer);
+    this.gl.deleteTexture(target.texture);
+}, _WilsonGL_deleteFoveationTargets = function _WilsonGL_deleteFoveationTargets() {
+    for (const target of __classPrivateFieldGet(this, _WilsonGL_xrFoveationTargets, "f")) {
+        if (target) {
+            __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_deleteFoveationTarget).call(this, target);
+        }
+    }
+    __classPrivateFieldSet(this, _WilsonGL_xrFoveationTargets, [], "f");
+    // Deleting a bound texture reverts the binding to null, so this has to be resynced,
+    // though nothing should have been left bound.
+    __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_rebindCurrentTexture).call(this);
+}, _WilsonGL_deleteCanvasFoveationTarget = function _WilsonGL_deleteCanvasFoveationTarget() {
+    if (__classPrivateFieldGet(this, _WilsonGL_canvasFoveationTarget, "f")) {
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_deleteFoveationTarget).call(this, __classPrivateFieldGet(this, _WilsonGL_canvasFoveationTarget, "f"));
+        __classPrivateFieldSet(this, _WilsonGL_canvasFoveationTarget, null, "f");
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_rebindCurrentTexture).call(this);
+    }
+}, _WilsonGL_applyCanvasFoveation = function _WilsonGL_applyCanvasFoveation() {
+    if (__classPrivateFieldGet(this, _WilsonGL_xrData, "f")) {
+        return;
+    }
+    if (__classPrivateFieldGet(this, _WilsonGL_debugFoveationOnCanvas, "f") && __classPrivateFieldGet(this, _WilsonGL_xrFoveation, "f") > 0) {
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setFoveation).call(this, __classPrivateFieldGet(this, _WilsonGL_debugFoveationCenter, "f")[0], __classPrivateFieldGet(this, _WilsonGL_debugFoveationCenter, "f")[1], __classPrivateFieldGet(this, _WilsonGL_xrFoveation, "f"));
+    }
+    else {
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setFoveation).call(this, 0, 0, 0);
+        __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_deleteCanvasFoveationTarget).call(this);
+    }
+}, _WilsonGL_resolveFoveatedEye = function _WilsonGL_resolveFoveatedEye(resolve, target) {
+    __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_useProgram).call(this, resolve.program);
+    if (resolve.center) {
+        this.gl.uniform2f(resolve.center, __classPrivateFieldGet(this, _WilsonGL_xrFoveaCenter, "f")[0], __classPrivateFieldGet(this, _WilsonGL_xrFoveaCenter, "f")[1]);
+    }
+    if (resolve.strength) {
+        this.gl.uniform1f(resolve.strength, __classPrivateFieldGet(this, _WilsonGL_xrFoveaStrength, "f"));
+    }
+    this.gl.bindTexture(this.gl.TEXTURE_2D, target.texture);
+    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+    __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_rebindCurrentTexture).call(this);
+    __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_restoreCurrentProgram).call(this);
+}, _WilsonGL_rebindCurrentTexture = function _WilsonGL_rebindCurrentTexture() {
+    var _b, _c;
+    this.gl.bindTexture(this.gl.TEXTURE_2D, __classPrivateFieldGet(this, _WilsonGL_currentTextureId, "f") === null
+        ? null
+        : (_c = (_b = __classPrivateFieldGet(this, _WilsonGL_textures, "f")[__classPrivateFieldGet(this, _WilsonGL_currentTextureId, "f")]) === null || _b === void 0 ? void 0 : _b.texture) !== null && _c !== void 0 ? _c : null);
 }, _WilsonGL_queueHighResRender = function _WilsonGL_queueHighResRender(render) {
     // Runs on rejection too -- one caller's failure shouldn't strand everything behind it.
     const result = __classPrivateFieldGet(this, _WilsonGL_highResRenderQueue, "f").then(render, render);
@@ -3997,6 +4368,11 @@ async function _WilsonGL_highResShadersReady(render, shaderId) {
     if (uniformNames.length !== 0) {
         this.setUniforms(uniforms, shaderId);
     }
+    // The canvas preview of foveation would warp each tile around its own middle, and the
+    // export is meant to be the real image anyway.
+    const previousFoveaCenter = __classPrivateFieldGet(this, _WilsonGL_xrFoveaCenter, "f");
+    const previousFoveaStrength = __classPrivateFieldGet(this, _WilsonGL_xrFoveaStrength, "f");
+    __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setFoveation).call(this, 0, 0, 0);
     render({
         framebufferId: HIGH_RES_FRAMEBUFFER_ID,
         width: tileWidth,
@@ -4014,6 +4390,7 @@ async function _WilsonGL_highResShadersReady(render, shaderId) {
         format,
     });
     __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setTileWindow).call(this, 1, 1, 0, 0);
+    __classPrivateFieldGet(this, _WilsonGL_instances, "m", _WilsonGL_setFoveation).call(this, previousFoveaCenter[0], previousFoveaCenter[1], previousFoveaStrength);
     if (uniformNames.length !== 0) {
         this.setUniforms(previousUniforms, shaderId);
     }
@@ -4385,6 +4762,7 @@ _WilsonGL_vertexShaderSource = { value: /* glsl*/ `
 		attribute vec3 position;
 		varying vec2 uv;
 		varying vec2 uvTile;
+		varying vec2 wilsonUvLinear;
 
 		// The window of the image that this draw covers, which is all of it except when
 		// readHighResPixels() is rendering a tile. Keeping it here rather than in the fragment
@@ -4403,5 +4781,9 @@ _WilsonGL_vertexShaderSource = { value: /* glsl*/ `
 			// Always the full -1 to 1 range, so a shader sampling a framebuffer that was drawn
 			// by an earlier pass of the same tile has coordinates that line up with it.
 			uvTile = position.xy;
+
+			// What a foveated fragment shader warps into uv, since the warp isn't linear and
+			// so can't happen here.
+			wilsonUvLinear = position.xy;
 		}
 	` };

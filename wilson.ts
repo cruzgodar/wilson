@@ -4228,6 +4228,79 @@ type WilsonGLXRData = {
 	baseLayer: XRWebGLLayer,
 };
 
+// Foveated rendering draws each eye into a smaller offscreen buffer whose pixels are packed
+// densely at the center of view and sparsely toward the edges, then un-warps it into the layer.
+// Along each axis, a point p in [-1, 1] of that buffer lands on screen at
+// c + sinh(kp) / sinh(k) * (the distance from c to the edge on p's side), where c is the center
+// of view and k is the strength. Relative to the buffer, that's sinh(k) / k times as many
+// pixels per unit of screen at the center and tanh(k) / k at the edges, and sinh has a
+// closed-form inverse for the resolve pass. The 1/2s in sinh cancel, so they're left out.
+//
+// Applets read uv as the point on screen, so the warp has to be applied to uv itself for
+// existing shaders to come out right without knowing about it. A warped varying would just be
+// interpolated linearly again, so it happens per pixel instead: the uv varying becomes a global
+// that main() fills in first thing. Everything is spliced in on the lines it replaces, without
+// adding any, so that compile errors still point at the right line of the applet's source.
+const FOVEATION_UV_DECLARATION = /\bvarying\s+(?:(?:highp|mediump|lowp)\s+)?vec2\s+uv\s*;/;
+const FOVEATION_MAIN = /\bvoid\s+main\s*\(\s*(?:void\s*)?\)\s*\{/;
+
+// The uniforms are explicitly highp because the applet's precision statement might come after
+// the uv declaration, and because uniforms shared with the vertex shader must match its
+// precision exactly.
+const FOVEATION_FRAGMENT_DECLARATIONS = "varying highp vec2 wilsonUvLinear; uniform highp vec2 wilsonUvScale; uniform highp vec2 wilsonUvCenter; uniform highp vec2 wilsonFoveaCenter; uniform highp float wilsonFoveaStrength; highp vec2 uv; highp vec2 wilsonFoveate(highp vec2 p) { if (wilsonFoveaStrength <= 0.0) { return p; } highp vec2 e = exp(wilsonFoveaStrength * p); highp float s = exp(wilsonFoveaStrength); highp vec2 g = (e - 1.0 / e) / (s - 1.0 / s); return wilsonFoveaCenter + g * mix(1.0 + wilsonFoveaCenter, 1.0 - wilsonFoveaCenter, step(0.0, g)); }";
+const FOVEATION_FRAGMENT_MAIN = " uv = wilsonFoveate(wilsonUvLinear) * wilsonUvScale + wilsonUvCenter;";
+
+// Un-warps one eye's buffer into its viewport, using Wilson's own vertex shader so that the
+// position attribute lines up with every other program's. uvTile spans the viewport no matter
+// what the tile window is set to.
+const FOVEATION_RESOLVE_SHADER = /* glsl */`
+	precision highp float;
+
+	varying vec2 uvTile;
+
+	uniform sampler2D wilsonFoveatedImage;
+	uniform vec2 wilsonFoveaCenter;
+	uniform float wilsonFoveaStrength;
+
+	// Written in terms of |x| so that negative inputs don't cancel catastrophically.
+	vec2 asinhStable(vec2 x)
+	{
+		vec2 a = abs(x);
+		return sign(x) * log(a + sqrt(a * a + 1.0));
+	}
+
+	void main(void)
+	{
+		vec2 offset = uvTile - wilsonFoveaCenter;
+		vec2 extent = mix(1.0 + wilsonFoveaCenter, 1.0 - wilsonFoveaCenter, step(0.0, offset));
+
+		float k = wilsonFoveaStrength;
+		float sinhK = 0.5 * (exp(k) - exp(-k));
+		vec2 p = asinhStable(offset / extent * sinhK) / k;
+
+		gl_FragColor = texture2D(wilsonFoveatedImage, p * 0.5 + 0.5);
+	}
+`;
+
+// Below this, the warp's numerator and denominator are both small enough to lose most of their
+// precision, and it's indistinguishable from no warp anyway.
+const MIN_FOVEATION_STRENGTH = 0.01;
+
+type FoveationTarget = {
+	framebuffer: WebGLFramebuffer,
+	texture: WebGLTexture,
+	width: number,
+	height: number,
+};
+
+type FoveationResolve = {
+	program: WebGLProgram,
+	vertexShader: WebGLShader,
+	fragShader: WebGLShader,
+	center: WebGLUniformLocation | null,
+	strength: WebGLUniformLocation | null,
+};
+
 // Only the things that differ between the eyes. Everything that's fixed for the whole frame
 // is handed to onFrameStart instead, which runs once before either eye.
 export type RenderXRFrame = (data: {
@@ -4336,6 +4409,9 @@ export type XROptions = {
 
 	framebufferScale?: number;
 	fixedFoveation?: number;
+	foveation?: number;
+	foveationResolution?: number;
+	debugFoveationOnCanvas?: boolean;
 	targetFrameRate?: number;
 } & XRButtonOptions;
 
@@ -4408,8 +4484,21 @@ export class WilsonGL extends Wilson
 		}
 	} = {};
 
+	// Likewise for foveation, whose uniforms are spliced into the fragment shader rather than
+	// declared by the applet. Both are null for a shader that never declared uv.
+	#foveaUniforms: {
+		[id: ShaderProgramId]: {
+			center: WebGLUniformLocation | null,
+			strength: WebGLUniformLocation | null
+		}
+	} = {};
 
-	
+	// Every program shares the vertex shader, so they all agree on this. The foveation resolve
+	// program is bound to it explicitly so the quad already attached there draws it too.
+	#positionAttribute: number | null = null;
+
+
+
 	#useXRButton: boolean = false;
 	#xrButtonIconPath?: string;
 	#xrButton: HTMLElement | null = null;
@@ -4537,6 +4626,99 @@ export class WilsonGL extends Wilson
 			baseLayer.fixedFoveation = value;
 		}
 	}
+
+	// Only shaders loaded by an instance with XR support get the foveation warp spliced in, so
+	// that applets that never enter XR compile exactly what they wrote.
+	#xrSupportsFoveation: boolean = false;
+
+	#xrFoveation: number = 0;
+
+	get xrFoveation() { return this.#xrFoveation; }
+	set xrFoveation(value: number)
+	{
+		if (!(value >= 0) || !Number.isFinite(value))
+		{
+			if (this.verbose)
+			{
+				console.warn("[Wilson] xrFoveation must be a nonnegative number.");
+			}
+
+			return;
+		}
+
+		// The targets aren't deleted here, since this can be set in the middle of an eye
+		// that's rendering into one; the next frame cleans them up.
+		this.#xrFoveation = value < MIN_FOVEATION_STRENGTH ? 0 : value;
+
+		this.#applyCanvasFoveation();
+	}
+
+	#xrFoveationResolution: number = 1;
+
+	get xrFoveationResolution() { return this.#xrFoveationResolution; }
+	set xrFoveationResolution(value: number)
+	{
+		if (!(value > 0) || !Number.isFinite(value))
+		{
+			if (this.verbose)
+			{
+				console.warn("[Wilson] xrFoveationResolution must be a positive number.");
+			}
+
+			return;
+		}
+
+		// Takes effect on the next eye rendered, which reallocates its target if the size changed.
+		this.#xrFoveationResolution = value;
+	}
+
+	// One per view, reallocated whenever that view's viewport or the foveation settings change
+	// its size.
+	#xrFoveationTargets: (FoveationTarget | undefined)[] = [];
+
+	// Built the first time a foveated frame needs it, and null after it failed to build.
+	#xrFoveationResolve: FoveationResolve | null | undefined = undefined;
+
+	// What useFramebuffer(null) binds while a foveated eye renders, in place of the layer.
+	#xrEyeTarget: FoveationTarget | null = null;
+
+	// The eye's warp, kept so that a shader finishing compilation mid-eye can be brought in line.
+	#xrFoveaCenter: [number, number] = [0, 0];
+	#xrFoveaStrength: number = 0;
+
+	// Previews foveation on the canvas, with the same strength and resolution as in XR, so that
+	// it can be tuned and debugged without a headset.
+	#debugFoveationOnCanvas: boolean = false;
+
+	get debugFoveationOnCanvas() { return this.#debugFoveationOnCanvas; }
+	set debugFoveationOnCanvas(value: boolean)
+	{
+		this.#debugFoveationOnCanvas = value;
+		this.#applyCanvasFoveation();
+	}
+
+	// In uv coordinates, i.e. [-1, 1] on each axis of the canvas with +y up. Outside of XR there's
+	// no frustum to find it from, so it's the middle unless set -- to the mouse position, say, to
+	// stand in for gaze tracking.
+	#debugFoveationCenter: [number, number] = [0, 0];
+
+	get debugFoveationCenter(): [number, number] { return [...this.#debugFoveationCenter]; }
+	set debugFoveationCenter(value: [number, number])
+	{
+		// Clamped just inside the edges, where one side of the warp would have no room at all.
+		this.#debugFoveationCenter = [
+			Math.min(Math.max(value[0], -0.999), 0.999),
+			Math.min(Math.max(value[1], -0.999), 0.999),
+		];
+
+		this.#applyCanvasFoveation();
+	}
+
+	#canvasFoveationTarget: FoveationTarget | null = null;
+
+	// The size of what the current eye actually renders into.
+	get xrEyeWidth() { return this.#xrEyeTarget?.width ?? this.#xrViewport?.width; }
+	get xrEyeHeight() { return this.#xrEyeTarget?.height ?? this.#xrViewport?.height; }
 
 	#xrCallbacks: {
 		onEnter: () => void,
@@ -4743,6 +4925,13 @@ export class WilsonGL extends Wilson
 		// Foveated rendering defaults to on.
 		this.#xrFixedFoveation = options?.fixedFoveation ?? 0.3;
 
+		// The warp is spliced into every shader of an XR applet so that it can be turned on at any
+		// point, but it does nothing until it is.
+		this.#xrSupportsFoveation = options !== undefined;
+		this.xrFoveation = options?.foveation ?? 0;
+		this.xrFoveationResolution = options?.foveationResolution ?? 1;
+		this.debugFoveationOnCanvas = options?.debugFoveationOnCanvas ?? false;
+
 		this.#xrTargetFrameRate = options?.targetFrameRate;
 	}
 
@@ -4881,7 +5070,42 @@ export class WilsonGL extends Wilson
 
 		this.beginGpuTimer();
 
-		this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+		// The canvas preview of foveation has no frame to wrap like XR does, so a draw to the
+		// canvas goes through the warped buffer and is resolved on the spot. Draws to any other
+		// framebuffer are already warped by the uniforms and are sampled in that warped space by
+		// a later pass, so they're left alone.
+		const resolve = (
+			this.#debugFoveationOnCanvas
+			&& this.#xrFoveation > 0
+			&& !this.#xrData
+			&& this.#currentFramebufferId === null
+		) ? this.#getFoveationResolve() : null;
+
+		if (resolve)
+		{
+			const target = this.#sizeFoveationTarget(
+				this.#canvasFoveationTarget,
+				this.canvasWidth,
+				this.canvasHeight
+			);
+
+			this.#canvasFoveationTarget = target;
+
+			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, target.framebuffer);
+			this.gl.viewport(0, 0, target.width, target.height);
+
+			this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
+			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
+			this.gl.viewport(0, 0, this.canvasWidth, this.canvasHeight);
+
+			this.#resolveFoveatedEye(resolve, target);
+		}
+
+		else
+		{
+			this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+		}
 
 		this.endGpuTimer();
 	}
@@ -4904,6 +5128,7 @@ export class WilsonGL extends Wilson
 		attribute vec3 position;
 		varying vec2 uv;
 		varying vec2 uvTile;
+		varying vec2 wilsonUvLinear;
 
 		// The window of the image that this draw covers, which is all of it except when
 		// readHighResPixels() is rendering a tile. Keeping it here rather than in the fragment
@@ -4922,8 +5147,31 @@ export class WilsonGL extends Wilson
 			// Always the full -1 to 1 range, so a shader sampling a framebuffer that was drawn
 			// by an earlier pass of the same tile has coordinates that line up with it.
 			uvTile = position.xy;
+
+			// What a foveated fragment shader warps into uv, since the warp isn't linear and
+			// so can't happen here.
+			wilsonUvLinear = position.xy;
 		}
 	`;
+
+	// Returns the source unchanged if it has nowhere to put the warp: a shader that doesn't
+	// read uv has no use for it.
+	static #injectFoveation(source: string)
+	{
+		const mainMatch = FOVEATION_MAIN.exec(source);
+
+		if (!FOVEATION_UV_DECLARATION.test(source) || !mainMatch)
+		{
+			return source;
+		}
+
+		const mainEnd = mainMatch.index + mainMatch[0].length;
+
+		// Main first, since splicing in the declarations would move it.
+		const withMain = source.slice(0, mainEnd) + FOVEATION_FRAGMENT_MAIN + source.slice(mainEnd);
+
+		return withMain.replace(FOVEATION_UV_DECLARATION, FOVEATION_FRAGMENT_DECLARATIONS);
+	}
 
 	loadShader({
 		id = this.#numShaders.toString(),
@@ -4968,7 +5216,10 @@ export class WilsonGL extends Wilson
 		this.gl.attachShader(shaderProgram, fragShader);
 
 		this.gl.shaderSource(vertexShader, vertexShaderSource);
-		this.gl.shaderSource(fragShader, shader);
+		this.gl.shaderSource(
+			fragShader,
+			this.#xrSupportsFoveation ? WilsonGL.#injectFoveation(shader) : shader
+		);
 
 		this.gl.compileShader(vertexShader);
 		this.gl.compileShader(fragShader);
@@ -5276,6 +5527,17 @@ export class WilsonGL extends Wilson
 
 		this.#setTileWindowForProgram(id, 1, 1, 0, 0);
 
+		this.#foveaUniforms[id] = {
+			center: this.gl.getUniformLocation(program, "wilsonFoveaCenter"),
+			strength: this.gl.getUniformLocation(program, "wilsonFoveaStrength"),
+		};
+
+		// A shader can finish compiling in the middle of a foveated eye, and it has to draw
+		// with the same warp as everything else in it.
+		this.#setFoveationForProgram(id);
+
+		this.#positionAttribute = positionAttribute;
+
 		const positionBuffer = this.gl.createBuffer();
 
 		if (!positionBuffer)
@@ -5300,7 +5562,12 @@ export class WilsonGL extends Wilson
 
 		// Finalizing can land in the middle of an XR frame, since drawFrame() polls. Resetting
 		// to the canvas viewport there would render the eye into the wrong part of the layer.
-		if (this.#xrViewport)
+		if (this.#xrEyeTarget)
+		{
+			this.gl.viewport(0, 0, this.#xrEyeTarget.width, this.#xrEyeTarget.height);
+		}
+
+		else if (this.#xrViewport)
 		{
 			const { x, y, width, height } = this.#xrViewport;
 			this.gl.viewport(x, y, width, height);
@@ -5775,6 +6042,272 @@ export class WilsonGL extends Wilson
 		this.#restoreCurrentProgram();
 	}
 
+	// Assumes the program is already bound, like #setTileWindowForProgram.
+	#setFoveationForProgram(id: ShaderProgramId)
+	{
+		const locations = this.#foveaUniforms[id];
+
+		if (!locations)
+		{
+			return;
+		}
+
+		if (locations.center)
+		{
+			this.gl.uniform2f(locations.center, this.#xrFoveaCenter[0], this.#xrFoveaCenter[1]);
+		}
+
+		if (locations.strength)
+		{
+			this.gl.uniform1f(locations.strength, this.#xrFoveaStrength);
+		}
+	}
+
+	// Every program, for the same reason as #setTileWindow.
+	#setFoveation(centerX: number, centerY: number, strength: number)
+	{
+		this.#xrFoveaCenter = [centerX, centerY];
+		this.#xrFoveaStrength = strength;
+
+		for (const id of Object.keys(this.#shaderPrograms))
+		{
+			this.#useProgram(this.#shaderPrograms[id]);
+			this.#setFoveationForProgram(id);
+		}
+
+		this.#restoreCurrentProgram();
+	}
+
+	// Null if the resolve program can't be built, which is reported once and then leaves every
+	// later frame unfoveated rather than retrying.
+	#getFoveationResolve(): FoveationResolve | null
+	{
+		if (this.#xrFoveationResolve !== undefined)
+		{
+			return this.#xrFoveationResolve;
+		}
+
+		// Nothing has finished compiling yet, so there's no attribute layout to match and nothing
+		// to draw anyway. Not cached, since this resolves itself.
+		if (this.#positionAttribute === null)
+		{
+			return null;
+		}
+
+		const vertexShader = this.gl.createShader(this.gl.VERTEX_SHADER);
+		const fragShader = this.gl.createShader(this.gl.FRAGMENT_SHADER);
+		const program = this.gl.createProgram();
+
+		const fail = (message: string) =>
+		{
+			console.error(`[Wilson] Couldn't build the foveation resolve program, so foveation is disabled. ${message}`);
+
+			this.gl.deleteShader(vertexShader);
+			this.gl.deleteShader(fragShader);
+			this.gl.deleteProgram(program);
+
+			this.#xrFoveationResolve = null;
+			return null;
+		};
+
+		if (!vertexShader || !fragShader || !program)
+		{
+			return fail("Couldn't create its shaders.");
+		}
+
+		this.gl.shaderSource(vertexShader, WilsonGL.#vertexShaderSource);
+		this.gl.shaderSource(fragShader, FOVEATION_RESOLVE_SHADER);
+		this.gl.compileShader(vertexShader);
+		this.gl.compileShader(fragShader);
+
+		this.gl.attachShader(program, vertexShader);
+		this.gl.attachShader(program, fragShader);
+		this.gl.bindAttribLocation(program, this.#positionAttribute, "position");
+		this.gl.linkProgram(program);
+
+		// Blocks until the driver finishes, but it's one small program, built once per instance.
+		if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS))
+		{
+			return fail(
+				(this.gl.getShaderInfoLog(vertexShader) ?? "")
+				+ (this.gl.getShaderInfoLog(fragShader) ?? "")
+				+ (this.gl.getProgramInfoLog(program) ?? "")
+			);
+		}
+
+		this.#xrFoveationResolve = {
+			program,
+			vertexShader,
+			fragShader,
+			center: this.gl.getUniformLocation(program, "wilsonFoveaCenter"),
+			strength: this.gl.getUniformLocation(program, "wilsonFoveaStrength"),
+		};
+
+		return this.#xrFoveationResolve;
+	}
+
+	// Each axis of the target is scaled so that its center has xrFoveationResolution times the
+	// viewport's pixel density, which by the derivative of the warp means shrinking it by
+	// k / sinh(k). Returns the existing target if it's already the right size, and otherwise
+	// deletes it and makes a new one, which the caller has to store in its place.
+	#sizeFoveationTarget(
+		existing: FoveationTarget | undefined | null,
+		viewportWidth: number,
+		viewportHeight: number
+	): FoveationTarget {
+		const k = this.#xrFoveation;
+		const scale = this.#xrFoveationResolution * k / Math.sinh(k);
+
+		const width = Math.max(1, Math.round(viewportWidth * scale));
+		const height = Math.max(1, Math.round(viewportHeight * scale));
+
+		if (existing && existing.width === width && existing.height === height)
+		{
+			return existing;
+		}
+
+		if (existing)
+		{
+			this.#deleteFoveationTarget(existing);
+		}
+
+		const framebuffer = this.gl.createFramebuffer();
+		const texture = this.gl.createTexture();
+
+		if (!framebuffer || !texture)
+		{
+			throw new Error("[Wilson] Couldn't create a foveation target.");
+		}
+
+		this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+
+		this.gl.texImage2D(
+			this.gl.TEXTURE_2D,
+			0,
+			this.gl.RGBA,
+			width,
+			height,
+			0,
+			this.gl.RGBA,
+			this.gl.UNSIGNED_BYTE,
+			null
+		);
+
+		// Linear, since each pixel toward the edges covers several on screen, and point sampling
+		// them would make the periphery blocky and shimmer as the head moves.
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+		this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+
+		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+
+		this.gl.framebufferTexture2D(
+			this.gl.FRAMEBUFFER,
+			this.gl.COLOR_ATTACHMENT0,
+			this.gl.TEXTURE_2D,
+			texture,
+			0
+		);
+
+		this.#rebindCurrentTexture();
+
+		return { framebuffer, texture, width, height };
+	}
+
+	#deleteFoveationTarget(target: FoveationTarget)
+	{
+		this.gl.deleteFramebuffer(target.framebuffer);
+		this.gl.deleteTexture(target.texture);
+	}
+
+	#deleteFoveationTargets()
+	{
+		for (const target of this.#xrFoveationTargets)
+		{
+			if (target)
+			{
+				this.#deleteFoveationTarget(target);
+			}
+		}
+
+		this.#xrFoveationTargets = [];
+
+		// Deleting a bound texture reverts the binding to null, so this has to be resynced,
+		// though nothing should have been left bound.
+		this.#rebindCurrentTexture();
+	}
+
+	#deleteCanvasFoveationTarget()
+	{
+		if (this.#canvasFoveationTarget)
+		{
+			this.#deleteFoveationTarget(this.#canvasFoveationTarget);
+			this.#canvasFoveationTarget = null;
+			this.#rebindCurrentTexture();
+		}
+	}
+
+	// Outside XR, the warp is either the canvas preview or nothing, and it stays applied between
+	// draws, since a frame on the canvas has no boundary for Wilson to set it up at. Inside XR, the
+	// frame loop owns it.
+	#applyCanvasFoveation()
+	{
+		if (this.#xrData)
+		{
+			return;
+		}
+
+		if (this.#debugFoveationOnCanvas && this.#xrFoveation > 0)
+		{
+			this.#setFoveation(
+				this.#debugFoveationCenter[0],
+				this.#debugFoveationCenter[1],
+				this.#xrFoveation
+			);
+		}
+
+		else
+		{
+			this.#setFoveation(0, 0, 0);
+			this.#deleteCanvasFoveationTarget();
+		}
+	}
+
+	// Draws a warped buffer into the framebuffer and viewport that are bound: an eye's viewport
+	// of the layer, or the canvas.
+	#resolveFoveatedEye(resolve: FoveationResolve, target: FoveationTarget)
+	{
+		this.#useProgram(resolve.program);
+
+		if (resolve.center)
+		{
+			this.gl.uniform2f(resolve.center, this.#xrFoveaCenter[0], this.#xrFoveaCenter[1]);
+		}
+
+		if (resolve.strength)
+		{
+			this.gl.uniform1f(resolve.strength, this.#xrFoveaStrength);
+		}
+
+		this.gl.bindTexture(this.gl.TEXTURE_2D, target.texture);
+
+		this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
+		this.#rebindCurrentTexture();
+		this.#restoreCurrentProgram();
+	}
+
+	#rebindCurrentTexture()
+	{
+		this.gl.bindTexture(
+			this.gl.TEXTURE_2D,
+			this.#currentTextureId === null
+				? null
+				: this.#textures[this.#currentTextureId]?.texture ?? null
+		);
+	}
+
 
 
 	#framebuffers: {[id: string]: WebGLFramebuffer} = {};
@@ -5942,6 +6475,15 @@ export class WilsonGL extends Wilson
 
 		if (id === null)
 		{
+			// A foveated eye renders into its warped buffer, which is resolved into the layer
+			// once the eye is done.
+			if (this.#xrEyeTarget)
+			{
+				this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.#xrEyeTarget.framebuffer);
+				this.gl.viewport(0, 0, this.#xrEyeTarget.width, this.#xrEyeTarget.height);
+				return;
+			}
+
 			if (this.#xrData)
 			{
 				this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.#xrData.baseLayer.framebuffer);
@@ -6425,6 +6967,12 @@ export class WilsonGL extends Wilson
 			this.setUniforms(uniforms, shaderId);
 		}
 
+		// The canvas preview of foveation would warp each tile around its own middle, and the
+		// export is meant to be the real image anyway.
+		const previousFoveaCenter = this.#xrFoveaCenter;
+		const previousFoveaStrength = this.#xrFoveaStrength;
+		this.#setFoveation(0, 0, 0);
+
 		render({
 			framebufferId: HIGH_RES_FRAMEBUFFER_ID,
 			width: tileWidth,
@@ -6445,6 +6993,7 @@ export class WilsonGL extends Wilson
 		});
 
 		this.#setTileWindow(1, 1, 0, 0);
+		this.#setFoveation(previousFoveaCenter[0], previousFoveaCenter[1], previousFoveaStrength);
 
 		if (uniformNames.length !== 0)
 		{
@@ -6896,6 +7445,10 @@ export class WilsonGL extends Wilson
 
 			this.#xrData = { session, refSpace, baseLayer };
 
+			// The frame loop owns the warp from here on, and a canvas preview left applied would
+			// warp draws in onFrameStart.
+			this.#setFoveation(0, 0, 0);
+
 			this.#applyXRTargetFrameRate();
 
 			session.addEventListener("visibilitychange", () =>
@@ -7023,6 +7576,15 @@ export class WilsonGL extends Wilson
 			pose
 		});
 
+		// Turning foveation off can happen mid-eye, so its targets are only freed here, where
+		// nothing can be rendering into them.
+		const resolve = this.#xrFoveation > 0 ? this.#getFoveationResolve() : null;
+
+		if (!resolve && this.#xrFoveationTargets.length !== 0)
+		{
+			this.#deleteFoveationTargets();
+		}
+
 		try
 		{
 			// One view per eye (two for stereo VR), sharing the framebuffer via side-by-side viewports.
@@ -7042,8 +7604,41 @@ export class WilsonGL extends Wilson
 				}
 
 				this.#xrViewport = viewport;
-				this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
-		
+
+				let target: FoveationTarget | null = null;
+
+				if (resolve)
+				{
+					target = this.#sizeFoveationTarget(
+						this.#xrFoveationTargets[viewIndex],
+						viewport.width,
+						viewport.height
+					);
+
+					this.#xrFoveationTargets[viewIndex] = target;
+				}
+
+				if (target)
+				{
+					this.#xrEyeTarget = target;
+					this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, target.framebuffer);
+					this.gl.viewport(0, 0, target.width, target.height);
+					this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
+					// The target stands in for the layer, which is framebuffer null.
+					this.#currentFramebufferId = null;
+
+					// The center of view is wherever the eye's forward axis lands, which is
+					// off-center since every eye's frustum is asymmetric.
+					const projection = view.projectionMatrix;
+					this.#setFoveation(-projection[8], -projection[9], this.#xrFoveation);
+				}
+
+				else
+				{
+					this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+				}
+
 				this.#renderXRFrame({
 					projectionMatrix: view.projectionMatrix,
 					cameraToWorld: view.transform.matrix,
@@ -7051,12 +7646,30 @@ export class WilsonGL extends Wilson
 					viewIndex,
 					view,
 				});
+
+				if (resolve && target)
+				{
+					this.#xrEyeTarget = null;
+					this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, baseLayer.framebuffer);
+					this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
+					this.#resolveFoveatedEye(resolve, target);
+				}
 			}
 		}
-		
+
 		finally
 		{
 			this.#xrViewport = null;
+
+			if (resolve)
+			{
+				// Draws outside an eye -- in onFrameStart, say -- aren't warped.
+				this.#xrEyeTarget = null;
+				this.#setFoveation(0, 0, 0);
+
+				this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, baseLayer.framebuffer);
+				this.#currentFramebufferId = null;
+			}
 		}
 	}
 
@@ -7347,6 +7960,12 @@ export class WilsonGL extends Wilson
 		this.#xrControllerData.clear();
 		this.#xrControllerList = [];
 
+		// They're sized to the headset, so there's no use for them until the next session.
+		this.#deleteFoveationTargets();
+
+		// Back to the canvas preview, if there is one.
+		this.#applyCanvasFoveation();
+
 		// This binds the framebuffer directly since useFramebuffer() early-returns
 		// if the ID matches the current one, and both the canvas and the XR framebuffer
 		// use null as their ID.
@@ -7487,6 +8106,18 @@ export class WilsonGL extends Wilson
 		}
 		this.#textures = {};
 
+		this.#deleteFoveationTargets();
+		this.#deleteCanvasFoveationTarget();
+
+		if (this.#xrFoveationResolve)
+		{
+			this.gl.deleteProgram(this.#xrFoveationResolve.program);
+			this.gl.deleteShader(this.#xrFoveationResolve.vertexShader);
+			this.gl.deleteShader(this.#xrFoveationResolve.fragShader);
+		}
+
+		this.#xrFoveationResolve = undefined;
+
 		// Delete all framebuffers.
 		for (const id in this.#framebuffers)
 		{
@@ -7520,6 +8151,7 @@ export class WilsonGL extends Wilson
 		// Clear uniform references.
 		this.#uniforms = {};
 		this.#tileUniforms = {};
+		this.#foveaUniforms = {};
 
 		// Lose the WebGL context to free up the context slot.
 		const loseContext = this.gl.getExtension("WEBGL_lose_context");

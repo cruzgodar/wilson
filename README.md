@@ -226,10 +226,35 @@ As with fullscreen, Wilson provides stock UI for entering XR. Set `useButton: tr
 
 When an XR session begins, Wilson pauses its own animation frame loop and drives rendering from the headset's frame loop instead. If an applet runs its own `requestAnimationFrame` loop, **stop it in `onEnter` and restart it in `onExit`**. Anything that happens once per frame rather than once per eye — polling controllers, moving the camera velocity, setting uniforms that are the same for both eyes, etc. — should go in the `onFrameStart` callback, which is called once per frame, before either eye is rendered, with the whole framebuffer bound. The `renderFrame` callback should set the per-eye uniforms and draw the frame (presumably using `wilson.drawFrame()`).
 
-Rendering two eyes at a headset's native resolution is *substantially* more expensive than rendering one canvas. Wilson provides three ways to buy back frame time.
+Rendering two eyes at a headset's native resolution is *substantially* more expensive than rendering one canvas. Wilson provides four ways to buy back frame time.
 - `targetFrameRate` in `xrOptions` lowers the display's refresh rate, which lengthens the budget for every frame without reducing image quality.
 - `fixedFoveation` reduces resolution toward the edges of the view, where the headset's lenses blur it anyway. It defaults to `0.3`, but it is typically unavailable when a headset is tethered to a computer, so it should not be relied upon.
 - `framebufferScale` is a positive number and scales the framebuffer the session renders into. It is widely available, and setting `wilson.xrFramebufferScale` allows changing it during a session. However, changing it requires rebuilding the framebuffer, which can cost a few frames. Appropriate UI for changing it is a slider with a small number of steps.
+- `foveation` is Wilson's own foveated rendering, which works on every headset, tethered or not. Each eye is rendered into a smaller buffer whose pixels are packed densely at the center of view and sparsely toward the edges, then stretched back out into the headset's framebuffer. It is off by default; see below.
+
+#### Foveated Rendering
+
+Setting `foveation` in `xrOptions` (or `wilson.xrFoveation` at any time) to a positive number turns on Wilson's foveated rendering, and the number is its strength. Along each axis, the center of view keeps `foveationResolution` times the headset's pixel density (`1` by default), while the edges get `foveationResolution / cosh(foveation)` of it, and the number of pixels actually shaded is `(foveationResolution * foveation / sinh(foveation))^2` of the full amount:
+
+| `foveation` | Edge resolution | Pixels shaded |
+| --- | --- | --- |
+| `1` | 65% | 72% |
+| `1.5` | 43% | 50% |
+| `2` | 27% | 30% |
+| `2.5` | 16% | 17% |
+
+The center of view is wherever each eye's forward direction lands, which is not the middle of its viewport. WebXR doesn't expose eye tracking, so the center doesn't follow the user's gaze; in practice, `1.5` to `2` is hard to notice in a headset, since lenses already blur the edges of the view.
+
+Foveation works by warping `uv`, so shaders don't need to change, provided that they get their position on screen from a `varying vec2 uv` declaration and the projection matrix. In an applet with `xrOptions`, Wilson rewrites every fragment shader that declares `uv` so that it holds the warped position, computed per pixel (compile errors still report the correct line numbers). Outside an XR session, and in an XR session with foveation off, `uv` is exactly what it would otherwise be. A few things do need care:
+- A shader that uses `gl_FragCoord` to find its position on screen won't be warped. Use `uv` instead.
+- Since `uv` is no longer linear in screen space, `fwidth(uv)` and the other derivatives of it report how much of the screen each pixel actually covers, which grows toward the edges. A ray marcher can scale its hit tolerance or step budget by it to make the periphery cheaper still.
+- Multi-pass shaders keep working: framebuffers rendered and then sampled with `uvTile` in the same eye are in the same warped space. Size them to `wilson.xrEyeWidth` by `wilson.xrEyeHeight` rather than the headset's default, which is the whole two-eye framebuffer, and recreate them when those change.
+- `wilson.xrViewport` is still the eye's viewport in the headset's framebuffer, but while foveation is on, an eye actually renders into a buffer of size `xrEyeWidth` by `xrEyeHeight`, and `useFramebuffer(null)` binds that buffer instead.
+- Draws in `onFrameStart` are never warped.
+
+Foveation and `fixedFoveation` stack, so on headsets that support the latter, it is reasonable to leave it on.
+
+To test and tune foveation without a headset, set `debugFoveationOnCanvas: true` in `xrOptions` (or `wilson.debugFoveationOnCanvas` at any time). Outside of an XR session, every `drawFrame()` to the canvas is then foveated with the same `foveation` and `foveationResolution` it would have in a headset, so an applet's shaders and multi-pass setup can be checked on a monitor. There is no frustum on the canvas to center the warp on, so it is centered at `wilson.debugFoveationCenter`, which is `[0, 0]` by default and uses the same coordinates as `uv`. Setting it to the mouse position from a `pointermove` listener (and redrawing) is a decent stand-in for eye tracking. High-res renders (`readHighResPixels` and `downloadHighResFrame`) are never foveated.
 
 WebXR allows scaling the viewport within the framebuffer instead of rebuilding the framebuffer itself, but many headsets ignore it, particularly when tethered, so Wilson always renders each eye into its full viewport.
 
@@ -352,7 +377,7 @@ The above guide, along with the example project, are a great way to get started 
 
 All of these live inside `xrOptions` in a WilsonGL instance's options object. Only `renderFrame` is required.
 
-- `renderFrame: ({ projectionMatrix, cameraToWorld, eye, viewIndex, view }) => void`: a function called once per eye, per frame, with the headset's framebuffer bound and the viewport set for that eye. Its argument holds only what differs between the eyes. Use this callback only to set the per-eye uniforms and draw the scene, since it will typically be called multiple times per frame. Use `onFrameStart` for everything that needs to update once per frame. The arguments are:
+- `renderFrame: ({ projectionMatrix, cameraToWorld, eye, viewIndex, view }) => void`: a function called once per eye, per frame, with the headset's framebuffer bound and the viewport set for that eye (or that eye's warped buffer, when `foveation` is on). Its argument holds only what differs between the eyes. Use this callback only to set the per-eye uniforms and draw the scene, since it will typically be called multiple times per frame. Use `onFrameStart` for everything that needs to update once per frame. The arguments are:
 	- `projectionMatrix`: a `Float32Array` containing that eye's projection matrix, in column-major order. WebXR's per-eye frusta are off-axis, so the entries determining the center of the frustum (`[2][0]` and `[2][1]` in GLSL) are not zero, and recovering a ray direction from a point `(u, v)` in normalized device coordinates means computing `((u + p[2][0]) / p[0][0], (v + p[2][1]) / p[1][1], -1.0)`.
 	- `cameraToWorld`: a `Float32Array` containing the transform from that eye's space to the reference space, in column-major order. Its translation column is the eye's position, and its rotation applied to an eye-space ray gives that ray in the reference space.
 	- `eye`: a string, either `"left"`, `"right"`, or `"none"`.
@@ -375,6 +400,9 @@ All of these live inside `xrOptions` in a WilsonGL instance's options object. On
 - `targetFrameRate`: a number for the display refresh rate to request, in Hz. Wilson picks the closest rate the headset actually supports. If unspecified, the headset's default is used. Can be changed during a session by setting `wilson.xrTargetFrameRate`.
 - `fixedFoveation`: a number in `[0, 1]` for how aggressively to reduce resolution toward the edges of the view. Defaults to `0.3`. Headsets that don't support foveation ignore it. Can be changed during a session by setting `wilson.xrFixedFoveation`.
 - `framebufferScale`: a positive number that scales the framebuffer allocated for the session, relative to the headset's native resolution. Defaults to `1`, which renders every pixel the display has. Can be changed during a session by setting `wilson.xrFramebufferScale`.
+- `foveation`: a nonnegative number for the strength of Wilson's own foveated rendering, described in the WebXR section above. Defaults to `0`, which turns it off. Typical values are between `1` and `2.5`. Can be changed at any time by setting `wilson.xrFoveation`.
+- `debugFoveationOnCanvas`: a boolean for whether to apply `foveation` to draws to the canvas outside of an XR session, for testing without a headset. Defaults to `false`. Can be changed at any time by setting `wilson.debugFoveationOnCanvas`.
+- `foveationResolution`: a positive number for the pixel density at the center of view when `foveation` is on, relative to the headset's framebuffer. Defaults to `1`. Values slightly above `1` offset the softening from stretching the image back out. Can be changed at any time by setting `wilson.xrFoveationResolution`.
 - `useButton: boolean`: a boolean for whether to show a button that enters XR when clicked. Defaults to `false`. The button is shown only when a headset is available.
 - `buttonIconPath: string`: a string for the path to the XR button image. Required (and only allowed) if `useButton` is `true`.
 
@@ -468,9 +496,14 @@ All of these are fields and methods available on WilsonGL when `xrOptions` has b
 - `inXR`: a boolean for whether a session is currently active. Readonly; use `enterXR` and `exitXR` to change it.
 - `xrFramebufferWidth`, `xrFramebufferHeight`: the dimensions of the headset's framebuffer, which holds both eyes side by side. Readonly, and constant for a session unless `xrFramebufferScale` is changed.
 - `xrViewport`: the `XRViewport` the eye currently being rendered draws into, containing `x`, `y`, `width`, and `height` in pixels within the headset's framebuffer. Readonly, and `null` outside of a `renderFrame` call.
+- `xrEyeWidth`, `xrEyeHeight`: the dimensions of what the current eye actually renders into: the size of its viewport, or of its smaller warped buffer when `xrFoveation` is on. Readonly, and `undefined` outside of a `renderFrame` call.
 - `xrSession`, `xrRefSpace`: the underlying `XRSession` and `XRReferenceSpace`, or `undefined` outside a session. Readonly.
 - `xrFramebufferScale`: a positive number scaling the framebuffer the session renders into, relative to the headset's native resolution. Can be changed dynamically, but each change rebuilds the framebuffer and typically drops a frame or two, so it's meant for a handful of coarse quality steps rather than per-frame adaptation. The new size doesn't take effect immediately: the change lands at the start of a later frame, and `xrFramebufferWidth` and `xrFramebufferHeight` keep reporting the old size until it does, so applets with their own framebuffers should recreate them when those dimensions change rather than when the scale is set. Setting it to a value it already has does nothing, as does setting it to a nonpositive one.
 - `xrFixedFoveation`: a number in `[0, 1]` for how aggressively resolution is reduced toward the edges of the view. Can be changed dynamically. Reading it during a session returns the value the headset actually applied, which is `undefined` if it doesn't support foveation; outside a session, it returns the value that was set.
+- `xrFoveation`: the strength of Wilson's own foveated rendering, with `0` meaning off. Can be changed dynamically, taking effect on the next frame. Setting it to a negative number does nothing.
+- `xrFoveationResolution`: the pixel density at the center of view when foveation is on, relative to the headset's framebuffer. Can be changed dynamically, taking effect on the next eye rendered. Setting it to a nonpositive number does nothing.
+- `debugFoveationOnCanvas`: whether `xrFoveation` is also applied to draws to the canvas outside of an XR session. Can be changed dynamically, and takes effect on the next `drawFrame()`.
+- `debugFoveationCenter`: an `[x, y]` pair for the center of view of the canvas preview of foveation, in the same coordinates as `uv`: `[-1, 1]` along each axis of the canvas, with `+y` up. Defaults to `[0, 0]`. Values are clamped to just inside the edges. Can be changed dynamically, and takes effect on the next `drawFrame()`.
 - `xrTargetFrameRate`: the display refresh rate requested, in Hz. Can be changed dynamically. Wilson picks the closest rate the headset supports, so this may not match `xrFrameRate`.
 - `xrFrameRate`: the display refresh rate currently in use, in Hz. Readonly; use `xrTargetFrameRate` to change it.
 - `xrSupportedFrameRates`: a `Float32Array` of the refresh rates the headset supports, or `undefined` if it doesn't allow changing them. Readonly.
