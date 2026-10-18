@@ -243,14 +243,16 @@ Setting `foveation` in `xrOptions` (or `wilson.xrFoveation` at any time) to a po
 | `2` | 27% | 30% |
 | `2.5` | 16% | 17% |
 
-The center of view is wherever each eye's forward direction lands, which is not the middle of its viewport. WebXR doesn't expose eye tracking, so the center doesn't follow the user's gaze; in practice, `1.5` to `2` is hard to notice in a headset, since lenses already blur the edges of the view.
+The center of view is wherever each eye's forward direction lands, which is not the middle of its viewport. WebXR doesn't expose eye tracking, so the center doesn't follow the user's gaze; in practice, start with `2` and tune the value from there.
 
-Foveation works by warping `uv`, so shaders don't need to change, provided that they get their position on screen from a `varying vec2 uv` declaration and the projection matrix. In an applet with `xrOptions`, Wilson rewrites every fragment shader that declares `uv` so that it holds the warped position, computed per pixel (compile errors still report the correct line numbers). Outside an XR session, and in an XR session with foveation off, `uv` is exactly what it would otherwise be. A few things do need care:
+Foveation works by warping `uv`, so your shaders don't need to change, provided that they get their position on screen from a `varying vec2 uv` declaration and the projection matrix. Wilson rewrites every fragment shader that declares `uv` so that it holds the warped position, computed per pixel (compile errors still report the correct line numbers). With foveation off, `uv` is exactly what it would otherwise be. A few things do need care:
 - A shader that uses `gl_FragCoord` to find its position on screen won't be warped. Use `uv` instead.
-- Since `uv` is no longer linear in screen space, `fwidth(uv)` and the other derivatives of it report how much of the screen each pixel actually covers, which grows toward the edges. A ray marcher can scale its hit tolerance or step budget by it to make the periphery cheaper still.
+- Since `uv` is no longer linear in screen space, each pixel covers more of the view toward the edges. Anything sized to a pixel (a hit tolerance, a cone, a level of detail) should be measured per pixel rather than assumed constant, using `wilsonUv` below. `fwidth(uv)` gives a rougher estimate.
 - Multi-pass shaders keep working: framebuffers rendered and then sampled with `uvTile` in the same eye are in the same warped space. Size them to `wilson.xrEyeWidth` by `wilson.xrEyeHeight` rather than the headset's default, which is the whole two-eye framebuffer, and recreate them when those change.
 - `wilson.xrViewport` is still the eye's viewport in the headset's framebuffer, but while foveation is on, an eye actually renders into a buffer of size `xrEyeWidth` by `xrEyeHeight`, and `useFramebuffer(null)` binds that buffer instead.
 - Draws in `onFrameStart` are never warped.
+
+Every fragment shader that declares `uv` can also call `vec2 wilsonUv(vec2 p)`, which maps a point `p` of the framebuffer being drawn (in `[-1, 1]` along each axis, like `uvTile`) to the `uv` it has: the foveation warp, if any, and then the window of a high-res tile, if any. The current pixel's position is `wilsonUvLinear`, so `uv` is always exactly `wilsonUv(wilsonUvLinear)`, and a pixel's neighbors are `2.0 / resolution` away from it and its corners half that, where `resolution` is the size of the framebuffer being drawn (`xrEyeWidth` by `xrEyeHeight` for an eye). Both are available with or without XR, so code using them doesn't need a separate path.
 
 Foveation and `fixedFoveation` stack, so on headsets that support the latter, it is reasonable to leave it on.
 
@@ -462,7 +464,7 @@ All of these live inside `xrOptions` in a WilsonGL instance's options object. On
 ### WilsonGL Fields and Methods
 
 - `gl`: the WebGL or WebGL2 context.
-- `drawFrame()`: draws a frame with the current shader program.
+- `drawFrame()`: draws a frame with the current shader program. If that shader failed to compile, nothing is drawn (with a warning, if `verbose` is on), rather than drawing with whichever program was used last.
 - `loadShader({ id?: string, shader: string, uniforms?: UniformInitializers, use?: boolean })`: loads a new shader program **and sets it as the current one**, unless `use` is `false`, in which case the current shader is left alone. If no ID is specified, it defaults to a serialized number; this is only recommended if you don't plan to reuse prior shaders. See `setUniforms` for more information on `UniformInitializers`.
 - `shaderReady(id?: string)`: returns a promise that resolves when the given shader has finished compiling.
 - `allShaderReady()`: returns a promise that resolves when all loaded shaders have finished compiling.

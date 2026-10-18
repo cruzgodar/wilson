@@ -4241,14 +4241,20 @@ type WilsonGLXRData = {
 // interpolated linearly again, so it happens per pixel instead: the uv varying becomes a global
 // that main() fills in first thing. Everything is spliced in on the lines it replaces, without
 // adding any, so that compile errors still point at the right line of the applet's source.
+//
+// The mapping itself is exposed to shaders as wilsonUv(), which takes a point of the buffer
+// being drawn (wilsonUvLinear is the current pixel's) to the uv it has, so that shaders can find
+// where nearby pixels land -- to size a cone that covers a pixel, for instance. It's spliced into
+// every shader that declares uv, with or without XR, so that code calling it compiles everywhere;
+// without foveation it's the identity, followed by the tile window like uv always has been.
 const FOVEATION_UV_DECLARATION = /\bvarying\s+(?:(?:highp|mediump|lowp)\s+)?vec2\s+uv\s*;/;
 const FOVEATION_MAIN = /\bvoid\s+main\s*\(\s*(?:void\s*)?\)\s*\{/;
 
 // The uniforms are explicitly highp because the applet's precision statement might come after
 // the uv declaration, and because uniforms shared with the vertex shader must match its
 // precision exactly.
-const FOVEATION_FRAGMENT_DECLARATIONS = "varying highp vec2 wilsonUvLinear; uniform highp vec2 wilsonUvScale; uniform highp vec2 wilsonUvCenter; uniform highp vec2 wilsonFoveaCenter; uniform highp float wilsonFoveaStrength; highp vec2 uv; highp vec2 wilsonFoveate(highp vec2 p) { if (wilsonFoveaStrength <= 0.0) { return p; } highp vec2 e = exp(wilsonFoveaStrength * p); highp float s = exp(wilsonFoveaStrength); highp vec2 g = (e - 1.0 / e) / (s - 1.0 / s); return wilsonFoveaCenter + g * mix(1.0 + wilsonFoveaCenter, 1.0 - wilsonFoveaCenter, step(0.0, g)); }";
-const FOVEATION_FRAGMENT_MAIN = " uv = wilsonFoveate(wilsonUvLinear) * wilsonUvScale + wilsonUvCenter;";
+const FOVEATION_FRAGMENT_DECLARATIONS = "varying highp vec2 wilsonUvLinear; uniform highp vec2 wilsonUvScale; uniform highp vec2 wilsonUvCenter; uniform highp vec2 wilsonFoveaCenter; uniform highp float wilsonFoveaStrength; highp vec2 uv; highp vec2 wilsonUv(highp vec2 p) { if (wilsonFoveaStrength > 0.0) { highp vec2 e = exp(wilsonFoveaStrength * p); highp float s = exp(wilsonFoveaStrength); highp vec2 g = (e - 1.0 / e) / (s - 1.0 / s); p = wilsonFoveaCenter + g * mix(1.0 + wilsonFoveaCenter, 1.0 - wilsonFoveaCenter, step(0.0, g)); } return p * wilsonUvScale + wilsonUvCenter; }";
+const FOVEATION_FRAGMENT_MAIN = " uv = wilsonUv(wilsonUvLinear);";
 
 // Un-warps one eye's buffer into its viewport, using Wilson's own vertex shader so that the
 // position attribute lines up with every other program's. uvTile spans the viewport no matter
@@ -4627,10 +4633,6 @@ export class WilsonGL extends Wilson
 		}
 	}
 
-	// Only shaders loaded by an instance with XR support get the foveation warp spliced in, so
-	// that applets that never enter XR compile exactly what they wrote.
-	#xrSupportsFoveation: boolean = false;
-
 	#xrFoveation: number = 0;
 
 	get xrFoveation() { return this.#xrFoveation; }
@@ -4925,9 +4927,6 @@ export class WilsonGL extends Wilson
 		// Foveated rendering defaults to on.
 		this.#xrFixedFoveation = options?.fixedFoveation ?? 0.3;
 
-		// The warp is spliced into every shader of an XR applet so that it can be turned on at any
-		// point, but it does nothing until it is.
-		this.#xrSupportsFoveation = options !== undefined;
 		this.xrFoveation = options?.foveation ?? 0;
 		this.xrFoveationResolution = options?.foveationResolution ?? 1;
 		this.debugFoveationOnCanvas = options?.debugFoveationOnCanvas ?? false;
@@ -5054,6 +5053,10 @@ export class WilsonGL extends Wilson
 	// only draws when something changes would drop its one and only draw and stay blank.
 	#drawFrameRequestedWhilePending: boolean = false;
 
+	// So that skipping a draw for a shader that failed to compile is reported once per shader
+	// rather than every frame.
+	#warnedAboutMissingPrograms: Set<ShaderProgramId> = new Set();
+
 	drawFrame()
 	{
 		// A shader that's still linking has no program to draw with.
@@ -5066,6 +5069,20 @@ export class WilsonGL extends Wilson
 				this.#drawFrameRequestedWhilePending = true;
 				return;
 			}
+		}
+
+		// A shader that failed to compile has no program either, and drawing anyway would use
+		// whichever one happened to be bound last -- output that looks plausible enough to hide
+		// the failure. Its compile error was already reported when it failed.
+		if (!this.#shaderPrograms[this.#currentShaderId])
+		{
+			if (this.verbose && !this.#warnedAboutMissingPrograms.has(this.#currentShaderId))
+			{
+				this.#warnedAboutMissingPrograms.add(this.#currentShaderId);
+				console.warn(`[Wilson] Skipped drawing with the shader with id ${this.#currentShaderId}, since it failed to compile.`);
+			}
+
+			return;
 		}
 
 		this.beginGpuTimer();
@@ -5155,7 +5172,7 @@ export class WilsonGL extends Wilson
 	`;
 
 	// Returns the source unchanged if it has nowhere to put the warp: a shader that doesn't
-	// read uv has no use for it.
+	// read uv has no use for it, or for wilsonUv.
 	static #injectFoveation(source: string)
 	{
 		const mainMatch = FOVEATION_MAIN.exec(source);
@@ -5216,10 +5233,7 @@ export class WilsonGL extends Wilson
 		this.gl.attachShader(shaderProgram, fragShader);
 
 		this.gl.shaderSource(vertexShader, vertexShaderSource);
-		this.gl.shaderSource(
-			fragShader,
-			this.#xrSupportsFoveation ? WilsonGL.#injectFoveation(shader) : shader
-		);
+		this.gl.shaderSource(fragShader, WilsonGL.#injectFoveation(shader));
 
 		this.gl.compileShader(vertexShader);
 		this.gl.compileShader(fragShader);
@@ -5515,6 +5529,9 @@ export class WilsonGL extends Wilson
 
 		this.#shaderPrograms[id] = program;
 		this.#shaders.push(vertexShader, fragShader);
+
+		// A fixed shader that fails again deserves to be reported again.
+		this.#warnedAboutMissingPrograms.delete(id);
 
 		this.#useProgram(program);
 
