@@ -4414,7 +4414,6 @@ export type XROptions = {
 	optionalFeatures?: string[],
 
 	framebufferScale?: number;
-	fixedFoveation?: number;
 	foveation?: number;
 	foveationResolution?: number;
 	debugFoveationOnCanvas?: boolean;
@@ -4573,9 +4572,10 @@ export class WilsonGL extends Wilson
 				* this.#xrFramebufferScale
 		});
 
-		// Foveation is a property of the layer, so a replacement starts at the runtime's default
-		// instead of inheriting what the layer it's replacing had.
-		baseLayer.fixedFoveation = this.#xrFixedFoveation;
+		// Wilson does its own foveation, so the runtime's is turned off rather than left at a
+		// default that varies by browser and would stack with it. It's a property of the layer,
+		// so every replacement needs it too.
+		baseLayer.fixedFoveation = 0;
 
 		return baseLayer;
 	}
@@ -4604,35 +4604,6 @@ export class WilsonGL extends Wilson
 	get xrFramebufferWidth() { return this.#xrData?.baseLayer.framebufferWidth; }
 	get xrFramebufferHeight() { return this.#xrData?.baseLayer.framebufferHeight; }
 	
-	#xrFixedFoveation: number | undefined;
-
-	get xrFixedFoveation()
-	{
-		// When in an XR session, return the actual foveation value; it may be undefined if
-		// the headset doesn't support it. Outside a session, the base layer doesn't exist,
-		// so return the value that was passed in, if any.
-		if (this.#xrData)
-		{
-			// WebXR declares fixedFoveation as nullable, but the WebXR type is number | undefined,
-			// so this normalizes null away.
-			return this.#xrData.baseLayer.fixedFoveation ?? undefined;
-		}
-
-		return this.#xrFixedFoveation;
-	}
-
-	set xrFixedFoveation(value: number | undefined)
-	{
-		this.#xrFixedFoveation = value;
-
-		const baseLayer = this.#xrData?.baseLayer;
-
-		if (baseLayer)
-		{
-			baseLayer.fixedFoveation = value;
-		}
-	}
-
 	#xrFoveation: number = 0;
 
 	get xrFoveation() { return this.#xrFoveation; }
@@ -4923,9 +4894,6 @@ export class WilsonGL extends Wilson
 
 
 		this.#xrFramebufferScale = options?.framebufferScale ?? 1;
-
-		// Foveated rendering defaults to on.
-		this.#xrFixedFoveation = options?.fixedFoveation ?? 0.3;
 
 		this.xrFoveation = options?.foveation ?? 0;
 		this.xrFoveationResolution = options?.foveationResolution ?? 1;
