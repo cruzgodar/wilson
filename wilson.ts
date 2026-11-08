@@ -3690,21 +3690,15 @@ class Wilson
 		iOS Safari tints its status bar and toolbar from fixed elements that span the
 		screen, and it keeps that tint after the fullscreen container stops being fixed,
 		no matter what the page background is. It only recalculates once another opaque
-		one comes and goes in front of the page, so this adds one in the page's own color
-		for the caller to remove.
+		one comes and goes in front of the page, so this adds one for the caller to remove.
+		Lightening by black doesn't change a single pixel, so it's invisible despite being
+		on top of everything.
 	*/
 	#addBrowserBarTintElement()
 	{
-		const transparent = "rgba(0, 0, 0, 0)";
-		const htmlColor = getComputedStyle(document.documentElement).backgroundColor;
-		const bodyColor = getComputedStyle(document.body).backgroundColor;
-
 		const element = document.createElement("div");
 
-		element.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100%; z-index: 1000; pointer-events: none;";
-		element.style.backgroundColor = htmlColor !== transparent
-			? htmlColor
-			: (bodyColor !== transparent ? bodyColor : "rgb(255, 255, 255)");
+		element.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100%; z-index: 1000; pointer-events: none; background-color: rgb(0, 0, 0); mix-blend-mode: lighten;";
 
 		document.body.appendChild(element);
 

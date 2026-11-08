@@ -2377,14 +2377,8 @@ _a = Wilson, _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMa
     document.head.appendChild(styleElement);
     return styleElement;
 }, _Wilson_addBrowserBarTintElement = function _Wilson_addBrowserBarTintElement() {
-    const transparent = "rgba(0, 0, 0, 0)";
-    const htmlColor = getComputedStyle(document.documentElement).backgroundColor;
-    const bodyColor = getComputedStyle(document.body).backgroundColor;
     const element = document.createElement("div");
-    element.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100%; z-index: 1000; pointer-events: none;";
-    element.style.backgroundColor = htmlColor !== transparent
-        ? htmlColor
-        : (bodyColor !== transparent ? bodyColor : "rgb(255, 255, 255)");
+    element.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100%; z-index: 1000; pointer-events: none; background-color: rgb(0, 0, 0); mix-blend-mode: lighten;";
     document.body.appendChild(element);
     return element;
 }, _Wilson_refreshBrowserBarTint = function _Wilson_refreshBrowserBarTint() {
