@@ -2352,6 +2352,9 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     document.head.appendChild(styleElement);
     return styleElement;
 }, _Wilson_refreshBrowserBarTint = function _Wilson_refreshBrowserBarTint() {
+    if (!CSS.supports("-webkit-touch-callout", "none")) {
+        return;
+    }
     const transparent = "rgba(0, 0, 0, 0)";
     const htmlColor = getComputedStyle(document.documentElement).backgroundColor;
     const bodyColor = getComputedStyle(document.body).backgroundColor;

@@ -3679,6 +3679,11 @@ class Wilson
 	*/
 	#refreshBrowserBarTint()
 	{
+		if (!CSS.supports("-webkit-touch-callout", "none"))
+		{
+			return;
+		}
+
 		const transparent = "rgba(0, 0, 0, 0)";
 		const htmlColor = getComputedStyle(document.documentElement).backgroundColor;
 		const bodyColor = getComputedStyle(document.body).backgroundColor;
