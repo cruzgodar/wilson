@@ -343,6 +343,7 @@ class Wilson
 	beforeSwitchFullscreen: (isFullscreen: boolean) => void;
 	onSwitchFullscreen: (isFullscreen: boolean) => void;
 	#fullscreenOldScroll: number = 0;
+	#fullscreenOldHtmlBackground?: string;
 	#fullscreenCanvasRect: DOMRect = new DOMRect();
 	#fullscreenInitialWindowInnerWidth: number = window.innerWidth;
 	#fullscreenInitialWindowInnerHeight: number = window.innerHeight;
@@ -2941,6 +2942,8 @@ class Wilson
 			this.#oldMetaThemeColor = this.#metaThemeColorElement.getAttribute("content");
 		}
 
+		this.#fullscreenOldHtmlBackground = document.documentElement.style.background;
+
 		
 		this.#canvasOldWidth = this.#canvasWidth;
 
@@ -2969,6 +2972,8 @@ class Wilson
 		{
 			this.#metaThemeColorElement.setAttribute("content", "#000000");
 		}
+
+		document.documentElement.style.background = "rgb(0, 0, 0)";
 
 
 
@@ -3481,6 +3486,16 @@ class Wilson
 			}
 		}
 
+		if (this.#fullscreenOldHtmlBackground)
+		{
+			document.documentElement.style.background = this.#fullscreenOldHtmlBackground;
+		}
+
+		else
+		{
+			document.documentElement.style.background = "";
+		}
+
 		this.#fullscreenContainerLocation.appendChild(this.#fullscreenContainer);
 
 		this.canvas.classList.remove("WILSON_fullscreen");
@@ -3651,6 +3666,31 @@ class Wilson
 		document.head.appendChild(styleElement);
 
 		return styleElement;
+	}
+
+	/*
+		iOS Safari tints its status bar and toolbar from fixed elements that span the
+		screen, and it keeps that tint after the fullscreen container stops being fixed,
+		no matter what the page background is. It only recalculates once another opaque
+		one comes and goes in front of the page, so this adds one for a couple of frames,
+		in the page's own color to make it as unnoticeable as possible.
+	*/
+	#refreshBrowserBarTint()
+	{
+		const transparent = "rgba(0, 0, 0, 0)";
+		const htmlColor = getComputedStyle(document.documentElement).backgroundColor;
+		const bodyColor = getComputedStyle(document.body).backgroundColor;
+
+		const element = document.createElement("div");
+
+		element.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100%; z-index: 1000; pointer-events: none;";
+		element.style.backgroundColor = htmlColor !== transparent
+			? htmlColor
+			: (bodyColor !== transparent ? bodyColor : "rgb(255, 255, 255)");
+
+		document.body.appendChild(element);
+
+		requestAnimationFrame(() => requestAnimationFrame(() => element.remove()));
 	}
 
 	async exitFullscreen()
@@ -3827,6 +3867,8 @@ class Wilson
 				element.style.removeProperty("view-transition-name");
 			}
 		}
+
+		this.#refreshBrowserBarTint();
 	}
 
 	// Enters fullscreen state for the canvas (resizes buffer, updates world
