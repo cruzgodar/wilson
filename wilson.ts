@@ -344,6 +344,8 @@ class Wilson
 	onSwitchFullscreen: (isFullscreen: boolean) => void;
 	#fullscreenOldScroll: number = 0;
 	#fullscreenOldHtmlBackground?: string;
+	static #htmlBackgroundOwner: Wilson | null = null;
+	static #isIos: boolean = CSS.supports("-webkit-touch-callout", "none");
 	#fullscreenCanvasRect: DOMRect = new DOMRect();
 	#fullscreenInitialWindowInnerWidth: number = window.innerWidth;
 	#fullscreenInitialWindowInnerHeight: number = window.innerHeight;
@@ -2944,7 +2946,13 @@ class Wilson
 			this.#oldMetaThemeColor = this.#metaThemeColorElement.getAttribute("content");
 		}
 
-		this.#fullscreenOldHtmlBackground = document.documentElement.style.background;
+		// Applets can put a second instance into fullscreen from the first one's onSwitch,
+		// and that one would otherwise save the black background as the page's own.
+		if (!Wilson.#htmlBackgroundOwner)
+		{
+			Wilson.#htmlBackgroundOwner = this;
+			this.#fullscreenOldHtmlBackground = document.documentElement.style.background;
+		}
 
 		
 		this.#canvasOldWidth = this.#canvasWidth;
@@ -2975,7 +2983,10 @@ class Wilson
 			this.#metaThemeColorElement.setAttribute("content", "#000000");
 		}
 
-		document.documentElement.style.background = "rgb(0, 0, 0)";
+		if (Wilson.#htmlBackgroundOwner === this)
+		{
+			document.documentElement.style.background = "rgb(0, 0, 0)";
+		}
 
 
 
@@ -3488,14 +3499,19 @@ class Wilson
 			}
 		}
 
-		if (this.#fullscreenOldHtmlBackground)
+		if (Wilson.#htmlBackgroundOwner === this)
 		{
-			document.documentElement.style.background = this.#fullscreenOldHtmlBackground;
-		}
+			Wilson.#htmlBackgroundOwner = null;
 
-		else
-		{
-			document.documentElement.style.background = "";
+			if (this.#fullscreenOldHtmlBackground)
+			{
+				document.documentElement.style.background = this.#fullscreenOldHtmlBackground;
+			}
+
+			else
+			{
+				document.documentElement.style.background = "";
+			}
 		}
 
 		this.#fullscreenContainerLocation.appendChild(this.#fullscreenContainer);
@@ -3674,28 +3690,29 @@ class Wilson
 		iOS Safari tints its status bar and toolbar from fixed elements that span the
 		screen, and it keeps that tint after the fullscreen container stops being fixed,
 		no matter what the page background is. It only recalculates once another opaque
-		one comes and goes in front of the page, so this adds one for a couple of frames,
-		in the page's own color to make it as unnoticeable as possible.
+		one comes and goes in front of the page, so this adds one for the caller to remove.
+		Lightening by black doesn't change a single pixel, so it's invisible despite being
+		on top of everything.
 	*/
+	#addBrowserBarTintElement()
+	{
+		const element = document.createElement("div");
+
+		element.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100%; z-index: 1000; pointer-events: none; background-color: rgb(0, 0, 0); mix-blend-mode: lighten;";
+
+		document.body.appendChild(element);
+
+		return element;
+	}
+
 	#refreshBrowserBarTint()
 	{
-		if (!CSS.supports("-webkit-touch-callout", "none"))
+		if (!Wilson.#isIos)
 		{
 			return;
 		}
 
-		const transparent = "rgba(0, 0, 0, 0)";
-		const htmlColor = getComputedStyle(document.documentElement).backgroundColor;
-		const bodyColor = getComputedStyle(document.body).backgroundColor;
-
-		const element = document.createElement("div");
-
-		element.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100%; z-index: 1000; pointer-events: none;";
-		element.style.backgroundColor = htmlColor !== transparent
-			? htmlColor
-			: (bodyColor !== transparent ? bodyColor : "rgb(255, 255, 255)");
-
-		document.body.appendChild(element);
+		const element = this.#addBrowserBarTintElement();
 
 		requestAnimationFrame(() => requestAnimationFrame(() => element.remove()));
 	}
@@ -3821,10 +3838,27 @@ class Wilson
 				// still before the browser captures the new snapshots.
 				let hiddenElementStyleElement: HTMLStyleElement | null = null;
 
+				// Being in its own hidden layer for the whole transition keeps this from
+				// ever covering the page, and it's gone by the time the transition ends.
+				let browserBarTintElement: HTMLElement | null = null;
+				let browserBarTintStyleElement: HTMLStyleElement | null = null;
+
 				// @ts-ignore
 				const transition = document.startViewTransition(() =>
 				{
 					this.#exitFullscreen();
+
+					if (Wilson.#isIos)
+					{
+						const browserBarTintName = `WILSON_browser-bar-tint-${this.#salt}`;
+
+						browserBarTintElement = this.#addBrowserBarTintElement();
+						browserBarTintElement.style.setProperty("view-transition-name", browserBarTintName);
+
+						browserBarTintStyleElement = document.createElement("style");
+						browserBarTintStyleElement.innerHTML = `::view-transition-group(${browserBarTintName}) { display: none; }`;
+						document.head.appendChild(browserBarTintStyleElement);
+					}
 
 					if (rectsBefore)
 					{
@@ -3840,6 +3874,8 @@ class Wilson
 					styleElement?.remove();
 					draggableStyleElement?.remove();
 					hiddenElementStyleElement?.remove();
+					browserBarTintElement?.remove();
+					browserBarTintStyleElement?.remove();
 				};
 
 				if (transition.finished !== undefined)
@@ -3858,6 +3894,7 @@ class Wilson
 			else
 			{
 				this.#exitFullscreen();
+				this.#refreshBrowserBarTint();
 				draggableStyleElement?.remove();
 			}
 		}
@@ -3865,6 +3902,7 @@ class Wilson
 		else
 		{
 			this.#exitFullscreen();
+			this.#refreshBrowserBarTint();
 		}
 
 		for (const element of elements)
@@ -3874,8 +3912,6 @@ class Wilson
 				element.style.removeProperty("view-transition-name");
 			}
 		}
-
-		this.#refreshBrowserBarTint();
 	}
 
 	// Enters fullscreen state for the canvas (resizes buffer, updates world
