@@ -142,8 +142,6 @@ class Wilson {
                     const aspectRatioChange = windowAspectRatio / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f");
                     this.canvas.style.width = "100vw";
                     this.canvas.style.height = "100vh";
-                    // A sketchy hack to make rotating on iOS work properly.
-                    requestAnimationFrame(() => this.canvas.style.height = "100%");
                     __classPrivateFieldSet(this, _Wilson_worldWidth, Math.max(__classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f") * aspectRatioChange, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldWidth, "f")), "f");
                     this.worldWidth = __classPrivateFieldGet(this, _Wilson_worldWidth, "f");
                     __classPrivateFieldSet(this, _Wilson_worldHeight, Math.max(__classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f") / aspectRatioChange, __classPrivateFieldGet(this, _Wilson_nonFullscreenWorldHeight, "f")), "f");
@@ -1003,7 +1001,7 @@ class Wilson {
         __classPrivateFieldSet(this, _Wilson_canvasOldWidthStyle, this.canvas.style.width, "f");
         __classPrivateFieldSet(this, _Wilson_canvasOldHeightStyle, this.canvas.style.height, "f");
         this.canvas.style.width = "100vw";
-        this.canvas.style.height = "100%";
+        this.canvas.style.height = "100vh";
         const windowAspectRatio = window.innerWidth / window.innerHeight;
         const aspectRatioChange = windowAspectRatio / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f");
         __classPrivateFieldSet(this, _Wilson_worldWidth, Math.max(__classPrivateFieldGet(this, _Wilson_worldWidth, "f") * aspectRatioChange, __classPrivateFieldGet(this, _Wilson_worldWidth, "f")), "f");
@@ -1985,7 +1983,7 @@ _Wilson_destroyed = new WeakMap(), _Wilson_canvasWidth = new WeakMap(), _Wilson_
     if (__classPrivateFieldGet(this, _Wilson_fullscreenFillScreen, "f")) {
         __classPrivateFieldGet(this, _Wilson_fullscreenContainer, "f").classList.add("WILSON_fullscreen-fill-screen");
         this.canvas.style.width = "100vw";
-        this.canvas.style.height = "100%";
+        this.canvas.style.height = "100vh";
         const windowAspectRatio = window.innerWidth / window.innerHeight;
         const aspectRatioChange = windowAspectRatio / __classPrivateFieldGet(this, _Wilson_canvasAspectRatio, "f");
         __classPrivateFieldSet(this, _Wilson_worldWidth, Math.max(__classPrivateFieldGet(this, _Wilson_worldWidth, "f") * aspectRatioChange, __classPrivateFieldGet(this, _Wilson_worldWidth, "f")), "f");

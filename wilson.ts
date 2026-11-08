@@ -997,8 +997,6 @@ class Wilson
 				
 				this.canvas.style.width = "100vw";
 				this.canvas.style.height = "100vh";
-				// A sketchy hack to make rotating on iOS work properly.
-				requestAnimationFrame(() => this.canvas.style.height = "100%");
 
 				this.#worldWidth = Math.max(
 					this.#nonFullscreenWorldWidth * aspectRatioChange,
@@ -2979,7 +2977,7 @@ class Wilson
 			this.#fullscreenContainer.classList.add("WILSON_fullscreen-fill-screen");
 
 			this.canvas.style.width = "100vw";
-			this.canvas.style.height = "100%";
+			this.canvas.style.height = "100vh";
 
 			const windowAspectRatio = window.innerWidth / window.innerHeight;
 
@@ -3848,7 +3846,7 @@ class Wilson
 		this.#canvasOldHeightStyle = this.canvas.style.height;
 
 		this.canvas.style.width = "100vw";
-		this.canvas.style.height = "100%";
+		this.canvas.style.height = "100vh";
 
 		const windowAspectRatio = window.innerWidth / window.innerHeight;
 		const aspectRatioChange = windowAspectRatio / this.#canvasAspectRatio;
